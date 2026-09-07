@@ -104,6 +104,46 @@ def superadmin_descriptions(request):
     })
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_email_new_survey(request):
+    from .models import EmailTemplate
+    from .forms import EmailTemplateForm
+    email_template = EmailTemplate.load()
+    if request.method == 'POST':
+        form = EmailTemplateForm(request.POST, instance=email_template)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'El. laiško šablonas sėkmingai atnaujintas.')
+            return redirect('superadmin_email_new_survey')
+    else:
+        form = EmailTemplateForm(instance=email_template)
+
+    return render(request, 'superadmin/email_new_survey.html', {
+        'form': form,
+        'email_template': email_template,
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_email_survey_request(request):
+    from .models import EmailTemplate
+    from .forms import EmailTemplateForm
+    email_template = EmailTemplate.load()
+    if request.method == 'POST':
+        form = EmailTemplateForm(request.POST, instance=email_template)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'El. laiško šablonas sėkmingai atnaujintas.')
+            return redirect('superadmin_email_survey_request')
+    else:
+        form = EmailTemplateForm(instance=email_template)
+
+    return render(request, 'superadmin/email_survey_request.html', {
+        'form': form,
+        'email_template': email_template,
+    })
+
+@login_required
 def home(request):
     feedback_requests = FeedbackRequest.objects.filter(requested_to=request.user, status='pending').select_related('requester', 'requester__profile')
     company_name = ''
@@ -317,6 +357,18 @@ def request_feedback(request):
                 due_date=due_date
             )
             feedback_request_ids.append(feedback_request.id)
+            
+            # Siųsti el. laišką gavėjui apie prašymą apklausai
+            try:
+                from django_q.tasks import async_task
+                async_task(
+                    'feedbackas.services.send_survey_request_email',
+                    requested_to.id,
+                    requester.get_full_name() or requester.username,
+                    project_name
+                )
+            except Exception:
+                pass  # Neblokuoti pagrindinės logikos dėl el. pašto klaidų
             
         from feedbackas.converters import HashIdConverter
         converter = HashIdConverter()
@@ -2349,6 +2401,18 @@ def send_questionnaire(request):
             due_date=date.today() + timedelta(days=7)
         )
         sent_count += 1
+        
+        # Siųsti el. laišką gavėjui apie naują apklausą
+        try:
+            from django_q.tasks import async_task
+            async_task(
+                'feedbackas.services.send_new_survey_email',
+                requested_to.id,
+                request.user.get_full_name() or request.user.username,
+                project_name
+            )
+        except Exception:
+            pass  # Neblokuoti pagrindinės logikos dėl el. pašto klaidų
         
     if sent_count > 0 and skipped_count == 0:
         messages.success(request, f'Klausimynas "{questionnaire.title}" sėkmingai išsiųstas pasirinktiems ({sent_count}) kolegoms!')

@@ -192,3 +192,45 @@ class PageDescription(models.Model):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
+
+class EmailTemplate(models.Model):
+    """Singleton model for admin-configurable email notification texts."""
+
+    # Gauta nauja apklausa – laiškas vartotojui, kuris gaus feedbacką
+    new_survey_subject = models.CharField(
+        max_length=255,
+        default="Jums priskirta nauja apklausa",
+        help_text="El. laiško tema, kai vartotojui priskiriama nauja apklausa."
+    )
+    new_survey_body = models.TextField(
+        default="Sveiki,\n\nJums buvo priskirta nauja apklausa. Prašome prisijungti prie OrbiGrow platformos ir užpildyti apklausą.\n\nPagarbiai,\nOrbiGrow komanda",
+        help_text="El. laiško tekstas, siunčiamas vartotojui, kai jam priskiriama nauja apklausa."
+    )
+
+    # Gautas prašymas apklausai – laiškas vartotojui, kai gaunamas prašymas
+    survey_request_subject = models.CharField(
+        max_length=255,
+        default="Gautas naujas prašymas užpildyti apklausą",
+        help_text="El. laiško tema, kai gaunamas prašymas užpildyti apklausą."
+    )
+    survey_request_body = models.TextField(
+        default="Sveiki,\n\nGavote naują prašymą užpildyti apklausą. Prašome prisijungti prie OrbiGrow platformos ir peržiūrėti prašymą.\n\nPagarbiai,\nOrbiGrow komanda",
+        help_text="El. laiško tekstas, siunčiamas vartotojui, kai gaunamas prašymas apklausai."
+    )
+
+    class Meta:
+        verbose_name = "Email Template"
+        verbose_name_plural = "Email Templates"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super(EmailTemplate, self).save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "El. laiškų šablonai"
+

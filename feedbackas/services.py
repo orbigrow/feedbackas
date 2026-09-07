@@ -284,3 +284,97 @@ def extract_feedback_features_task(feedback_id):
     except Exception as e:
         logger.error(f"Failed to extract strengths and improvements in background task for feedback {feedback_id}: {e}")
         return False
+
+
+# ──────────────────────────────────────────────────────────
+# Email notification services (designed for Django Q async)
+# ──────────────────────────────────────────────────────────
+
+def send_new_survey_email(recipient_user_id, requester_name, project_name):
+    """
+    Siunčia el. laišką vartotojui, kai jam priskiriama nauja apklausa (klausimynas).
+    Naudojamas šablonas iš EmailTemplate modelio.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        from django.core.mail import send_mail
+        from django.contrib.auth.models import User
+        from .models import EmailTemplate
+
+        recipient = User.objects.get(id=recipient_user_id)
+        if not recipient.email:
+            logger.warning(f"Vartotojas {recipient.username} (ID: {recipient_user_id}) neturi el. pašto adreso. Laiškas neišsiųstas.")
+            return False
+
+        email_template = EmailTemplate.load()
+
+        # Pakeičiame placeholder'ius el. laiško tekste
+        body = email_template.new_survey_body
+        body = body.replace('{vardas}', recipient.get_full_name() or recipient.username)
+        body = body.replace('{siuntejas}', requester_name)
+        body = body.replace('{apklausa}', project_name)
+
+        subject = email_template.new_survey_subject
+        subject = subject.replace('{apklausa}', project_name)
+
+        send_mail(
+            subject,
+            body,
+            'noreply@orbigrow.lt',
+            [recipient.email],
+            fail_silently=False,
+        )
+        logger.info(f"Nauja apklausa – laiškas išsiųstas: {recipient.email} (apklausa: {project_name})")
+        return True
+    except User.DoesNotExist:
+        logger.error(f"Vartotojas ID {recipient_user_id} nerastas. Laiškas neišsiųstas.")
+        return False
+    except Exception as e:
+        logger.error(f"Klaida siunčiant 'nauja apklausa' laišką vartotojui ID {recipient_user_id}: {e}")
+        return False
+
+
+def send_survey_request_email(recipient_user_id, requester_name, project_name):
+    """
+    Siunčia el. laišką vartotojui, kai gaunamas prašymas užpildyti atsiliepimą.
+    Naudojamas šablonas iš EmailTemplate modelio.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        from django.core.mail import send_mail
+        from django.contrib.auth.models import User
+        from .models import EmailTemplate
+
+        recipient = User.objects.get(id=recipient_user_id)
+        if not recipient.email:
+            logger.warning(f"Vartotojas {recipient.username} (ID: {recipient_user_id}) neturi el. pašto adreso. Laiškas neišsiųstas.")
+            return False
+
+        email_template = EmailTemplate.load()
+
+        # Pakeičiame placeholder'ius el. laiško tekste
+        body = email_template.survey_request_body
+        body = body.replace('{vardas}', recipient.get_full_name() or recipient.username)
+        body = body.replace('{siuntejas}', requester_name)
+        body = body.replace('{apklausa}', project_name)
+
+        subject = email_template.survey_request_subject
+        subject = subject.replace('{apklausa}', project_name)
+
+        send_mail(
+            subject,
+            body,
+            'noreply@orbigrow.lt',
+            [recipient.email],
+            fail_silently=False,
+        )
+        logger.info(f"Prašymas apklausai – laiškas išsiųstas: {recipient.email} (apklausa: {project_name})")
+        return True
+    except User.DoesNotExist:
+        logger.error(f"Vartotojas ID {recipient_user_id} nerastas. Laiškas neišsiųstas.")
+        return False
+    except Exception as e:
+        logger.error(f"Klaida siunčiant 'prašymas apklausai' laišką vartotojui ID {recipient_user_id}: {e}")
+        return False
