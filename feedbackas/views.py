@@ -484,7 +484,7 @@ def fill_feedback(request, request_id):
             async_task('feedbackas.services.extract_feedback_features_task', feedback.id)
             
             # Siųsti el. laišką prašytojui (vertinamam asmeniui), kad gautas naujas įvertinimas
-            if not feedback_request.is_self_initiated:
+            if feedback_request.requester_id != request.user.id:
                 try:
                     evaluator_name = request.user.get_full_name() or request.user.username
                     async_task(
@@ -493,8 +493,9 @@ def fill_feedback(request, request_id):
                         evaluator_name,
                         feedback_request.project_name
                     )
-                except Exception:
-                    pass  # El. laiško siuntimo klaida neturi blokuoti vartotojo
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Klaida paleidžiant send_feedback_received_email: {e}")
             
             messages.success(request, 'Jūsų įvertinimas išsiųstas.')
             return redirect('home')
