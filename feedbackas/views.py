@@ -246,6 +246,7 @@ def home(request):
         'sent_surveys_count': sent_surveys_count,
         'available_years': available_years,
         'selected_year': selected_year,
+        'page_desc': PageDescription.load(),
     }
     return render(request, 'home.html', context)
 
@@ -622,8 +623,8 @@ def my_tasks_list(request):
     # Feedback requests made by the current user (excluding self-initiated evaluations from others)
     made_requests = FeedbackRequest.objects.filter(requester=request.user, is_self_initiated=False).select_related('requested_to', 'feedback').order_by('-due_date')
 
-    # Feedback requests assigned to the current user (tasks to do)
-    assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user).select_related('requester').order_by('-due_date')
+    # Feedback requests assigned to the current user (tasks to do) – only from others
+    assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user, is_self_initiated=False).select_related('requester').order_by('-due_date')
 
     context = {
         'made_requests': made_requests,

@@ -106,6 +106,12 @@ class PageDescription(models.Model):
     maintenance_desc = models.TextField(default="Šiuo metu atnaujiname sistemą. Užsukite netrukus!")
     maintenance_desc_en = models.TextField(default="We are currently updating our system. Please check back soon!", blank=True)
 
+    # home.html (prisijungusio vartotojo pagrindinis puslapis)
+    home_hero_title = models.CharField(max_length=255, default="Jūs jau žinote. Mes tiesiog randame žodžius.")
+    home_hero_title_en = models.CharField(max_length=255, default="You already know. We just find the words.", blank=True)
+    home_hero_desc = models.TextField(default="Pasirinkite raktinius žodžius, pridėkite komentarą — sistema per kelias sekundes pavers tai aiškiu, į augimą orientuotu grįžtamuoju ryšiu.")
+    home_hero_desc_en = models.TextField(default="Select keywords, add a comment — the system will turn it into clear, growth-oriented feedback in seconds.", blank=True)
+
     # index.html
     index_hero_title = models.CharField(max_length=255, default="Skatinkite atvirą komandos kultūrą")
     index_hero_title_en = models.CharField(max_length=255, default="Foster an open team culture", blank=True)

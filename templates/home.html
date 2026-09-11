@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load i18n %}
-{% load static i18n %}
+{% load static i18n translation_tags %}
 
 {% block content %}
 <!-- Bibliotekos -->
@@ -110,9 +110,9 @@
     <!-- Hero sekcija -->
     <section class="relative mb-8 rounded-3xl overflow-hidden bg-gradient-to-r from-[#2c4c6c] via-[#3a7c8c] to-[#68b888] p-6 sm:p-10 text-white min-h-[280px] flex items-center shadow-lg">
         <div class="relative z-10 max-w-lg">
-            <h2 class="text-3xl font-bold mb-4 leading-tight">{% trans "Jūs jau žinote. Mes tiesiog randame žodžius." %}</h2>
+            <h2 class="text-3xl font-bold mb-4 leading-tight">{{ page_desc|translate_field:'home_hero_title' }}</h2>
             <p class="text-white/80 text-sm mb-0 max-w-sm leading-relaxed">
-                {% trans "Pasirinkite raktinius žodžius, pridėkite komentarą — sistema per kelias sekundes pavers tai aiškiu, į augimą orientuotu grįžtamuoju ryšiu." %}
+                {{ page_desc|translate_field:'home_hero_desc' }}
             </p>
         </div>
         {% if completed_surveys_count == 0 %}
