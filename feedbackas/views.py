@@ -928,15 +928,39 @@ def get_competency_trend(request, competency_name):
 def team_statistics(request):
     user = request.user
     
-    # Find departments managed by this user
-    managed_departments = Department.objects.filter(manager=user)
+    # Find departments managed by this user (or all departments if superuser)
+    if user.is_superuser:
+        managed_departments = Department.objects.all().select_related('company', 'parent')
+    else:
+        managed_departments = Department.objects.filter(manager=user).select_related('company', 'parent')
+
     if not managed_departments.exists():
         from django.contrib import messages as django_messages
         django_messages.warning(request, 'Jūs nesate jokio padalinio vadovas.')
         return redirect('home')
     
-    department = managed_departments.first()
-    team_members = User.objects.filter(profile__department=department).exclude(id=user.id)
+    dept_id = request.GET.get('department_id')
+    if dept_id:
+        try:
+            department = managed_departments.get(id=dept_id)
+        except (Department.DoesNotExist, ValueError):
+            department = managed_departments.first()
+    else:
+        department = managed_departments.first()
+    
+    # Recursively get this department and all its descendant sub-departments
+    def get_department_and_descendants(dept):
+        depts = [dept]
+        to_check = [dept]
+        while to_check:
+            current = to_check.pop()
+            children = list(current.sub_departments.all())
+            depts.extend(children)
+            to_check.extend(children)
+        return depts
+
+    all_depts = get_department_and_descendants(department)
+    team_members = User.objects.filter(profile__department__in=all_depts).exclude(id=user.id).distinct()
     
     # Aggregate stats using TeamAnalytics service
     from .services import TeamAnalytics
@@ -944,8 +968,9 @@ def team_statistics(request):
 
     context = {
         'department': department,
+        'managed_departments': managed_departments,
         'member_stats': stats['member_stats'],
-        'team_avg_rating': round(stats['team_avg_rating'], 2),
+        'team_avg_rating': round(stats['team_avg_rating'], 2) if stats['team_avg_rating'] else 0,
         'team_feedback_count': stats['team_feedback_count'],
         'team_member_count': stats['team_member_count'],
         'competencies': stats['competencies'],
@@ -956,10 +981,12 @@ def team_statistics(request):
 def team_member_detail(request, user_id):
     member = get_object_or_404(User, id=user_id)
     
-    # Verify current user is a manager of the member's department or a parent department
+    # Verify current user is a manager of the member's department or a parent department (or superuser)
     member_dept = member.profile.department if hasattr(member, 'profile') else None
     is_authorized = False
-    if member_dept:
+    if request.user.is_superuser:
+        is_authorized = True
+    elif member_dept:
         # Check direct manager
         if member_dept.manager == request.user:
             is_authorized = True
@@ -2526,10 +2553,9 @@ def questionnaire_statistics(request, questionnaire_id):
     questionnaire = get_object_or_404(Questionnaire, id=questionnaire_id, created_by=request.user)
 
     # Fetch feedback requests related to this questionnaire
-    # For now, we linked them by using project_name=questionnaire.title
+    from django.db.models import Q
     feedback_requests = FeedbackRequest.objects.filter(
-        requester=request.user,
-        project_name=questionnaire.title,
+        Q(questionnaire=questionnaire) | Q(requester=request.user, project_name=questionnaire.title),
         status='completed'
     ).select_related('requested_to')
     

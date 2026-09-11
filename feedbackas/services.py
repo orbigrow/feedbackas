@@ -167,8 +167,8 @@ class TeamAnalytics:
         
         # Per-member stats using annotation instead of N+1 queries
         annotated_members = team_members.annotate(
-            avg_rating=Avg('received_requests__feedback__rating', filter=Q(received_requests__status='completed')),
-            feedback_count=Count('received_requests__feedback', filter=Q(received_requests__status='completed'))
+            avg_rating=Avg('made_requests__feedback__rating', filter=Q(made_requests__status='completed')),
+            feedback_count=Count('made_requests__feedback', filter=Q(made_requests__status='completed'), distinct=True)
         )
 
         member_stats = []

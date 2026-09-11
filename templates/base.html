@@ -136,7 +136,7 @@
                     </svg>
                     <span>{% trans "Rezultatai" %}</span>
                 </a>
-                {% if user.managed_departments.exists %}
+                {% if user.managed_departments.exists or user.is_superuser %}
                 <a href="{% url 'team_statistics' %}"
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'team_statistics' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"

@@ -17,6 +17,21 @@
             </h1>
             <p class="text-slate-500 mt-1 hidden md:block">{% trans "Bendra komandos kompetencijų ir aktyvumo apžvalga" %}</p>
         </div>
+        {% if managed_departments.count > 1 or managed_departments|length > 1 %}
+        <div class="flex items-center gap-3">
+            <form method="GET" action="" class="inline-flex items-center gap-2">
+                <label for="dept-select" class="text-sm font-semibold text-slate-600">{% trans "Padalinys:" %}</label>
+                <select id="dept-select" name="department_id" onchange="this.form.submit()"
+                    class="bg-white border border-slate-200 text-slate-800 text-sm font-medium rounded-xl px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all">
+                    {% for d in managed_departments %}
+                    <option value="{{ d.id }}" {% if d.id == department.id %}selected{% endif %}>
+                        {{ d.name }}{% if d.company %} ({{ d.company.name }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+        {% endif %}
     </header>
 
     <div class="space-y-8">
