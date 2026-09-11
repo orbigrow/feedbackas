@@ -335,13 +335,19 @@ def send_new_survey_email(recipient_user_id, requester_name, project_name):
 
         email_template = EmailTemplate.load()
 
+        recipient_name = recipient.get_full_name() or recipient.username
+
         # Pakeičiame placeholder'ius el. laiško tekste
         body = email_template.new_survey_body
-        body = body.replace('{vardas}', recipient.get_full_name() or recipient.username)
+        body = body.replace('{vardas}', recipient_name)
         body = body.replace('{siuntejas}', requester_name)
+        body = body.replace('{vertintojas}', requester_name)
         body = body.replace('{apklausa}', project_name)
 
         subject = email_template.new_survey_subject
+        subject = subject.replace('{vardas}', recipient_name)
+        subject = subject.replace('{siuntejas}', requester_name)
+        subject = subject.replace('{vertintojas}', requester_name)
         subject = subject.replace('{apklausa}', project_name)
 
         _prepare_and_send_email(body, subject, recipient.email)
@@ -373,13 +379,19 @@ def send_survey_request_email(recipient_user_id, requester_name, project_name):
 
         email_template = EmailTemplate.load()
 
+        recipient_name = recipient.get_full_name() or recipient.username
+
         # Pakeičiame placeholder'ius el. laiško tekste
         body = email_template.survey_request_body
-        body = body.replace('{vardas}', recipient.get_full_name() or recipient.username)
+        body = body.replace('{vardas}', recipient_name)
         body = body.replace('{siuntejas}', requester_name)
+        body = body.replace('{vertintojas}', requester_name)
         body = body.replace('{apklausa}', project_name)
 
         subject = email_template.survey_request_subject
+        subject = subject.replace('{vardas}', recipient_name)
+        subject = subject.replace('{siuntejas}', requester_name)
+        subject = subject.replace('{vertintojas}', requester_name)
         subject = subject.replace('{apklausa}', project_name)
 
         _prepare_and_send_email(body, subject, recipient.email)
@@ -411,14 +423,20 @@ def send_feedback_received_email(recipient_user_id, evaluator_name, project_name
 
         email_template = EmailTemplate.load()
 
+        recipient_name = recipient.get_full_name() or recipient.username
+
         # Pakeičiame placeholder'ius el. laiško tekste
         body = email_template.feedback_received_body
-        body = body.replace('{vardas}', recipient.get_full_name() or recipient.username)
+        body = body.replace('{vardas}', recipient_name)
         body = body.replace('{vertintojas}', evaluator_name)
+        body = body.replace('{siuntejas}', evaluator_name)
         body = body.replace('{apklausa}', project_name)
 
+        # Pakeičiame placeholder'ius el. laiško temoje
         subject = email_template.feedback_received_subject
-        subject = subject.replace('{vardas}', recipient.get_full_name() or recipient.username)
+        subject = subject.replace('{vardas}', recipient_name)
+        subject = subject.replace('{vertintojas}', evaluator_name)
+        subject = subject.replace('{siuntejas}', evaluator_name)
         subject = subject.replace('{apklausa}', project_name)
 
         _prepare_and_send_email(body, subject, recipient.email)
