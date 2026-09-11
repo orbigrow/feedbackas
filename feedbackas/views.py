@@ -144,6 +144,26 @@ def superadmin_email_survey_request(request):
     })
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_email_feedback_received(request):
+    from .models import EmailTemplate
+    from .forms import EmailTemplateForm
+    email_template = EmailTemplate.load()
+    if request.method == 'POST':
+        form = EmailTemplateForm(request.POST, instance=email_template)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'El. laiško šablonas sėkmingai atnaujintas.')
+            return redirect('superadmin_email_feedback_received')
+    else:
+        form = EmailTemplateForm(instance=email_template)
+
+    return render(request, 'superadmin/email_feedback_received.html', {
+        'form': form,
+        'email_template': email_template,
+    })
+
+@login_required
 def home(request):
     feedback_requests = FeedbackRequest.objects.filter(requested_to=request.user, status='pending').select_related('requester', 'requester__profile')
     company_name = ''
@@ -456,6 +476,19 @@ def fill_feedback(request, request_id):
             # Perkeliame čia, kad užtikrintume, jog feedback.feedback jau yra DB
             from django_q.tasks import async_task
             async_task('feedbackas.services.extract_feedback_features_task', feedback.id)
+            
+            # Siųsti el. laišką prašytojui (vertinamam asmeniui), kad gautas naujas įvertinimas
+            if not feedback_request.is_self_initiated:
+                try:
+                    evaluator_name = request.user.get_full_name() or request.user.username
+                    async_task(
+                        'feedbackas.services.send_feedback_received_email',
+                        feedback_request.requester.id,
+                        evaluator_name,
+                        feedback_request.project_name
+                    )
+                except Exception:
+                    pass  # El. laiško siuntimo klaida neturi blokuoti vartotojo
             
             messages.success(request, 'Jūsų įvertinimas išsiųstas.')
             return redirect('home')

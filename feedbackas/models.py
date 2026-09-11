@@ -224,6 +224,17 @@ class EmailTemplate(models.Model):
         help_text="El. laiško tekstas, siunčiamas vartotojui, kai gaunamas prašymas apklausai."
     )
 
+    # Gautas įvertinimas – laiškas vartotojui, kai kažkas užpildo atsiliepimą apie jį
+    feedback_received_subject = models.CharField(
+        max_length=255,
+        default="Gavote naują įvertinimą",
+        help_text="El. laiško tema, kai darbuotojas gauna įvertinimą."
+    )
+    feedback_received_body = models.TextField(
+        default="Sveiki, {vardas}!\n\nJūsų kolega {vertintojas} pateikė atsiliepimą apie jus.\nPrisijunkite prie OrbiGrow platformos ir peržiūrėkite gautą grįžtamąjį ryšį.\n\nPagarbiai,\nOrbiGrow komanda",
+        help_text="El. laiško tekstas, siunčiamas darbuotojui, kai jis gauna įvertinimą."
+    )
+
     class Meta:
         verbose_name = "Email Template"
         verbose_name_plural = "Email Templates"

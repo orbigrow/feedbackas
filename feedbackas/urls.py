@@ -113,6 +113,7 @@ urlpatterns = [
     # Email templates
     path('superadmin/emails/new-survey/', views.superadmin_email_new_survey, name='superadmin_email_new_survey'),
     path('superadmin/emails/survey-request/', views.superadmin_email_survey_request, name='superadmin_email_survey_request'),
+    path('superadmin/emails/feedback-received/', views.superadmin_email_feedback_received, name='superadmin_email_feedback_received'),
 
     # Django Allauth (Microsoft Entra ID)
     path('accounts/', include('allauth.urls')),
