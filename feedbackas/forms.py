@@ -119,11 +119,7 @@ class PageDescriptionForm(forms.ModelForm):
             else:
                 field.widget.attrs.update({'class': 'w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-purple-500 outline-none transition-all'})
 
-class EmailTemplateForm(forms.ModelForm):
-    class Meta:
-        model = __import__('feedbackas.models').models.EmailTemplate
-        fields = '__all__'
-
+class BaseEmailTemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
@@ -131,3 +127,27 @@ class EmailTemplateForm(forms.ModelForm):
                 field.widget.attrs.update({'class': 'w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-purple-500 outline-none transition-all resize-none', 'rows': 8})
             else:
                 field.widget.attrs.update({'class': 'w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-purple-500 outline-none transition-all'})
+
+
+class EmailNewSurveyForm(BaseEmailTemplateForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.EmailTemplate
+        fields = ['new_survey_subject', 'new_survey_body']
+
+
+class EmailSurveyRequestForm(BaseEmailTemplateForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.EmailTemplate
+        fields = ['survey_request_subject', 'survey_request_body']
+
+
+class EmailFeedbackReceivedForm(BaseEmailTemplateForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.EmailTemplate
+        fields = ['feedback_received_subject', 'feedback_received_body']
+
+
+class EmailTemplateForm(BaseEmailTemplateForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.EmailTemplate
+        fields = '__all__'

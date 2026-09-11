@@ -107,16 +107,18 @@ def superadmin_descriptions(request):
 @user_passes_test(lambda u: u.is_superuser)
 def superadmin_email_new_survey(request):
     from .models import EmailTemplate
-    from .forms import EmailTemplateForm
+    from .forms import EmailNewSurveyForm
     email_template = EmailTemplate.load()
     if request.method == 'POST':
-        form = EmailTemplateForm(request.POST, instance=email_template)
+        form = EmailNewSurveyForm(request.POST, instance=email_template)
         if form.is_valid():
             form.save()
             messages.success(request, 'El. laiško šablonas sėkmingai atnaujintas.')
             return redirect('superadmin_email_new_survey')
+        else:
+            messages.error(request, 'Klaida: patikrinkite įvestus duomenis.')
     else:
-        form = EmailTemplateForm(instance=email_template)
+        form = EmailNewSurveyForm(instance=email_template)
 
     return render(request, 'superadmin/email_new_survey.html', {
         'form': form,
@@ -127,16 +129,18 @@ def superadmin_email_new_survey(request):
 @user_passes_test(lambda u: u.is_superuser)
 def superadmin_email_survey_request(request):
     from .models import EmailTemplate
-    from .forms import EmailTemplateForm
+    from .forms import EmailSurveyRequestForm
     email_template = EmailTemplate.load()
     if request.method == 'POST':
-        form = EmailTemplateForm(request.POST, instance=email_template)
+        form = EmailSurveyRequestForm(request.POST, instance=email_template)
         if form.is_valid():
             form.save()
             messages.success(request, 'El. laiško šablonas sėkmingai atnaujintas.')
             return redirect('superadmin_email_survey_request')
+        else:
+            messages.error(request, 'Klaida: patikrinkite įvestus duomenis.')
     else:
-        form = EmailTemplateForm(instance=email_template)
+        form = EmailSurveyRequestForm(instance=email_template)
 
     return render(request, 'superadmin/email_survey_request.html', {
         'form': form,
@@ -147,16 +151,18 @@ def superadmin_email_survey_request(request):
 @user_passes_test(lambda u: u.is_superuser)
 def superadmin_email_feedback_received(request):
     from .models import EmailTemplate
-    from .forms import EmailTemplateForm
+    from .forms import EmailFeedbackReceivedForm
     email_template = EmailTemplate.load()
     if request.method == 'POST':
-        form = EmailTemplateForm(request.POST, instance=email_template)
+        form = EmailFeedbackReceivedForm(request.POST, instance=email_template)
         if form.is_valid():
             form.save()
             messages.success(request, 'El. laiško šablonas sėkmingai atnaujintas.')
             return redirect('superadmin_email_feedback_received')
+        else:
+            messages.error(request, 'Klaida: patikrinkite įvestus duomenis.')
     else:
-        form = EmailTemplateForm(instance=email_template)
+        form = EmailFeedbackReceivedForm(instance=email_template)
 
     return render(request, 'superadmin/email_feedback_received.html', {
         'form': form,

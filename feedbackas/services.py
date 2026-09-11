@@ -299,7 +299,7 @@ def _prepare_and_send_email(body, subject, recipient_email):
     import re
 
     # Plain text versija: konvertuojame HTML elementus į skaitomą tekstą
-    plain_body = re.sub(r'<a\s+href=["\']([^"\']+)["\']\s*>(.*?)</a>', r'\2 (\1)', body, flags=re.IGNORECASE)
+    plain_body = re.sub(r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', r'\2 (\1)', body, flags=re.IGNORECASE | re.DOTALL)
     plain_body = re.sub(r'<img\s+[^>]*alt=["\']([^"\']*)["\'][^>]*/?\s*>', r'[\1]', plain_body, flags=re.IGNORECASE)
     plain_body = re.sub(r'<img\s+[^>]*/?\s*>', '[Paveiksliukas]', plain_body, flags=re.IGNORECASE)
     plain_body = re.sub(r'<[^>]+>', '', plain_body)
