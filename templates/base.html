@@ -17,7 +17,7 @@
 
       gtag('config', 'G-L8KWNPPX9Y');
     </script>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
     <link rel="icon" type="image/png" href="{% static 'images/fav.png' %}">
     <link rel="shortcut icon" href="{% static 'images/fav.png' %}" type="image/x-icon">
     <link rel="apple-touch-icon" href="{% static 'images/fav.png' %}">
@@ -32,10 +32,75 @@
                 document.documentElement.setAttribute('data-theme', 'dark');
             }
         })();
+
+        // Mobile drawer controllers (available globally before page render)
+        var _drawerToggleDebounce = false;
+
+        function openMobileDrawer() {
+            var drawer = document.getElementById('mobile-drawer');
+            var backdrop = document.getElementById('mobile-drawer-backdrop');
+            if (!drawer) return;
+            drawer.style.transform = 'translateX(0)';
+            drawer.classList.add('is-open');
+            document.body.classList.add('overflow-hidden');
+            if (backdrop) {
+                backdrop.classList.remove('hidden');
+                backdrop.style.display = 'block';
+                void backdrop.offsetWidth;
+                backdrop.classList.remove('opacity-0');
+                backdrop.classList.add('opacity-100');
+            }
+        }
+
+        function closeMobileDrawer() {
+            var drawer = document.getElementById('mobile-drawer');
+            var backdrop = document.getElementById('mobile-drawer-backdrop');
+            if (!drawer) return;
+            drawer.style.transform = 'translateX(-100%)';
+            drawer.classList.remove('is-open');
+            document.body.classList.remove('overflow-hidden');
+            if (backdrop) {
+                backdrop.classList.remove('opacity-100');
+                backdrop.classList.add('opacity-0');
+                setTimeout(function() {
+                    if (drawer && !drawer.classList.contains('is-open')) {
+                        backdrop.classList.add('hidden');
+                        backdrop.style.display = 'none';
+                    }
+                }, 300);
+            }
+        }
+
+        function toggleMobileDrawer(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (_drawerToggleDebounce) return;
+            _drawerToggleDebounce = true;
+            setTimeout(function() { _drawerToggleDebounce = false; }, 120);
+
+            var drawer = document.getElementById('mobile-drawer');
+            if (!drawer) return;
+            if (drawer.classList.contains('is-open') || drawer.style.transform === 'translateX(0px)' || drawer.style.transform === 'translateX(0)') {
+                closeMobileDrawer();
+            } else {
+                openMobileDrawer();
+            }
+        }
+
+        window.openMobileDrawer = openMobileDrawer;
+        window.closeMobileDrawer = closeMobileDrawer;
+        window.toggleMobileDrawer = toggleMobileDrawer;
     </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
+        }
+        #mobile-drawer {
+            transform: translateX(-100%);
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        #mobile-drawer.is-open {
+            transform: translateX(0) !important;
         }
         /* Smooth theme transition */
         html[data-theme] body,
@@ -43,14 +108,8 @@
             transition: background-color 0.3s ease, color 0.15s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
-        /* prettier-ignore */
-            {
-            % block style %
-        }
-
-            {
-            % endblock %
-        }
+        {% block style %}
+        {% endblock %}
     </style>
 </head>
 
@@ -67,6 +126,10 @@
         </div>
     </div>
     {% endif %}
+
+    {% block mobile_drawer %}
+    {% include 'includes/mobile_drawer.html' %}
+    {% endblock %}
 
     <div class="flex h-screen">
 
@@ -256,17 +319,26 @@
                 updateThemeIcons(next);
             }
             function updateThemeIcons(theme) {
-                var sun = document.getElementById('icon-sun');
-                var moon = document.getElementById('icon-moon');
-                if (sun && moon) {
+                var suns = [document.getElementById('icon-sun'), document.getElementById('mobile-icon-sun')];
+                var moons = [document.getElementById('icon-moon'), document.getElementById('mobile-icon-moon')];
+                
+                suns.forEach(function(sun) {
+                    if (!sun) return;
                     if (theme === 'dark') {
                         sun.classList.remove('hidden');
-                        moon.classList.add('hidden');
                     } else {
                         sun.classList.add('hidden');
+                    }
+                });
+
+                moons.forEach(function(moon) {
+                    if (!moon) return;
+                    if (theme === 'dark') {
+                        moon.classList.add('hidden');
+                    } else {
                         moon.classList.remove('hidden');
                     }
-                }
+                });
 
                 // Update logos
                 var logos = document.querySelectorAll('img[alt="Orbigrow.lt"]');
@@ -278,9 +350,42 @@
                     }
                 });
             }
-            // Initialize icons on load
+
+            // Initialize icons on load and bind menu buttons
             document.addEventListener('DOMContentLoaded', function() {
                 updateThemeIcons(document.documentElement.getAttribute('data-theme') || 'light');
+
+                document.addEventListener('click', function(e) {
+                    var drawer = document.getElementById('mobile-drawer');
+
+                    // If close button clicked
+                    if (e.target.closest('[data-mobile-drawer-close], #mobile-drawer-close-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeMobileDrawer();
+                        return;
+                    }
+
+                    // If toggle button clicked
+                    var toggleBtn = e.target.closest('[data-mobile-menu-toggle], .mobile-menu-btn, button[onclick*="toggleMobileDrawer"]');
+                    if (toggleBtn) {
+                        // Handled by toggleMobileDrawer with debounce
+                        return;
+                    }
+
+                    // If drawer is open and clicked outside drawer
+                    if (drawer && drawer.classList.contains('is-open')) {
+                        if (!drawer.contains(e.target)) {
+                            closeMobileDrawer();
+                        }
+                    }
+                });
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' || e.keyCode === 27) {
+                        closeMobileDrawer();
+                    }
+                });
             });
         </script>
 

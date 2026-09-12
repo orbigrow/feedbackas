@@ -104,23 +104,23 @@ input[type='range']::-moz-range-thumb {
 
     <!-- Viršutinė juosta -->
     <header class="bg-white shadow-sm p-4 md:px-8 border-b border-slate-100 flex justify-between items-center sticky top-0 z-20">
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-3 sm:space-x-4">
             <!-- Mobilus Meniu Mygtukas -->
-            <button class="md:hidden p-2 text-slate-400 hover:text-slate-600">
+            <button type="button" onclick="toggleMobileDrawer()" class="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" aria-label="{% trans 'Meniu' %}">
                 <i data-lucide="menu" class="w-6 h-6"></i>
             </button>
 
             <!-- Logotipas (Matomas tik mobiliajame) -->
             <a href="{% url 'home' %}" class="md:hidden flex items-center">
-                <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-8 w-auto object-contain">
+                <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-7 w-auto object-contain">
             </a>
 
             <div>
-                <h1 class="text-xl font-bold text-slate-800 tracking-tight">{% if feedback_request.project_name == "Atsiliepimas" %}{% trans "Atsiliepimas" %}{% else %}{{ feedback_request.project_name }}{% endif %}</h1>
+                <h1 class="text-base sm:text-xl font-bold text-slate-800 tracking-tight truncate max-w-[180px] sm:max-w-none">{% if feedback_request.project_name == "Atsiliepimas" %}{% trans "Atsiliepimas" %}{% else %}{{ feedback_request.project_name }}{% endif %}</h1>
             </div>
         </div>
 
-        <a href="{% url 'home' %}" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+        <a href="{% url 'home' %}" class="px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-shrink-0">
             <i data-lucide="arrow-left" class="w-4 h-4"></i> {% trans "Atgal" %}
         </a>
     </header>

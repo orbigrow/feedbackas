@@ -1,0 +1,197 @@
+{% load static user_tags i18n %}
+<!-- Mobile Drawer Backdrop -->
+<div id="mobile-drawer-backdrop" onclick="closeMobileDrawer()"
+     class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden transition-opacity duration-300 opacity-0"
+     aria-hidden="true"></div>
+
+<!-- Mobile Drawer -->
+<div id="mobile-drawer"
+     style="transform: translateX(-100%); transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);"
+     class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col md:hidden"
+     role="dialog" aria-modal="true" aria-label="{% trans 'Navigacija' %}">
+
+    <!-- Viršus: Logotipas ir Uždarymo mygtukas -->
+    <div class="px-5 py-4 border-b border-slate-200/80 flex items-center justify-between">
+        <a href="{% url 'home' %}" onclick="closeMobileDrawer()" class="block outline-none flex items-center">
+            <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-9 w-auto object-contain">
+        </a>
+        <button type="button" id="mobile-drawer-close-btn" data-mobile-drawer-close onclick="closeMobileDrawer()"
+                class="p-2 rounded-xl text-text-muted hover:text-text-main hover:bg-bg-secondary transition-colors cursor-pointer"
+                aria-label="{% trans 'Uždaryti meniu' %}">
+            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Navigacijos nuorodos -->
+    <nav class="flex-1 overflow-y-auto space-y-1.5 py-4 px-3">
+        {% if not user.is_superuser %}
+        <a href="{% url 'home' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'home' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+            </svg>
+            <span>{% trans "Pagrindinis" %}</span>
+        </a>
+        <a href="{% url 'my_tasks_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'my_tasks_list' or request.resolver_match.url_name == 'fill_feedback' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.336a3.75 3.75 0 0 1 1.3 0c.94.12 1.708.743 2.052 1.543a.75.75 0 0 0 .634.416 3.377 3.377 0 0 1 3.165 3.377v11.082a3.377 3.377 0 0 1-3.377 3.377H8.876a3.377 3.377 0 0 1-3.377-3.377V8.672a3.377 3.377 0 0 1 3.165-3.377.75.75 0 0 0 .634-.416 3.75 3.75 0 0 1 2.052-1.543Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 13.5H12M9 16.5H12M15 13.5H15.008V13.508H15V13.5ZM15 16.5H15.008V16.508H15V16.5ZM15 10.5H15.008V10.508H15V10.5ZM9 10.5H12" />
+            </svg>
+            <span>{% trans "Mano Užduotys" %}</span>
+        </a>
+        <a href="{% url 'team_members_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'team_members_list' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+            </svg>
+            <span>{% trans "Mano Komanda" %}</span>
+        </a>
+        {% if global_settings is None or global_settings.personal_form_enabled %}
+        <a href="{% url 'questionnaires_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'questionnaires_list' or request.resolver_match.url_name == 'create_questionnaire' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+            </svg>
+            <span>{% trans "Individuali forma" %}</span>
+        </a>
+        {% endif %}
+
+        {% if user.profile.is_company_admin %}
+        <a href="{% url 'company_management' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'company_management' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+            </svg>
+            <span>{% trans "Įmonės valdymas" %}</span>
+        </a>
+        {% endif %}
+
+        <a href="{% url 'results' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'results' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+            </svg>
+            <span>{% trans "Rezultatai" %}</span>
+        </a>
+        {% if user.managed_departments.exists or user.is_superuser %}
+        <a href="{% url 'team_statistics' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'team_statistics' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+            </svg>
+            <span>{% trans "Komandos statistika" %}</span>
+        </a>
+        {% endif %}
+
+        {% endif %}
+
+        {% if user.is_superuser %}
+        <div class="pt-2 pb-1">
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3.5">Superadmin</p>
+        </div>
+        <a href="{% url 'superadmin_dashboard' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'superadmin_dashboard' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+            </svg>
+            <span>{% trans "Statistika" %}</span>
+        </a>
+        <a href="{% url 'superadmin_companies_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'superadmin_companies_list' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span>{% trans "Įmonės" %}</span>
+        </a>
+        <a href="{% url 'superadmin_superusers_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if 'superusers' in request.path %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+            <span>{% trans "Supervartotojai" %}</span>
+        </a>
+        <a href="{% url 'superadmin_users_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'superadmin_users_list' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+            </svg>
+            <span>{% trans "Vartotojai" %}</span>
+        </a>
+        <a href="{% url 'superadmin_descriptions' %}" onclick="closeMobileDrawer()"
+            class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl {% if request.resolver_match.url_name == 'superadmin_descriptions' %}text-white bg-primary font-semibold shadow-sm{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} text-sm font-medium transition-colors">
+            <svg class="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            <span>{% trans "Aprašymai" %}</span>
+        </a>
+        {% endif %}
+    </nav>
+
+    <!-- Apačia: Profilis, Atsijungimas, Kalba, Tema -->
+    <div class="mt-auto border-t border-slate-200/80 p-4 bg-bg-secondary/50">
+        <div class="flex items-center space-x-3 mb-3">
+            <a href="{% url 'profile' %}" onclick="closeMobileDrawer()" class="flex-shrink-0">
+                <img class="w-10 h-10 rounded-full object-cover border-2 border-primary/20"
+                    src="{{ user|user_avatar }}" alt="{% trans 'Vartotojo profilio nuotrauka' %}">
+            </a>
+            <div class="overflow-hidden">
+                <a href="{% url 'profile' %}" onclick="closeMobileDrawer()"
+                    class="font-medium text-text-main hover:text-primary transition-colors text-sm block truncate">
+                    {{ request.user.get_full_name|default:request.user.username }}
+                </a>
+                <a href="{% url 'logout' %}"
+                    class="flex items-center space-x-1 text-xs text-primary hover:text-purple-700 transition-colors mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+                    </svg>
+                    <span>{% trans "Atsijungti" %}</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200/60 flex items-center justify-between">
+            {% if global_settings is None or global_settings.language_switcher_enabled %}
+            <form action="{% url 'set_language' %}" method="post" class="flex items-center space-x-2">
+                {% csrf_token %}
+                <input name="next" type="hidden" value="{{ request.get_full_path }}">
+                <button type="submit" name="language" value="lt" class="flex items-center p-1.5 rounded-lg {% if LANGUAGE_CODE == 'lt' %}bg-bg-secondary shadow-sm ring-1 ring-slate-200{% else %}opacity-60 hover:opacity-100{% endif %}">
+                    <img src="https://flagcdn.com/lt.svg" class="w-6 h-4 rounded-sm" alt="Lietuvių">
+                </button>
+                <button type="submit" name="language" value="en" class="flex items-center p-1.5 rounded-lg {% if LANGUAGE_CODE == 'en' %}bg-bg-secondary shadow-sm ring-1 ring-slate-200{% else %}opacity-60 hover:opacity-100{% endif %}">
+                    <img src="https://flagcdn.com/gb.svg" class="w-6 h-4 rounded-sm" alt="English">
+                </button>
+            </form>
+            {% endif %}
+
+            <button type="button" onclick="toggleTheme()" class="p-2 rounded-xl hover:bg-bg-secondary text-text-muted transition-colors flex items-center gap-1.5 text-xs font-medium" title="{% trans 'Perjungti temą' %}">
+                <svg id="mobile-icon-sun" class="w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.375 3.375 0 1 1-7.5 0 3.375 3.375 0 0 1 7.5 0Z" />
+                </svg>
+                <svg id="mobile-icon-moon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+                </svg>
+                <span class="text-[11px]">Tema</span>
+            </button>
+        </div>
+    </div>
+</div>

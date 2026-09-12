@@ -8,27 +8,26 @@
 <main class="flex-1 overflow-y-auto">
 
     <!-- Viršutinė juosta -->
-    <header class="bg-bg-main border-b border-gray-100 h-[72px] px-4 flex justify-between items-center">
-        <!-- Mobilus Meniu Mygtukas -->
-        <button class="md:hidden p-2 text-text-muted">
-            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-        </button>
+    <header class="bg-bg-main border-b border-gray-100 min-h-[72px] py-3 px-4 sm:px-6 flex justify-between items-center gap-4">
+        <div class="flex items-center space-x-3">
+            <!-- Mobilus Meniu Mygtukas -->
+            <button type="button" onclick="toggleMobileDrawer()" class="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" aria-label="{% trans 'Meniu' %}">
+                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+            </button>
 
-        <div class="flex items-center space-x-4">
-            <a href="{% url 'questionnaires_list' %}" class="text-text-muted hover:text-primary transition-colors">
+            <a href="{% url 'questionnaires_list' %}" class="text-text-muted hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-bg-secondary" title="{% trans 'Atgal' %}">
                 <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                     stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 </svg>
             </a>
-            <h1 class="text-2xl font-bold text-text-main hidden md:block">
+            <h1 class="text-xl sm:text-2xl font-bold text-text-main">
                 {% trans "Statistika:" %} {{ questionnaire.title }}
             </h1>
         </div>
-
     </header>
 
     <!-- Turinys -->

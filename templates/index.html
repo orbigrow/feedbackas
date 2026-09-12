@@ -225,7 +225,7 @@
         <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
             <!-- Logotipas -->
             <a href="{% url 'index' %}" class="block outline-none flex items-center group">
-                <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-10 w-auto object-contain transition-transform group-hover:scale-105">
+                <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105">
             </a>
 
             <!-- Navigacijos nuorodos (Desktop) -->
@@ -235,11 +235,11 @@
                 <a href="{% url 'saugumas' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Saugumas" %}</a>
             </div>
 
-            <!-- Prisijungimo mygtukai -->
-            <div class="flex items-center space-x-4">
+            <!-- Prisijungimo mygtukai (Desktop) -->
+            <div class="hidden md:flex items-center space-x-4">
                 <!-- Kalbos pasirinkimas -->
                 {% if global_settings is None or global_settings.language_switcher_enabled %}
-                <div class="hidden md:flex items-center space-x-1">
+                <div class="flex items-center space-x-1">
                     <form action="{% url 'set_language' %}" method="post" class="flex items-center space-x-1">
                         {% csrf_token %}
                         <input name="next" type="hidden" value="{{ request.get_full_path }}">
@@ -264,9 +264,107 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- Čia būtų galima pridėti "hamburger" meniu mobiliesiems įrenginiams -->
+
+            <!-- Mobilus meniu mygtukas -->
+            <div class="flex items-center space-x-2 md:hidden">
+                {% if user.is_authenticated %}
+                <a href="{% url 'home' %}" class="px-3 py-1.5 text-xs font-semibold text-white bg-[#2a5384] rounded-lg shadow-sm">
+                    {% trans "Skydelis" %}
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}" class="px-3 py-1.5 text-xs font-semibold text-white bg-[#2a5384] rounded-lg shadow-sm">
+                    {% trans "Prisijungti" %}
+                </a>
+                {% endif %}
+                <button type="button" id="landing-mobile-menu-btn" onclick="toggleLandingMobileMenu()" class="p-2 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition-colors" aria-label="{% trans 'Meniu' %}">
+                    <svg id="landing-menu-icon" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                    <svg id="landing-close-icon" class="w-6 h-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
         </nav>
+
+        <!-- Mobilus išskleidžiamas meniu -->
+        <div id="landing-mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-4 pt-3 pb-6 space-y-3 shadow-lg">
+            <div class="flex flex-col space-y-2">
+                <a href="{% url 'index' %}#funkcijos" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Pradžia" %}</a>
+                <a href="{% url 'apie_mus' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Apie mus" %}</a>
+                <a href="{% url 'saugumas' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Saugumas" %}</a>
+            </div>
+            
+            {% if global_settings is None or global_settings.language_switcher_enabled %}
+            <div class="pt-3 border-t border-gray-100 flex items-center justify-between px-3">
+                <span class="text-xs text-gray-500 font-medium">{% trans "Kalba:" %}</span>
+                <form action="{% url 'set_language' %}" method="post" class="flex items-center space-x-2">
+                    {% csrf_token %}
+                    <input name="next" type="hidden" value="{{ request.get_full_path }}">
+                    <button type="submit" name="language" value="lt" class="flex items-center p-1 rounded-md {% if LANGUAGE_CODE == 'lt' %}bg-gray-100 ring-1 ring-gray-200{% else %}opacity-60 hover:opacity-100{% endif %}">
+                        <img src="https://flagcdn.com/lt.svg" class="w-6 h-4 rounded-sm" alt="Lietuvių">
+                    </button>
+                    <button type="submit" name="language" value="en" class="flex items-center p-1 rounded-md {% if LANGUAGE_CODE == 'en' %}bg-gray-100 ring-1 ring-gray-200{% else %}opacity-60 hover:opacity-100{% endif %}">
+                        <img src="https://flagcdn.com/gb.svg" class="w-6 h-4 rounded-sm" alt="English">
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
     </header>
+
+    <script>
+        function openLandingMobileMenu() {
+            var menu = document.getElementById('landing-mobile-menu');
+            var menuIcon = document.getElementById('landing-menu-icon');
+            var closeIcon = document.getElementById('landing-close-icon');
+            if (menu) {
+                menu.classList.remove('hidden');
+                if (menuIcon) menuIcon.classList.add('hidden');
+                if (closeIcon) closeIcon.classList.remove('hidden');
+            }
+        }
+
+        function closeLandingMobileMenu() {
+            var menu = document.getElementById('landing-mobile-menu');
+            var menuIcon = document.getElementById('landing-menu-icon');
+            var closeIcon = document.getElementById('landing-close-icon');
+            if (menu && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+                if (menuIcon) menuIcon.classList.remove('hidden');
+                if (closeIcon) closeIcon.classList.add('hidden');
+            }
+        }
+
+        function toggleLandingMobileMenu(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            var menu = document.getElementById('landing-mobile-menu');
+            if (menu) {
+                if (menu.classList.contains('hidden')) {
+                    openLandingMobileMenu();
+                } else {
+                    closeLandingMobileMenu();
+                }
+            }
+        }
+
+        // Close on clicking outside menu or pressing Escape
+        document.addEventListener('click', function(e) {
+            var menu = document.getElementById('landing-mobile-menu');
+            var btn = document.getElementById('landing-mobile-menu-btn');
+            if (menu && !menu.classList.contains('hidden')) {
+                if (!menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
+                    closeLandingMobileMenu();
+                }
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                closeLandingMobileMenu();
+            }
+        });
+    </script>
 
     <!-- 2. Hero (Pagrindinis) skyrius -->
     <main>

@@ -7,15 +7,23 @@
 <script src="https://unpkg.com/lucide@0.460.0" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
 
 <main class="flex-1 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900 pb-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8">
 
-        <header class="flex justify-between items-center mb-8 gap-4">
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-slate-800">{{ company_name }} {% trans "struktūra" %}</h1>
-                <p class="text-slate-500 mt-1">{% trans "Valdykite komandas ir priskirkite darbuotojus." %}</p>
+                <div class="flex items-center gap-3 mb-2 md:mb-0">
+                    <button type="button" onclick="toggleMobileDrawer()" class="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" aria-label="{% trans 'Meniu' %}">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <a href="{% url 'home' %}" class="md:hidden flex items-center">
+                        <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-7 w-auto object-contain">
+                    </a>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">{{ company_name }} {% trans "struktūra" %}</h1>
+                <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Valdykite komandas ir priskirkite darbuotojus." %}</p>
             </div>
             <button onclick="document.getElementById('add-dept-modal').classList.remove('hidden')"
-                class="bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2">
+                class="w-full sm:w-auto justify-center bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2 text-sm sm:text-base">
                 <i data-lucide="plus" class="w-4 h-4"></i> {% trans "Padalinys" %}
             </button>
         </header>

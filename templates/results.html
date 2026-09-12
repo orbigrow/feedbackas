@@ -8,37 +8,41 @@
 <script src="https://unpkg.com/lucide@0.460.0" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
 
 <!-- Pagrindinis Turinys -->
-<main class="flex-1 p-4 md:p-8 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900">
+<main class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900">
 
     <!-- Viršutinė juosta -->
     <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
-            <!-- Mobilus Meniu Mygtukas -->
-            <button class="md:hidden p-2 -ml-2 text-slate-500 mb-2">
-                <i data-lucide="menu"></i>
-            </button>
+            <div class="flex items-center gap-3 mb-2 md:mb-0">
+                <!-- Mobilus Meniu Mygtukas -->
+                <button type="button" onclick="toggleMobileDrawer()" class="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" aria-label="{% trans 'Meniu' %}">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
 
-            <!-- Logotipas (Mobilus) -->
-            <a href="{% url 'home' %}" class="md:hidden flex items-center mb-4">
-                <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-8 w-auto object-contain">
-            </a>
+                <!-- Logotipas (Mobilus) -->
+                <a href="{% url 'home' %}" class="md:hidden flex items-center">
+                    <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-7 w-auto object-contain">
+                </a>
+            </div>
 
-            <h1 class="text-3xl font-bold text-slate-800 hidden md:block">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">
                 {% trans "Mano rezultatai" %}
             </h1>
-            <p class="text-slate-500 mt-1 hidden md:block">{% trans "Jūsų asmeninio tobulėjimo suvestinė." %}</p>
+            <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Jūsų asmeninio tobulėjimo suvestinė." %}</p>
         </div>
 
         <!-- Laikotarpio pasirinkimas -->
-        <div class="flex bg-slate-200/50 rounded-xl p-1.5 shadow-inner">
-            <a href="?period=all"
-                class="px-5 py-2 text-sm font-bold {% if current_period == 'all' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Visi" %}</a>
-            <a href="?period=month"
-                class="px-5 py-2 text-sm font-bold {% if current_period == 'month' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Mėnuo" %}</a>
-            <a href="?period=quarter"
-                class="px-5 py-2 text-sm font-bold {% if current_period == 'quarter' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Ketvirtis" %}</a>
-            <a href="?period=year"
-                class="px-5 py-2 text-sm font-bold {% if current_period == 'year' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Metai" %}</a>
+        <div class="overflow-x-auto max-w-full pb-1 sm:pb-0">
+            <div class="inline-flex bg-slate-200/50 rounded-xl p-1.5 shadow-inner min-w-max">
+                <a href="?period=all"
+                    class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'all' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Visi" %}</a>
+                <a href="?period=month"
+                    class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'month' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Mėnuo" %}</a>
+                <a href="?period=quarter"
+                    class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'quarter' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Ketvirtis" %}</a>
+                <a href="?period=year"
+                    class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'year' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Metai" %}</a>
+            </div>
         </div>
     </header>
 

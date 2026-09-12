@@ -5,21 +5,28 @@
 {% block content %}
 <main class="flex-1 overflow-y-auto bg-bg-secondary p-6">
     <div class="max-w-7xl mx-auto">
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-2xl font-bold text-text-main">Įmonės</h1>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
             <div class="flex items-center gap-3">
+                <button type="button" onclick="toggleMobileDrawer()" class="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" aria-label="Meniu">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                </button>
+                <h1 class="text-2xl font-bold text-text-main">Įmonės</h1>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 <a href="{% url 'superadmin_billing_overview' %}"
-                    class="px-4 py-2 bg-bg-main border border-gray-300 text-text-main rounded-lg hover:bg-bg-secondary transition-colors shadow-sm font-medium flex items-center gap-2">
+                    class="px-3.5 sm:px-4 py-2 bg-bg-main border border-gray-300 text-text-main rounded-lg hover:bg-bg-secondary transition-colors shadow-sm font-medium flex items-center gap-2 text-xs sm:text-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
                     Sąskaitų statistika
                 </a>
                 <a href="{% url 'superadmin_ai_analytics' %}"
-                    class="px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors shadow-sm font-medium flex items-center gap-2">
+                    class="px-3.5 sm:px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors shadow-sm font-medium flex items-center gap-2 text-xs sm:text-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                     AI Statistika
                 </a>
                 <a href="{% url 'superadmin_create_company' %}"
-                    class="px-4 py-2 bg-primary/90 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium">
+                    class="px-3.5 sm:px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium text-xs sm:text-sm">
                     Kurti įmonę
                 </a>
             </div>

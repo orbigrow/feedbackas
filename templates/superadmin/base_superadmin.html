@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% load static user_tags %}
 
+{% block mobile_drawer %}
+{% include 'superadmin/includes/mobile_drawer_superadmin.html' %}
+{% endblock %}
+
 {% block sidebar %}
 <aside class="hidden md:flex w-64 flex-col bg-bg-main text-slate-600 border-r border-slate-200">
     <div class="p-6">

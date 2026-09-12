@@ -82,59 +82,65 @@
     };
 </script>
 
-<main class="flex-1 p-4 md:p-8 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900">
-    <header class="flex justify-between items-start mb-8" data-company-active="{{ is_company_active|yesno:'true,false' }}">
+<main class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900">
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4" data-company-active="{{ is_company_active|yesno:'true,false' }}">
         <div>
-            <button class="md:hidden p-2 -ml-2 text-slate-500 mb-2">
-                <i data-lucide="menu"></i>
-            </button>
-            <h1 class="text-3xl font-bold text-slate-800">{% trans "Labas," %} {{ request.user.first_name|default:request.user.username }}</h1>
-            <p class="text-slate-500 mt-1">{% trans "Štai kas šiandien vyksta su jūsų grįžtamuoju ryšiu." %}</p>
+            <div class="flex items-center gap-3 mb-2 md:mb-0">
+                <button type="button" onclick="toggleMobileDrawer()" class="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors" aria-label="{% trans 'Meniu' %}">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <a href="{% url 'home' %}" class="md:hidden flex items-center">
+                    <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-7 w-auto object-contain">
+                </a>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">{% trans "Labas," %} {{ request.user.first_name|default:request.user.username }}</h1>
+            <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Štai kas šiandien vyksta su jūsų grįžtamuoju ryšiu." %}</p>
         </div>
-        <div class="flex space-x-3 mt-2 sm:mt-0">
+        <div class="flex space-x-3 w-full sm:w-auto justify-end">
             <button onclick="window.openRequestFeedbackModal(event)" class="hidden sm:block px-6 py-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all">
                 {% trans "Prašyti įvertinimo" %}
             </button>
             <button onclick="window.openSendFeedbackModal(event)" class="hidden sm:block px-6 py-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all">
                 {% trans "Siųsti įvertinimą" %}
             </button>
-            <button onclick="window.openRequestFeedbackModal(event)" class="sm:hidden px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700">
-                <i data-lucide="plus" class="w-5 h-5"></i>
+            <button onclick="window.openRequestFeedbackModal(event)" class="sm:hidden flex-1 py-3 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 font-semibold flex items-center justify-center gap-2 text-sm">
+                <i data-lucide="plus" class="w-4 h-4"></i> {% trans "Prašyti" %}
             </button>
-            <button onclick="window.openSendFeedbackModal(event)" class="sm:hidden px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700">
-                <i data-lucide="send" class="w-5 h-5"></i>
+            <button onclick="window.openSendFeedbackModal(event)" class="sm:hidden flex-1 py-3 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 font-semibold flex items-center justify-center gap-2 text-sm">
+                <i data-lucide="send" class="w-4 h-4"></i> {% trans "Siųsti" %}
             </button>
         </div>
     </header>
 
     <!-- Hero sekcija -->
-    <section class="relative mb-8 rounded-3xl overflow-hidden bg-gradient-to-r from-[#2c4c6c] via-[#3a7c8c] to-[#68b888] p-6 sm:p-10 text-white min-h-[280px] flex items-center shadow-lg">
-        <div class="relative z-10 max-w-lg">
-            <h2 class="text-3xl font-bold mb-4 leading-tight">{{ page_desc|translate_field:'home_hero_title' }}</h2>
-            <p class="text-white/80 text-sm mb-0 max-w-sm leading-relaxed">
+    <section class="relative mb-8 rounded-3xl overflow-hidden bg-gradient-to-r from-[#2c4c6c] via-[#3a7c8c] to-[#68b888] p-6 sm:p-10 text-white min-h-[200px] flex flex-col xl:flex-row xl:items-center justify-between gap-6 shadow-lg">
+        <div class="relative z-10 flex-1 min-w-0 max-w-xl">
+            <h2 class="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 leading-tight">{{ page_desc|translate_field:'home_hero_title' }}</h2>
+            <p class="text-white/90 text-sm sm:text-base mb-0 leading-relaxed">
                 {{ page_desc|translate_field:'home_hero_desc' }}
             </p>
         </div>
         {% if completed_surveys_count == 0 %}
-        <button onclick="window.openRequestFeedbackModal(event)" class="absolute right-6 sm:right-12 bottom-6 sm:bottom-auto bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 text-white px-4 sm:px-6 py-3 rounded-xl font-semibold flex items-center space-x-2 transition-all z-20">
-            <span class="hidden sm:inline">{% trans "Paprašykite pirmojo įvertinimo" %}</span>
-            <span class="sm:hidden">{% trans "Prašyti įvertinimo" %}</span>
-            <i data-lucide="arrow-right" class="w-[18px] h-[18px]"></i>
-        </button>
+        <div class="relative z-10 shrink-0 mt-2 xl:mt-0">
+            <button onclick="window.openRequestFeedbackModal(event)" class="bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold flex items-center space-x-2 transition-all text-xs sm:text-base shadow-sm">
+                <span>{% trans "Paprašykite pirmojo įvertinimo" %}</span>
+                <i data-lucide="arrow-right" class="w-4 h-4 sm:w-[18px] sm:h-[18px]"></i>
+            </button>
+        </div>
         {% endif %}
         <div class="absolute -bottom-20 -right-20 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute top-10 right-40 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
     </section>
 
     <!-- Statistikos kortelės -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between h-40">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between h-36 sm:h-40">
             <div>
                 <div class="flex justify-between items-start">
                     <span class="text-slate-500 text-sm font-medium">{% trans "Laukiančios apklausos" %}</span>
                     <div class="p-2 rounded-lg bg-teal-50"><i data-lucide="target" class="text-slate-600 opacity-60 w-4 h-4"></i></div>
                 </div>
-                <div class="text-4xl font-bold text-slate-900 mt-2">{{ pending_tasks_count }}</div>
+                <div class="text-3xl sm:text-4xl font-bold text-slate-900 mt-2">{{ pending_tasks_count }}</div>
             </div>
             <div class="text-xs text-slate-400 font-medium">{% trans "Laukiama atsakymo" %}</div>
         </div>
@@ -196,56 +202,57 @@
 </main>
 
 <!-- Modalai -->
-<div id="feedback-modal" class="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[9999] hidden">
-    <div class="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden border border-white/20">
-        <div class="px-8 pt-8 pb-4 flex justify-between items-center">
-            <h2 class="text-2xl font-extrabold text-gray-900">{% trans "Prašyti atsiliepimo" %}</h2>
+<!-- Modalai -->
+<div id="feedback-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[9999] hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl sm:rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-8 pt-6 sm:pt-8 pb-3 sm:pb-4 flex justify-between items-center border-b border-slate-100 flex-shrink-0">
+            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-900">{% trans "Prašyti atsiliepimo" %}</h2>
             <button onclick="document.getElementById('feedback-modal').classList.add('hidden')" class="p-2 hover:bg-gray-100 rounded-full text-gray-400"><i data-lucide="x"></i></button>
         </div>
-        <form id="feedback-form">
+        <form id="feedback-form" class="overflow-y-auto flex-1 flex flex-col">
             {% csrf_token %}
-            <div class="px-8 py-4 space-y-5">
+            <div class="px-5 sm:px-8 py-4 space-y-4 sm:space-y-5 flex-1">
                 <div class="space-y-1.5">
-                    <label class="text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Kolega" %}</label>
+                    <label class="text-[12px] sm:text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Kolega" %}</label>
                     <select id="team-member" name="requested_to" multiple class="w-full rounded-2xl"></select>
                 </div>
                 <div class="space-y-1.5">
-                    <label class="text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Projekto pavadinimas" %}</label>
-                    <input type="text" name="project_name" placeholder="{% trans 'Pavadinimas' %}" class="w-full bg-gray-50 rounded-2xl py-3.5 px-4 outline-none">
+                    <label class="text-[12px] sm:text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Projekto pavadinimas" %}</label>
+                    <input type="text" name="project_name" placeholder="{% trans 'Pavadinimas' %}" class="w-full bg-gray-50 rounded-xl sm:rounded-2xl py-3 px-4 outline-none text-sm sm:text-base border border-slate-100">
                 </div>
                 <div class="space-y-1.5">
-                    <label class="text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Komentaras" %}</label>
-                    <textarea name="comment" rows="3" placeholder="{% trans 'Žinutė...' %}" class="w-full bg-gray-50 rounded-2xl py-3.5 px-4 outline-none resize-none"></textarea>
+                    <label class="text-[12px] sm:text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Komentaras" %}</label>
+                    <textarea name="comment" rows="3" placeholder="{% trans 'Žinutė...' %}" class="w-full bg-gray-50 rounded-xl sm:rounded-2xl py-3 px-4 outline-none resize-none text-sm sm:text-base border border-slate-100"></textarea>
                 </div>
                 <div class="space-y-1.5">
-                    <label class="text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Pateikti iki" %}</label>
-                    <input type="date" name="due_date" class="w-full bg-gray-50 rounded-2xl py-3.5 px-4 outline-none">
+                    <label class="text-[12px] sm:text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Pateikti iki" %}</label>
+                    <input type="date" name="due_date" class="w-full bg-gray-50 rounded-xl sm:rounded-2xl py-3 px-4 outline-none text-sm sm:text-base border border-slate-100">
                 </div>
             </div>
-            <div class="p-8 flex gap-3">
-                <button type="button" onclick="document.getElementById('feedback-modal').classList.add('hidden')" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold">{% trans "Atšaukti" %}</button>
-                <button type="submit" class="flex-[2] bg-[#2d4a77] text-white py-4 rounded-2xl font-bold shadow-lg">{% trans "Siųsti" %}</button>
+            <div class="p-5 sm:p-8 pt-3 border-t border-slate-100 flex gap-3 flex-shrink-0 bg-slate-50/50">
+                <button type="button" onclick="document.getElementById('feedback-modal').classList.add('hidden')" class="flex-1 bg-white border border-slate-200 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base hover:bg-slate-50 transition-colors">{% trans "Atšaukti" %}</button>
+                <button type="submit" class="flex-[2] bg-primary text-white py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold shadow-md hover:opacity-95 transition-opacity text-sm sm:text-base">{% trans "Siųsti" %}</button>
             </div>
         </form>
     </div>
 </div>
 
-<div id="send-feedback-modal" class="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[9999] hidden">
-    <div class="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden border border-white/20">
-        <div class="px-8 pt-8 pb-4 flex justify-between items-center">
-            <h2 class="text-2xl font-extrabold text-gray-900">{% trans "Siųsti atsiliepimą" %}</h2>
+<div id="send-feedback-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[9999] hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl sm:rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-8 pt-6 sm:pt-8 pb-3 sm:pb-4 flex justify-between items-center border-b border-slate-100 flex-shrink-0">
+            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-900">{% trans "Siųsti atsiliepimą" %}</h2>
             <button onclick="document.getElementById('send-feedback-modal').classList.add('hidden')" class="p-2 hover:bg-gray-100 rounded-full text-gray-400"><i data-lucide="x"></i></button>
         </div>
-        <form id="send-feedback-form">
-            <div class="px-8 py-4 space-y-5">
+        <form id="send-feedback-form" class="overflow-y-auto flex-1 flex flex-col">
+            <div class="px-5 sm:px-8 py-6 space-y-5 flex-1">
                 <div class="space-y-1.5">
-                    <label class="text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Kolega" %}</label>
+                    <label class="text-[12px] sm:text-[13px] font-bold text-gray-400 uppercase tracking-wider">{% trans "Kolega" %}</label>
                     <select id="send-to-member" name="send_to" class="w-full rounded-2xl"></select>
                 </div>
             </div>
-            <div class="p-8 flex gap-3">
-                <button type="button" onclick="document.getElementById('send-feedback-modal').classList.add('hidden')" class="flex-1 bg-gray-100 py-4 rounded-2xl font-bold">{% trans "Atšaukti" %}</button>
-                <button type="submit" class="flex-[2] bg-[#2d4a77] text-white py-4 rounded-2xl font-bold shadow-lg">{% trans "Pasirinkti" %}</button>
+            <div class="p-5 sm:p-8 pt-3 border-t border-slate-100 flex gap-3 flex-shrink-0 bg-slate-50/50">
+                <button type="button" onclick="document.getElementById('send-feedback-modal').classList.add('hidden')" class="flex-1 bg-white border border-slate-200 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base hover:bg-slate-50 transition-colors">{% trans "Atšaukti" %}</button>
+                <button type="submit" class="flex-[2] bg-primary text-white py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold shadow-md hover:opacity-95 transition-opacity text-sm sm:text-base">{% trans "Pasirinkti" %}</button>
             </div>
         </form>
     </div>

@@ -1,0 +1,179 @@
+{% load static user_tags %}
+<!-- Superadmin Mobile Drawer Backdrop -->
+<div id="mobile-drawer-backdrop" onclick="closeMobileDrawer()"
+     class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden transition-opacity duration-300 opacity-0"
+     aria-hidden="true"></div>
+
+<!-- Superadmin Mobile Drawer -->
+<div id="mobile-drawer"
+     style="transform: translateX(-100%); transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);"
+     class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col md:hidden"
+     role="dialog" aria-modal="true" aria-label="Superadmin Navigacija">
+
+    <!-- Viršus -->
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+        <a href="{% url 'superadmin_dashboard' %}" onclick="closeMobileDrawer()" class="block outline-none">
+            <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-8 w-auto object-contain">
+        </a>
+        <button type="button" id="mobile-drawer-close-btn" data-mobile-drawer-close onclick="closeMobileDrawer()"
+                class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Uždaryti meniu">
+            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Navigacija -->
+    <nav class="flex-1 overflow-y-auto space-y-1 p-4 text-slate-600">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3">Pagrindinis</p>
+        <a href="{% url 'superadmin_dashboard' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_dashboard' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+            </svg>
+            <span>Dashboard</span>
+        </a>
+        <a href="{% url 'superadmin_companies_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_companies_list' or request.resolver_match.url_name == 'superadmin_company_detail' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span>Įmonės</span>
+        </a>
+        <a href="{% url 'superadmin_users_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_users_list' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0Zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0Z" />
+            </svg>
+            <span>Vartotojai</span>
+        </a>
+
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-6 mb-2 px-3">Finansai ir AI</p>
+        <a href="{% url 'superadmin_statistics' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_statistics' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+            <span>Statistika</span>
+        </a>
+        <a href="{% url 'superadmin_billing_overview' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_billing_overview' or request.resolver_match.url_name == 'superadmin_company_billing' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+            </svg>
+            <span>Sąskaitos</span>
+        </a>
+        <a href="{% url 'superadmin_ai_analytics' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_ai_analytics' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <span>AI analitika</span>
+        </a>
+
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-6 mb-2 px-3">Valdymas</p>
+        <a href="{% url 'superadmin_superusers_list' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if 'superusers' in request.path %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+            <span>Supervartotojai</span>
+        </a>
+        <a href="{% url 'superadmin_audit_logs' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_audit_logs' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Audito logai</span>
+        </a>
+        <a href="{% url 'superadmin_features' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_features' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+            </svg>
+            <span>Funkcionalumai</span>
+        </a>
+        <a href="{% url 'superadmin_descriptions' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_descriptions' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            <span>Aprašymai</span>
+        </a>
+
+        <!-- Laiškai submenu -->
+        <div>
+            <button type="button" onclick="toggleMobileMailMenu()"
+                class="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if 'superadmin_email' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                    </svg>
+                    <span>Laiškai</span>
+                </span>
+                <svg id="mobile-mail-chevron" class="w-4 h-4 transition-transform duration-200 {% if 'superadmin_email' in request.resolver_match.url_name %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div id="mobile-mail-submenu" class="ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-200 {% if 'superadmin_email' in request.resolver_match.url_name %}max-h-60{% else %}max-h-0{% endif %}">
+                <a href="{% url 'superadmin_email_new_survey' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_email_new_survey' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_email_new_survey' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Gauta nauja apklausa
+                </a>
+                <a href="{% url 'superadmin_email_survey_request' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_email_survey_request' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_email_survey_request' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Gautas prašymas apklausai
+                </a>
+                <a href="{% url 'superadmin_email_feedback_received' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_email_feedback_received' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_email_feedback_received' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Gautas įvertinimas
+                </a>
+            </div>
+        </div>
+
+        <a href="{% url 'superadmin_create_company' %}" onclick="closeMobileDrawer()"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_create_company' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            <span>Kurti įmonę</span>
+        </a>
+    </nav>
+
+    <!-- Apačia -->
+    <div class="mt-auto p-4 border-t border-slate-100 bg-slate-50/70">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <img src="{{ user|user_avatar }}" class="w-9 h-9 rounded-full object-cover border border-slate-200 flex-shrink-0" alt="Admin">
+                <div class="overflow-hidden">
+                    <p class="text-sm font-bold text-slate-800 truncate">{{ request.user.get_full_name|default:"Superadmin" }}</p>
+                    <a href="{% url 'logout' %}" class="text-xs text-indigo-600 font-semibold hover:text-indigo-800 transition">Atsijungti</a>
+                </div>
+            </div>
+            <a href="{% url 'home' %}" class="text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 transition shadow-sm">
+                Į portalą &rarr;
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMobileMailMenu() {
+        const submenu = document.getElementById('mobile-mail-submenu');
+        const chevron = document.getElementById('mobile-mail-chevron');
+        if (submenu.classList.contains('max-h-0')) {
+            submenu.classList.remove('max-h-0');
+            submenu.classList.add('max-h-60');
+            chevron.classList.add('rotate-180');
+        } else {
+            submenu.classList.remove('max-h-60');
+            submenu.classList.add('max-h-0');
+            chevron.classList.remove('rotate-180');
+        }
+    }
+</script>
