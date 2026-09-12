@@ -131,10 +131,10 @@
     {% include 'includes/mobile_drawer.html' %}
     {% endblock %}
 
-    <div class="flex h-screen">
+    <div class="flex flex-col md:flex-row h-screen overflow-hidden">
 
         {% block sidebar %}
-        <aside class="hidden md:flex w-64 flex-col bg-bg-main shadow-lg">
+        <aside class="hidden md:flex w-64 flex-col bg-bg-main shadow-lg shrink-0">
             <div class="px-6 py-5 border-b">
                 <a href="{% url 'home' %}" class="block outline-none flex items-center">
                     <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-10 w-auto object-contain">
@@ -389,7 +389,34 @@
             });
         </script>
 
-        {% block content %}{% endblock %}
+        <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+            <!-- Global Mobile Top Bar (Always visible on mobile) -->
+            <header class="md:hidden fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-4 bg-bg-main/95 backdrop-blur-md border-b border-gray-200/80 dark:border-slate-800 shadow-xs">
+                <div class="flex items-center space-x-3">
+                    <button type="button" onclick="toggleMobileDrawer()" 
+                        class="p-2 -ml-2 text-text-muted hover:text-text-main hover:bg-bg-secondary rounded-xl transition-colors focus:outline-none" 
+                        aria-label="{% trans 'Meniu' %}">
+                        <svg class="w-6 h-6 text-text-main" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </button>
+                    <a href="{% if user.is_superuser %}{% url 'superadmin_dashboard' %}{% else %}{% url 'home' %}{% endif %}" class="flex items-center">
+                        <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-7 w-auto object-contain">
+                    </a>
+                </div>
+                <div class="flex items-center space-x-2">
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'profile' %}" class="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border border-gray-200 hover:opacity-90 transition" title="{{ request.user.get_full_name|default:request.user.username }}">
+                        <img class="w-full h-full object-cover" src="{{ user|user_avatar }}" alt="Profilis">
+                    </a>
+                    {% endif %}
+                </div>
+            </header>
+
+            <div class="flex-1 flex flex-col min-w-0 h-full pt-14 md:pt-0 overflow-hidden relative">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
 
     </div>
 
