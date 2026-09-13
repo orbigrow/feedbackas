@@ -666,9 +666,25 @@ def my_tasks_list(request):
     # Feedback requests assigned to the current user (tasks to do) – only from others
     assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user, is_self_initiated=False).select_related('requester').order_by('-due_date')
 
+    # All completed feedbacks received by the current user (from colleagues)
+    received_feedbacks = Feedback.objects.filter(
+        feedback_request__requester=request.user,
+        feedback_request__status='completed'
+    ).select_related(
+        'feedback_request__requested_to',
+        'feedback_request__requested_to__profile',
+        'feedback_request__questionnaire'
+    ).prefetch_related(
+        'trait_ratings__trait'
+    ).order_by('-created_at')
+
+    active_tab = request.GET.get('tab', 'assigned')
+
     context = {
         'made_requests': made_requests,
         'assigned_requests': assigned_requests,
+        'received_feedbacks': received_feedbacks,
+        'active_tab': active_tab,
     }
     return render(request, 'my_tasks.html', context)
 
