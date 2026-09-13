@@ -2,6 +2,7 @@ from django.test import TestCase, RequestFactory
 from django.contrib.auth.models import User
 from users.models import Profile, Company
 from .views import team_members_list
+from .ai_service import parse_name_gender_vocative
 from django.contrib.auth.models import AnonymousUser
 
 class TeamMembersListTest(TestCase):
@@ -9,67 +10,77 @@ class TeamMembersListTest(TestCase):
         self.factory = RequestFactory()
         self.user1 = User.objects.create_user(username='user1', password='password', first_name='User', last_name='One')
         self.company1 = Company.objects.create(name='TestCorp')
-        self.profile1 = Profile.objects.create(user=self.user1, company_link=self.company1)
+        self.user1.profile.company_link = self.company1
+        self.user1.profile.save()
         
         self.user2 = User.objects.create_user(username='user2', password='password', first_name='User', last_name='Two')
-        self.profile2 = Profile.objects.create(user=self.user2, company_link=self.company1)
+        self.user2.profile.company_link = self.company1
+        self.user2.profile.save()
         
         self.user3 = User.objects.create_user(username='user3', password='password', first_name='User', last_name='Three')
         self.company2 = Company.objects.create(name='AnotherCorp')
-        self.profile3 = Profile.objects.create(user=self.user3, company_link=self.company2)
+        self.user3.profile.company_link = self.company2
+        self.user3.profile.save()
 
         self.user4 = User.objects.create_user(username='user4', password='password', first_name='User', last_name='Four')
-        # User 4 has no profile/company
+        # User 4 has no company assigned
 
     def test_team_members_list_with_company(self):
-        request = self.factory.get('/team/')
-        request.user = self.user1
-        response = team_members_list(request)
-        
+        self.client.force_login(self.user1)
+        response = self.client.get('/team/')
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'User Two')
-        self.assertNotContains(response, 'User One') # Should not include self
-        self.assertNotContains(response, 'User Three') # Should not include user from another company
+        team_members = list(response.context['team_members'])
+        self.assertIn(self.user2, team_members)
+        self.assertNotIn(self.user1, team_members)
+        self.assertNotIn(self.user3, team_members)
 
     def test_team_members_list_without_company(self):
-        # Test for a user who doesn't have a company in their profile
+        # Vartotojai be įmonės nukreipiami į '/no-company/'
         user_no_company = User.objects.create_user(username='user5', password='password')
-        Profile.objects.create(user=user_no_company, company_link=None) # Profile with empty company
+        user_no_company.profile.company_link = None
+        user_no_company.profile.save()
         
-        request = self.factory.get('/team/')
-        request.user = user_no_company
-        response = team_members_list(request)
-        
-        self.assertEqual(response.status_code, 200)
-        # Should contain users without company (User Four) but not those with company
-        self.assertNotContains(response, 'User One')
-        self.assertNotContains(response, 'User Two')
-        self.assertNotContains(response, 'User Three')
-        self.assertContains(response, 'User Four')
-        self.assertNotContains(response, 'user5') # Should not include self
+        self.client.force_login(user_no_company)
+        response = self.client.get('/team/')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/no-company/')
 
     def test_team_members_list_no_profile(self):
-        # Test for a user who doesn't have a profile at all
-        request = self.factory.get('/team/')
-        request.user = self.user4
-        response = team_members_list(request)
-        
-        self.assertEqual(response.status_code, 200)
-        # Should contain other users without profile (none in this setup except self)
-        self.assertNotContains(response, 'User One')
-        self.assertNotContains(response, 'User Two')
-        self.assertNotContains(response, 'User Three')
-        self.assertNotContains(response, 'User Four') # Should not include self
+        # Vartotojai be profilio nukreipiami į '/no-company/'
+        Profile.objects.filter(user=self.user4).delete()
+        self.client.force_login(self.user4)
+        response = self.client.get('/team/')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/no-company/')
 
     def test_team_members_list_unauthenticated(self):
-        # This view has @login_required, so it should redirect
         request = self.factory.get('/team/')
         request.user = AnonymousUser()
-        # In a real request/response cycle, the decorator would redirect.
-        # Calling the view directly will raise an exception or behave differently
-        # without the full middleware stack. A full client test is better for this.
-        # For now, we'll just check that it doesn't return a 200 with the list.
-        # A proper test for login_required would use self.client.get('/team/')
         response = self.client.get('/team/')
-        self.assertEqual(response.status_code, 302) # 302 is redirect
+        self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith('/login/'))
+
+
+class AILinguisticsTest(TestCase):
+    def test_parse_name_gender_vocative(self):
+        test_cases = [
+            ('Justinas Zamarys', 'Justinas', 'Justinai', 'male'),
+            ('Elena Žukauskaitė', 'Elena', 'Elena', 'female'),
+            ('Rasa Petrauskienė', 'Rasa', 'Rasa', 'female'),
+            ('Tomas Jonaitis', 'Tomas', 'Tomai', 'male'),
+            ('Paulius Jankauskas', 'Paulius', 'Pauliau', 'male'),
+            ('Eglė Šimonytė', 'Eglė', 'Egle', 'female'),
+            ('Dovilė Kazlauskė', 'Dovilė', 'Dovile', 'female'),
+            ('Marius Beržinis', 'Marius', 'Mariau', 'male'),
+            ('Jurgis', 'Jurgis', 'Jurgi', 'male'),
+            ('Kazys', 'Kazys', 'Kazy', 'male'),
+            ('Sandra', 'Sandra', 'Sandra', 'female'),
+            ('elena.zukauskas62146@powerup.lt', 'Elena', 'Elena', 'female'),
+        ]
+        for full_name, exp_first, exp_voc, exp_gender in test_cases:
+            with self.subTest(full_name=full_name):
+                fn, ln, voc, g = parse_name_gender_vocative(full_name)
+                self.assertEqual(fn, exp_first)
+                self.assertEqual(voc, exp_voc)
+                self.assertEqual(g, exp_gender)
+

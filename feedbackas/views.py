@@ -756,6 +756,8 @@ def generate_ai_feedback(request):
         comments = data.get('comments', '')
         existing_feedback = data.get('existing_feedback', '')
         colleague_name = data.get('colleague_name', 'Kolega')
+        colleague_first_name = data.get('colleague_first_name', '')
+        colleague_last_name = data.get('colleague_last_name', '')
 
         task_id = async_task(
             'feedbackas.services.generate_ai_feedback_task',
@@ -765,7 +767,9 @@ def generate_ai_feedback(request):
             existing_feedback=existing_feedback,
             colleague_name=colleague_name,
             user_id=request.user.id,
-            language=getattr(request, 'LANGUAGE_CODE', 'lt')
+            language=getattr(request, 'LANGUAGE_CODE', 'lt'),
+            colleague_first_name=colleague_first_name,
+            colleague_last_name=colleague_last_name
         )
         
         return JsonResponse({'task_id': task_id, 'status': 'processing'})

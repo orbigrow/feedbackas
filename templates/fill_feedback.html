@@ -136,6 +136,8 @@ input[type='range']::-moz-range-thumb {
 
             <form method="POST" class="space-y-8">
                 <input type="hidden" id="colleague-name" value="{{ feedback_request.requester.get_full_name|default:feedback_request.requester.username }}">
+                <input type="hidden" id="colleague-first-name" value="{{ feedback_request.requester.first_name }}">
+                <input type="hidden" id="colleague-last-name" value="{{ feedback_request.requester.last_name }}">
                 {% csrf_token %}
 
                 <!-- Kompetencijų slankikliai -->
@@ -612,6 +614,8 @@ input[type='range']::-moz-range-thumb {
                 comments: document.getElementById('comments').value,
                 existing_feedback: document.getElementById('feedback').value,
                 colleague_name: document.getElementById('colleague-name').value,
+                colleague_first_name: document.getElementById('colleague-first-name')?.value || '',
+                colleague_last_name: document.getElementById('colleague-last-name')?.value || '',
             };
 
             fetch("{% url 'generate_ai_feedback' %}", {

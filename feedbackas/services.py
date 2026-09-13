@@ -132,7 +132,7 @@ class FeedbackAnalytics:
             'recommended_trainings': recommended_trainings,
         }
 
-def generate_ai_feedback_task(ratings, keywords, comments, existing_feedback, colleague_name, user_id=None, language='lt'):
+def generate_ai_feedback_task(ratings, keywords, comments, existing_feedback, colleague_name, user_id=None, language='lt', colleague_first_name=None, colleague_last_name=None):
     from .ai_service import OpenRouterService
     from django.contrib.auth.models import User
     
@@ -154,7 +154,9 @@ def generate_ai_feedback_task(ratings, keywords, comments, existing_feedback, co
         colleague_name=colleague_name,
         user=user,
         company=company,
-        language=language
+        language=language,
+        colleague_first_name=colleague_first_name,
+        colleague_last_name=colleague_last_name
     )
 
 class TeamAnalytics:
