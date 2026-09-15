@@ -62,6 +62,12 @@
         if (modal) {
             modal.classList.remove('hidden');
             loadTeamMembers('team-member', true);
+            const dateInput = modal.querySelector('input[name="due_date"]');
+            if (dateInput && !dateInput.value) {
+                const d = new Date();
+                d.setDate(d.getDate() + 14);
+                dateInput.value = d.toISOString().split('T')[0];
+            }
         }
     };
 
@@ -263,16 +269,78 @@
     if (feedbackForm) {
         feedbackForm.addEventListener('submit', (e) => {
             e.preventDefault();
+
+            // Patikrinam pasirinktus narius iš TomSelect arba įprasto select
+            let selectedMembers = [];
+            if (window.tsTeamMember) {
+                const tsVal = window.tsTeamMember.getValue();
+                if (Array.isArray(tsVal)) {
+                    selectedMembers = tsVal.filter(Boolean);
+                } else if (typeof tsVal === 'string' && tsVal.trim()) {
+                    selectedMembers = tsVal.split(',').map(s => s.trim()).filter(Boolean);
+                }
+            } else {
+                const selectEl = document.getElementById('team-member');
+                if (selectEl) {
+                    selectedMembers = Array.from(selectEl.selectedOptions).map(o => o.value).filter(Boolean);
+                }
+            }
+
+            if (!selectedMembers || selectedMembers.length === 0) {
+                alert("{% trans 'Prašome pasirinkti bent vieną kolegą!' %}");
+                return;
+            }
+
+            const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="inline-flex items-center gap-2"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>{% trans "Siunčiama..." %}</span>';
+            }
+
             const formData = new FormData(feedbackForm);
+            // Užtikrinam, kad formData turi visus TomSelect pasirinkimus
+            formData.delete('requested_to');
+            selectedMembers.forEach(id => formData.append('requested_to', id));
+
+            const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+            const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
+
             fetch("{% url 'request_feedback' %}", {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+                headers: { 'X-CSRFToken': csrfToken }
             })
-            .then(r => r.json())
+            .then(async r => {
+                const isJson = r.headers.get('content-type')?.includes('application/json');
+                const data = isJson ? await r.json() : null;
+                if (!r.ok) {
+                    throw new Error((data && data.errors) ? (typeof data.errors === 'string' ? data.errors : JSON.stringify(data.errors)) : ('Serverio klaida ' + r.status));
+                }
+                return data;
+            })
             .then(data => {
-                if (data.success) window.location.reload();
-                else alert("{% trans 'Klaida:' %} " + JSON.stringify(data.errors));
+                if (data && data.success) {
+                    if (data.skipped_message) {
+                        alert(data.skipped_message);
+                    }
+                    window.location.reload();
+                } else {
+                    const msg = data && data.errors ? (typeof data.errors === 'string' ? data.errors : JSON.stringify(data.errors)) : '{% trans "Nepavyko išsiųsti prašymo." %}';
+                    alert("{% trans 'Klaida:' %} " + msg);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Feedback request error:", err);
+                alert("{% trans 'Klaida siunčiant atsiliepimo prašymą:' %} " + (err.message || err));
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
             });
         });
     }
@@ -281,7 +349,13 @@
     if (sendFeedbackForm) {
         sendFeedbackForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const memberId = document.getElementById('send-to-member').value;
+            let memberId = '';
+            if (window.tsSendToMember) {
+                memberId = window.tsSendToMember.getValue();
+            } else {
+                const el = document.getElementById('send-to-member');
+                if (el) memberId = el.value;
+            }
             if (memberId) window.location.href = `/send_feedback/${memberId}/`;
             else alert("{% trans 'Pasirinkite kolegą!' %}");
         });

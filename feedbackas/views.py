@@ -351,18 +351,56 @@ def request_feedback(request):
         return JsonResponse({'success': False, 'errors': 'Jūsų įmonė yra išjungta. Veiksmas negalimas.'})
         
     if request.method == 'POST':
+        from datetime import datetime
+        from feedbackas.converters import HashIdConverter
+        converter = HashIdConverter()
+
         requester = request.user
-        requested_to_ids = request.POST.getlist('requested_to')
-        project_name = request.POST.get('project_name')
-        comment = request.POST.get('comment')
-        due_date = request.POST.get('due_date')
+        raw_requested_to = request.POST.getlist('requested_to')
+        project_name = (request.POST.get('project_name') or '').strip()
+        if not project_name:
+            project_name = _('Atsiliepimas')
+            
+        comment = (request.POST.get('comment') or '').strip()
+        due_date_raw = request.POST.get('due_date')
+        
+        # Parse due_date or default to 14 days in future
+        due_date = None
+        if due_date_raw:
+            try:
+                due_date = datetime.strptime(str(due_date_raw).strip(), '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                due_date = None
+        if not due_date:
+            due_date = timezone.now().date() + timedelta(days=14)
+
+        # Parse and decode requested_to IDs (can be hash IDs, integer strings, or comma-separated)
+        resolved_ids = []
+        for raw_val in raw_requested_to:
+            if not raw_val:
+                continue
+            for val in str(raw_val).split(','):
+                val = val.strip()
+                if not val:
+                    continue
+                try:
+                    resolved_ids.append(converter.to_python(val))
+                except Exception:
+                    if val.isdigit():
+                        resolved_ids.append(int(val))
+
+        if not resolved_ids:
+            return JsonResponse({'success': False, 'errors': 'Pasirinkite bent vieną kolegą.'})
         
         feedback_request_ids = []
         skipped_names = []
-        for requested_to_id in requested_to_ids:
-            requested_to = get_object_or_404(User, id=requested_to_id)
+        for user_id in resolved_ids:
+            try:
+                requested_to = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                continue
             
-            if requested_to.profile.company_link != request.user.profile.company_link:
+            if getattr(requested_to, 'profile', None) and request.user.profile.company_link != requested_to.profile.company_link:
                 # Gynyba naršyklės DOM inspekcijoms
                 continue
             
@@ -397,8 +435,6 @@ def request_feedback(request):
             except Exception:
                 pass  # Neblokuoti pagrindinės logikos dėl el. pašto klaidų
             
-        from feedbackas.converters import HashIdConverter
-        converter = HashIdConverter()
         encoded_ids = [converter.to_url(fid) for fid in feedback_request_ids]
         response_data = {'success': True, 'feedback_request_ids': encoded_ids}
         if skipped_names:
