@@ -7,19 +7,12 @@ register = template.Library()
 def user_avatar(user):
     try:
         if hasattr(user, 'profile'):
-            if user.profile.image:
+            if user.profile.image and user.profile.image.name and user.profile.image.name != 'default.jpg':
                 return user.profile.image.url
     except Profile.DoesNotExist:
-        # Create profile if it doesn't exist (self-healing)
         Profile.objects.create(user=user)
-        return '/media/default.jpg'  # Assuming default exists or is served
     except Exception:
         pass
     
-    # Return a safe default placeholder if anything fails
-    if isinstance(user, str):
-        initial = user[0].upper() if user else '?'
-    else:
-        initial = getattr(user, 'username', '?')[0].upper() if getattr(user, 'username', '') else '?'
-        
-    return f"https://placehold.co/40x40/eee/333?text={initial}"
+    # Return an inline SVG data URI with a person silhouette
+    return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='40' fill='%23e2e8f0'/%3E%3Ccircle cx='40' cy='30' r='13' fill='%2394a3b8'/%3E%3Cellipse cx='40' cy='68' rx='22' ry='18' fill='%2394a3b8'/%3E%3C/svg%3E"

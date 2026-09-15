@@ -237,8 +237,56 @@ def home(request):
     recent_activity.sort(key=lambda x: x['date'], reverse=True)
     recent_activity = recent_activity[:5]
     
-    # Dynamic metrics calculation
-    pending_tasks_count = feedback_requests.count()
+    # Gauti atsiliepimų prašymai (iš kitų kolegų)
+    all_received_requests = FeedbackRequest.objects.filter(
+        requested_to=request.user,
+        is_self_initiated=False
+    ).select_related('requester', 'requester__profile').order_by(
+        models.Case(
+            models.When(status='pending', then=0),
+            default=1
+        ),
+        'due_date',
+        '-created_at'
+    )
+    
+    pending_tasks_count = all_received_requests.filter(status='pending').count()
+    
+    received_requests_data = []
+    today = timezone.now().date()
+    for fr in all_received_requests[:6]:
+        req = fr.requester
+        first_n = req.first_name or ''
+        last_n = req.last_name or ''
+        if first_n and last_n:
+            initials = (first_n[:1] + last_n[:1]).upper()
+        elif req.get_full_name():
+            parts = req.get_full_name().split()
+            initials = (parts[0][:1] + (parts[1][:1] if len(parts) > 1 else '')).upper()
+        else:
+            initials = req.username[:2].upper()
+            
+        has_image = False
+        image_url = None
+        if hasattr(req, 'profile') and req.profile.image:
+            try:
+                has_image = bool(req.profile.image.name)
+                image_url = req.profile.image.url
+            except Exception:
+                has_image = False
+                image_url = None
+            
+        is_overdue = False
+        if fr.due_date and fr.status == 'pending' and fr.due_date < today:
+            is_overdue = True
+            
+        received_requests_data.append({
+            'item': fr,
+            'initials': initials,
+            'has_image': has_image,
+            'image_url': image_url,
+            'is_overdue': is_overdue,
+        })
     
     # Užpildytos apklausos, gautos vartotojo (surinkta atsakymų)
     completed_surveys_count = Feedback.objects.filter(
@@ -264,6 +312,8 @@ def home(request):
 
     context = {
         'feedback_requests': feedback_requests,
+        'received_requests_data': received_requests_data,
+        'has_received_requests': len(received_requests_data) > 0,
         'company_name': company_name,
         'recent_activity': recent_activity,
         'is_company_active': is_company_active(request.user),
