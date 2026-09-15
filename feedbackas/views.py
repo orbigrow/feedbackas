@@ -270,8 +270,9 @@ def home(request):
         image_url = None
         if hasattr(req, 'profile') and req.profile.image:
             try:
-                has_image = bool(req.profile.image.name)
-                image_url = req.profile.image.url
+                if req.profile.image.name and req.profile.image.name != 'default.jpg':
+                    has_image = True
+                    image_url = req.profile.image.url
             except Exception:
                 has_image = False
                 image_url = None

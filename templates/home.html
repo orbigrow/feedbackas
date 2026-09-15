@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load i18n %}
-{% load static i18n translation_tags %}
+{% load static i18n translation_tags user_tags %}
 
 {% block content %}
 <!-- Bibliotekos -->
@@ -198,13 +198,7 @@
                     {% for req_data in received_requests_data %}
                     <div class="group p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 {% if req_data.item.status == 'pending' %}bg-white border-slate-100 hover:border-teal-200 hover:shadow-md hover:shadow-teal-500/5{% else %}bg-slate-50/50 border-slate-100/80 opacity-80{% endif %}">
                         <div class="flex items-start sm:items-center space-x-3.5 min-w-0">
-                            {% if req_data.has_image %}
-                            <img src="{{ req_data.image_url }}" alt="{{ req_data.item.requester.get_full_name }}" class="w-11 h-11 rounded-2xl object-cover border border-slate-100 flex-shrink-0">
-                            {% else %}
-                            <div class="w-11 h-11 rounded-2xl flex-shrink-0 flex items-center justify-center font-extrabold text-sm {% if req_data.item.status == 'pending' %}bg-teal-50 text-teal-700 border border-teal-100/80{% else %}bg-slate-100 text-slate-500{% endif %}">
-                                {{ req_data.initials }}
-                            </div>
-                            {% endif %}
+                            <img src="{{ req_data.item.requester|user_avatar }}" alt="{{ req_data.item.requester.get_full_name|default:req_data.item.requester.username }}" class="w-11 h-11 rounded-2xl object-cover border border-slate-100 flex-shrink-0">
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="font-bold text-slate-900 text-sm sm:text-base truncate">
