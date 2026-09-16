@@ -237,20 +237,17 @@ def home(request):
     recent_activity.sort(key=lambda x: x['date'], reverse=True)
     recent_activity = recent_activity[:5]
     
-    # Gauti atsiliepimų prašymai (iš kitų kolegų)
+    # Gauti atsiliepimų prašymai (iš kitų kolegų) - tik aktualūs laukiantys prašymai
     all_received_requests = FeedbackRequest.objects.filter(
         requested_to=request.user,
-        is_self_initiated=False
+        is_self_initiated=False,
+        status='pending'
     ).select_related('requester', 'requester__profile').order_by(
-        models.Case(
-            models.When(status='pending', then=0),
-            default=1
-        ),
         'due_date',
         '-created_at'
     )
     
-    pending_tasks_count = all_received_requests.filter(status='pending').count()
+    pending_tasks_count = all_received_requests.count()
     
     received_requests_data = []
     today = timezone.now().date()
