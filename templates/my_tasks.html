@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 {% load static %}
+{% load user_tags %}
 
 {% block title %}{% trans "Mano Užduotys - Atsiliepimai+" %}{% endblock %}
 
@@ -383,6 +384,9 @@
                         class="p-5 sm:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer hover:bg-slate-50/50 transition-colors select-none">
                         <div class="flex items-start sm:items-center space-x-4">
                             <!-- Avatar / Initials -->
+                            {% if evaluator|has_avatar %}
+                            <img src="{{ evaluator|user_avatar }}" alt="{{ evaluator.get_full_name|default:evaluator.username }}" class="w-12 h-12 rounded-2xl object-cover border border-slate-100 shadow-sm flex-shrink-0">
+                            {% else %}
                             <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-600 text-white font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0">
                                 {% if evaluator.first_name and evaluator.last_name %}
                                     {{ evaluator.first_name|slice:":1" }}{{ evaluator.last_name|slice:":1" }}
@@ -390,6 +394,7 @@
                                     {{ evaluator.username|slice:":2"|upper }}
                                 {% endif %}
                             </div>
+                            {% endif %}
 
                             <div>
                                 <div class="flex items-center gap-2 flex-wrap">

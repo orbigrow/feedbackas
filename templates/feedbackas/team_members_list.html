@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 {% load translation_tags %}
+{% load user_tags %}
 
 {% block title %}{% trans "Mano Komanda - Orbigrow.lt" %}{% endblock %}
 
@@ -59,9 +60,9 @@
                         {% for member in block.members %}
                         <div class="p-4 hover:bg-bg-secondary transition">
                             <div class="flex items-center space-x-3">
-                                <img class="w-10 h-10 rounded-full shrink-0 object-cover"
-                                    src="https://placehold.co/80x80/ecc94b/333?text={{ member.first_name|first|upper }}{{ member.last_name|first|upper }}"
-                                    alt="">
+                                <img class="w-10 h-10 rounded-full shrink-0 object-cover border border-slate-100"
+                                    src="{{ member|user_avatar }}"
+                                    alt="{{ member.get_full_name }}">
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-semibold text-text-main truncate">{{ member.get_full_name }}</p>
                                     <p class="text-xs text-text-muted truncate">{{ member.email }}</p>
@@ -122,9 +123,9 @@
                                 <tr class="hover:bg-bg-secondary transition">
                                     <td class="px-6 py-4">
                                         <div class="flex items-center space-x-3">
-                                            <img class="w-10 h-10 rounded-full"
-                                                src="https://placehold.co/80x80/ecc94b/333?text={{ member.first_name|first|upper }}{{ member.last_name|first|upper }}"
-                                                alt="">
+                                            <img class="w-10 h-10 rounded-full shrink-0 object-cover border border-slate-100"
+                                                src="{{ member|user_avatar }}"
+                                                alt="{{ member.get_full_name }}">
                                             <div>
                                                 <p class="text-sm font-medium text-text-main">{{ member.get_full_name }}</p>
                                                 <p class="text-xs text-text-muted">{{ member.email }}</p>
@@ -185,8 +186,8 @@
                 class="bg-bg-main rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
                 <div class="p-6 flex flex-col items-center text-center flex-grow">
                     <div>
-                        <img class="w-24 h-24 rounded-full object-cover mb-4 border-4 border-purple-50"
-                            src="https://placehold.co/100x100/ecc94b/333?text={{ member.first_name|first|upper }}{{ member.last_name|first|upper }}"
+                        <img class="w-24 h-24 rounded-full object-cover mb-4 border-4 border-purple-50 shadow-sm"
+                            src="{{ member|user_avatar }}"
                             alt="{{ member.first_name }} {{ member.last_name }}">
                     </div>
                     <h3 class="text-lg font-bold text-text-main">{{ member.first_name }} {{ member.last_name }}</h3>

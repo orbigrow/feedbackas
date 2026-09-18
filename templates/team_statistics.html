@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load i18n static %}
+{% load user_tags %}
 {% block title %}{% trans "Komandos Statistika - Orbigrow.lt" %}{% endblock %}
 
 {% block content %}
@@ -134,9 +135,13 @@
                             data-url="{% url 'team_member_detail' ms.user.id %}" onclick="window.location.href=this.dataset.url">
                             <td class="px-8 py-5">
                                 <div class="flex items-center space-x-4">
+                                    {% if ms.user|has_avatar %}
+                                    <img src="{{ ms.user|user_avatar }}" alt="{{ ms.user.get_full_name }}" class="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm shrink-0">
+                                    {% else %}
                                     <div class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-teal-600 font-bold text-sm shadow-sm group-hover:border-teal-200 transition-colors shrink-0">
                                         {{ ms.user.first_name|first|upper }}{{ ms.user.last_name|first|upper }}
                                     </div>
+                                    {% endif %}
                                     <div>
                                         <p class="text-[15px] font-bold text-slate-800 group-hover:text-teal-700 transition-colors">{{ ms.user.get_full_name }}</p>
                                         <p class="text-[13px] font-medium text-slate-500">{{ ms.user.email }}</p>

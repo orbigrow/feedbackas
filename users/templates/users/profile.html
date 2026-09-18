@@ -7,7 +7,7 @@
     <div class="max-w-4xl mx-auto">
         <div class="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
             <div class="flex items-center space-x-6 mb-8">
-                <img class="w-24 h-24 rounded-full object-cover border-4 border-purple-50" src="{{ user|user_avatar }}"
+                <img id="profile-avatar-preview" class="w-24 h-24 rounded-full object-cover border-4 border-purple-50 shadow-sm" src="{{ user|user_avatar }}"
                     alt="{{ user.username }}">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">{% firstof user.get_full_name user.username %}</h1>
@@ -56,8 +56,9 @@
 
                 <h2 class="text-lg font-semibold text-gray-800 border-b pb-2 pt-4">{% trans "Profilio nuotrauka" %}</h2>
                 <div>
-                    <input type="file" name="image"
-                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                    <input type="file" name="image" id="profile-image-input" accept="image/*"
+                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer">
+                    <p class="text-xs text-gray-400 mt-1.5">{% trans "Rekomenduojama kvadratinė nuotrauka (JPG, PNG). Įkeltas failas bus automatiškai optimizuotas ir sumažintas." %}</p>
                     {% if p_form.image.errors %}
                     <p class="text-red-500 text-sm mt-1">{{ p_form.image.errors.0 }}</p>
                     {% endif %}
@@ -102,4 +103,21 @@
         </div>
     </div>
 </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('profile-image-input');
+        const avatarPreview = document.getElementById('profile-avatar-preview');
+        if (fileInput && avatarPreview) {
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    if (file.type.startsWith('image/')) {
+                        avatarPreview.src = URL.createObjectURL(file);
+                    }
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}

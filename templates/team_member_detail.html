@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load i18n %}
 {% load static %}
+{% load user_tags %}
 
 {% block title %}{% trans "{{ member.get_full_name }} — Komandos Statistika" %}{% endblock %}
 
@@ -13,6 +14,7 @@
             <a href="{% url 'team_statistics' %}" class="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors shadow-sm">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
             </a>
+            <img src="{{ member|user_avatar }}" alt="{{ member.get_full_name }}" class="w-14 h-14 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0">
             <div>
                 <h1 class="text-3xl font-bold text-slate-800">{{ member.get_full_name }}</h1>
                 <p class="text-sm text-slate-500 mt-1 font-medium">{% if department %}{{ department.name }}{% else %}{% trans "Skyrius nepriskirtas" %}{% endif %} · {{ member.email }}</p>
@@ -140,9 +142,13 @@
                 <div class="p-8 hover:bg-slate-50/50 transition-colors">
                     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
                         <div class="flex items-center space-x-4">
+                            {% if fb.feedback_request.requested_to|has_avatar %}
+                            <img src="{{ fb.feedback_request.requested_to|user_avatar }}" alt="{{ fb.feedback_request.requested_to.get_full_name }}" class="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0">
+                            {% else %}
                             <div class="w-12 h-12 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-slate-500 font-extrabold text-sm">
                                 {{ fb.feedback_request.requested_to.first_name|first|upper }}{{ fb.feedback_request.requested_to.last_name|first|upper }}
                             </div>
+                            {% endif %}
                             <div>
                                 <p class="text-[15px] font-bold text-slate-800">{{ fb.feedback_request.requested_to.get_full_name }}</p>
                                 <p class="text-[12px] font-semibold text-slate-400 mt-0.5">{{ fb.feedback_request.created_at|date:"Y-m-d" }}</p>

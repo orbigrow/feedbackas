@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 {% load static %}
+{% load user_tags %}
 
 {% block title %}{% trans "Mano Komanda - Atsiliepimai+" %}{% endblock %}
 
@@ -33,7 +34,7 @@
                 <div class="p-8 flex flex-col items-center text-center flex-grow relative z-10">
                     <div class="relative">
                         <img class="w-24 h-24 rounded-full object-cover mb-5 border-4 border-slate-50 shadow-sm"
-                            src="https://placehold.co/100x100/f8fafc/64748b?text={{ member.first_name|first|upper }}{{ member.last_name|first|upper }}"
+                            src="{{ member|user_avatar }}"
                             alt="{{ member.first_name }} {{ member.last_name }}">
                         <!-- Status indicator (pvz., prisijungęs, bet čia tiesiog žalias taškas dėl vizualo) -->
                         <div class="absolute bottom-6 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
