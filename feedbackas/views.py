@@ -1020,46 +1020,203 @@ def results(request):
 @login_required
 def get_competency_trend(request, competency_name):
     """
-    Returns the historical evaluation scores for a specific competency for the current user.
-    Uses the actual DB rating fields (teamwork_rating, communication_rating, etc.)
+    Returns the historical evaluation scores for a specific competency or trait:
+    - Default (personal): for current user
+    - scope='team': aggregated average over time across team members of the manager's department
+    - user_id=<id>: for a specific team member (if current user has manager rights or is self)
     """
-    user = request.user
+    from .models import Trait, TraitRating
+    from collections import defaultdict
 
-    # Map Lithuanian competency display names to DB field names
+    scope = request.GET.get('scope')
+    user_id = request.GET.get('user_id')
+    department_id = request.GET.get('department_id')
+
+    # Map Lithuanian / English competency display names to DB field names
     competency_field_map = {
         'komandinis darbas': 'teamwork_rating',
+        'komandinis': 'teamwork_rating',
         'teamwork': 'teamwork_rating',
         'komunikacija': 'communication_rating',
         'communication': 'communication_rating',
         'iniciatyvumas': 'initiative_rating',
         'initiative': 'initiative_rating',
         'techninės žinios': 'technical_skills_rating',
+        'technines zinios': 'technical_skills_rating',
         'technical knowledge': 'technical_skills_rating',
+        'technical skills': 'technical_skills_rating',
         'problemų sprendimas': 'problem_solving_rating',
+        'problemu sprendimas': 'problem_solving_rating',
         'problem solving': 'problem_solving_rating',
     }
 
-    field_name = competency_field_map.get(competency_name.strip().lower())
+    norm_name = competency_name.strip().lower()
+    field_name = competency_field_map.get(norm_name)
+    trait_obj = None
     if not field_name:
-        return JsonResponse({'competency': competency_name, 'trend': []})
+        trait_obj = Trait.objects.filter(name__iexact=competency_name.strip()).first()
+        if not trait_obj:
+            return JsonResponse({'competency': competency_name, 'trend': []})
 
-    # Get all completed feedback for this user (they are the requester)
-    feedbacks = Feedback.objects.filter(
-        feedback_request__requester=user,
-        feedback_request__status='completed'
-    ).select_related('feedback_request').order_by('feedback_request__created_at')
+    # Case 1: Specific member (e.g. from team_member_detail)
+    if user_id:
+        try:
+            uid = int(user_id)
+        except ValueError:
+            from .converters import HashIdConverter
+            try:
+                uid = HashIdConverter().to_python(user_id)
+            except Exception:
+                uid = None
+        if not uid:
+            return JsonResponse({'error': 'Invalid user ID'}, status=400)
+        target_user = get_object_or_404(User, id=uid)
+        # Verify permissions
+        is_authorized = False
+        if request.user == target_user or request.user.is_superuser:
+            is_authorized = True
+        else:
+            target_dept = target_user.profile.department if hasattr(target_user, 'profile') else None
+            if target_dept:
+                curr = target_dept
+                while curr:
+                    if curr.manager == request.user:
+                        is_authorized = True
+                        break
+                    curr = curr.parent
 
-    trend_data = []
-    for fb in feedbacks:
-        score_val = getattr(fb, field_name, None)
-        if score_val is not None:
+        if not is_authorized:
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+        feedbacks = Feedback.objects.filter(
+            feedback_request__requester=target_user,
+            feedback_request__status='completed'
+        ).select_related('feedback_request').order_by('feedback_request__created_at')
+
+        trend_data = []
+        if field_name:
+            for fb in feedbacks:
+                val = getattr(fb, field_name, None)
+                if val is not None:
+                    trend_data.append({
+                        'date': fb.feedback_request.created_at.strftime('%Y-%m-%d'),
+                        'score': float(val),
+                        'project': fb.feedback_request.project_name or _('Atsiliepimas')
+                    })
+        else:
+            tr_list = TraitRating.objects.filter(
+                feedback__in=feedbacks,
+                trait=trait_obj
+            ).select_related('feedback__feedback_request').order_by('feedback__feedback_request__created_at')
+            for tr in tr_list:
+                trend_data.append({
+                    'date': tr.feedback.feedback_request.created_at.strftime('%Y-%m-%d'),
+                    'score': float(tr.rating),
+                    'project': tr.feedback.feedback_request.project_name or _('Atsiliepimas')
+                })
+
+        return JsonResponse({'competency': competency_name, 'trend': trend_data})
+
+    # Case 2: Team level (from team_statistics)
+    elif scope == 'team':
+        if request.user.is_superuser:
+            managed_departments = Department.objects.all().select_related('company', 'parent')
+        else:
+            managed_departments = Department.objects.filter(manager=request.user).select_related('company', 'parent')
+
+        if not managed_departments.exists():
+            return JsonResponse({'error': 'Unauthorized: Not a manager'}, status=403)
+
+        if department_id:
+            try:
+                department = managed_departments.get(id=department_id)
+            except (Department.DoesNotExist, ValueError):
+                department = managed_departments.first()
+        else:
+            department = managed_departments.first()
+
+        if not department:
+            return JsonResponse({'error': 'Department not found'}, status=404)
+
+        def get_department_and_descendants(dept):
+            depts = [dept]
+            to_check = [dept]
+            while to_check:
+                current = to_check.pop()
+                children = list(current.sub_departments.all())
+                depts.extend(children)
+                to_check.extend(children)
+            return depts
+
+        all_depts = get_department_and_descendants(department)
+        team_members = User.objects.filter(profile__department__in=all_depts).exclude(id=request.user.id).distinct()
+
+        feedbacks = Feedback.objects.filter(
+            feedback_request__requester__in=team_members,
+            feedback_request__status='completed'
+        ).select_related('feedback_request', 'feedback_request__requester').order_by('feedback_request__created_at')
+
+        date_scores = defaultdict(list)
+        if field_name:
+            for fb in feedbacks:
+                val = getattr(fb, field_name, None)
+                if val is not None:
+                    d_str = fb.feedback_request.created_at.strftime('%Y-%m-%d')
+                    date_scores[d_str].append(float(val))
+        else:
+            tr_list = TraitRating.objects.filter(
+                feedback__in=feedbacks,
+                trait=trait_obj
+            ).select_related('feedback__feedback_request').order_by('feedback__feedback_request__created_at')
+            for tr in tr_list:
+                d_str = tr.feedback.feedback_request.created_at.strftime('%Y-%m-%d')
+                date_scores[d_str].append(float(tr.rating))
+
+        trend_data = []
+        for d_str in sorted(date_scores.keys()):
+            scores = date_scores[d_str]
+            avg_score = round(sum(scores) / len(scores), 2)
+            count = len(scores)
+            count_label = 'atsiliepimas' if count == 1 else 'atsiliepimai'
             trend_data.append({
-                'date': fb.feedback_request.created_at.strftime('%Y-%m-%d'),
-                'score': float(score_val),
-                'project': fb.feedback_request.project_name
+                'date': d_str,
+                'score': avg_score,
+                'project': f"Komandos vidurkis ({count} {count_label})",
+                'count': count
             })
 
-    return JsonResponse({'competency': competency_name, 'trend': trend_data})
+        return JsonResponse({'competency': competency_name, 'trend': trend_data})
+
+    # Case 3: Personal user scope (from results.html)
+    else:
+        feedbacks = Feedback.objects.filter(
+            feedback_request__requester=request.user,
+            feedback_request__status='completed'
+        ).select_related('feedback_request').order_by('feedback_request__created_at')
+
+        trend_data = []
+        if field_name:
+            for fb in feedbacks:
+                score_val = getattr(fb, field_name, None)
+                if score_val is not None:
+                    trend_data.append({
+                        'date': fb.feedback_request.created_at.strftime('%Y-%m-%d'),
+                        'score': float(score_val),
+                        'project': fb.feedback_request.project_name or _('Atsiliepimas')
+                    })
+        else:
+            tr_list = TraitRating.objects.filter(
+                feedback__in=feedbacks,
+                trait=trait_obj
+            ).select_related('feedback__feedback_request').order_by('feedback__feedback_request__created_at')
+            for tr in tr_list:
+                trend_data.append({
+                    'date': tr.feedback.feedback_request.created_at.strftime('%Y-%m-%d'),
+                    'score': float(tr.rating),
+                    'project': tr.feedback.feedback_request.project_name or _('Atsiliepimas')
+                })
+
+        return JsonResponse({'competency': competency_name, 'trend': trend_data})
 
 
 @login_required

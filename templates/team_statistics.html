@@ -86,9 +86,13 @@
             
             <div class="space-y-6">
                 {% for comp in competencies %}
-                <div class="group">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-[15px] font-bold text-slate-700">{{ comp.name }}</span>
+                <div class="cursor-pointer hover:bg-slate-50 transition-colors p-3 -mx-3 rounded-2xl group"
+                    onclick="openCompetencyModal('{{ comp.name }}')">
+                    <div class="flex justify-between mb-2 items-center">
+                        <span class="text-[15px] font-bold text-slate-700 group-hover:text-teal-700 flex items-center gap-2 transition-colors">
+                            {{ comp.name }}
+                            <i data-lucide="external-link" class="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </span>
                         <span class="text-[15px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg">{{ comp.score }}<span class="text-teal-400 text-xs">/4</span></span>
                     </div>
                     <div class="w-full bg-slate-100 rounded-full h-3.5 shadow-inner overflow-hidden">
@@ -201,13 +205,162 @@
         </div>
 
     </div>
+
+    <!-- Competency Trend Modal -->
+    <div id="competencyModal" class="fixed inset-0 overflow-y-auto bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[9999] hidden" onclick="if(event.target === this) closeCompetencyModal()">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in duration-300 border border-white/20">
+            <div class="px-8 pt-8 pb-4 flex justify-between items-center">
+                <h3 class="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+                    <div class="p-2 bg-teal-50 rounded-xl"><i data-lucide="line-chart" class="w-6 h-6 text-teal-600"></i></div>
+                    <span id="competencyModalTitle">{% trans "Komandos Kompetencijos Vertinimas" %}</span>
+                </h3>
+                <button type="button" onclick="closeCompetencyModal()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="px-8 py-4">
+                <div class="relative h-72 w-full">
+                    <canvas id="competencyChart"></canvas>
+                </div>
+                <div id="competencyModalEmptyState" class="hidden flex flex-col items-center justify-center py-10">
+                    <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                        <i data-lucide="database" class="w-8 h-8 text-slate-300"></i>
+                    </div>
+                    <p class="text-center font-semibold text-slate-500">{% trans "Nepakanka istorinių duomenų grafikui atvaizduoti." %}</p>
+                </div>
+            </div>
+            
+            <div class="p-8 flex justify-end gap-3 bg-slate-50/50 border-t border-slate-100">
+                <button type="button" onclick="closeCompetencyModal()" class="px-8 py-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-2xl font-bold text-[15px] transition-all">
+                    {% trans "Uždaryti" %}
+                </button>
+            </div>
+        </div>
+    </div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
     });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeCompetencyModal();
+        }
+    });
+
+    let compChartInstance = null;
+
+    function openCompetencyModal(competencyName) {
+        document.getElementById('competencyModal').classList.remove('hidden');
+        document.getElementById('competencyModalTitle').textContent = competencyName;
+        document.getElementById('competencyModalEmptyState').classList.add('hidden');
+
+        const ctx = document.getElementById('competencyChart').getContext('2d');
+        if (compChartInstance) {
+            compChartInstance.destroy();
+        }
+
+        const deptId = "{{ department.id|default:'' }}";
+        const url = `/api/competency_trend/${encodeURIComponent(competencyName)}/?scope=team${deptId ? '&department_id=' + deptId : ''}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.trend || data.trend.length === 0) {
+                    document.getElementById('competencyChart').classList.add('hidden');
+                    document.getElementById('competencyModalEmptyState').classList.remove('hidden');
+                    return;
+                }
+
+                document.getElementById('competencyChart').classList.remove('hidden');
+
+                const labels = data.trend.map(item => item.date);
+                const scores = data.trend.map(item => item.score);
+                const projects = data.trend.map(item => item.project);
+
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                const gridColor = isDark ? '#334155' : '#f1f5f9';
+                const tooltipBg = isDark ? '#0f172a' : '#1e293b';
+
+                compChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '{% trans "Komandos vidurkis" %}',
+                            data: scores,
+                            borderColor: '#0d9488', // teal-600
+                            backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#0f766e', // teal-700
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#0f766e',
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 5,
+                                ticks: { 
+                                    stepSize: 1, 
+                                    font: { family: 'Inter, sans-serif' },
+                                    color: isDark ? '#94a3b8' : '#64748b'
+                                },
+                                grid: { color: gridColor }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { 
+                                    font: { family: 'Inter, sans-serif' },
+                                    color: isDark ? '#94a3b8' : '#64748b'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: tooltipBg,
+                                titleFont: { family: 'Inter, sans-serif', size: 14, weight: 'bold' },
+                                bodyFont: { family: 'Inter, sans-serif', size: 13 },
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    title: function (context) {
+                                        return projects[context[0].dataIndex] + ' (' + context[0].label + ')';
+                                    },
+                                    label: function (context) {
+                                        return '{% trans "Vidurkis:" %} ' + context.raw + ' / 4';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                console.error("Error fetching competency trend:", err);
+                document.getElementById('competencyChart').classList.add('hidden');
+                document.getElementById('competencyModalEmptyState').textContent = '{% trans "Įvyko klaida gaunant duomenis." %}';
+                document.getElementById('competencyModalEmptyState').classList.remove('hidden');
+            });
+    }
+
+    function closeCompetencyModal() {
+        document.getElementById('competencyModal').classList.add('hidden');
+    }
 </script>
 {% endblock %}
