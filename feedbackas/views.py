@@ -375,19 +375,19 @@ def get_team_members(request):
     from feedbackas.converters import HashIdConverter
     converter = HashIdConverter()
     
-    # Gauti narių ID, kuriems jau yra laukianti užklausa
-    pending_requester_ids = set(
+    # Gauti narių ID, kuriems dabartinis vartotojas jau yra išsiuntęs laukiantį prašymą
+    pending_requested_to_ids = set(
         FeedbackRequest.objects.filter(
-            requested_to=user,
+            requester=user,
             status='pending'
-        ).values_list('requester_id', flat=True)
+        ).values_list('requested_to_id', flat=True)
     )
     
     data = [
         {
             'id': converter.to_url(member.id), 
             'name': member.get_full_name() or member.username,
-            'has_pending': member.id in pending_requester_ids
+            'has_pending': member.id in pending_requested_to_ids
         } 
         for member in team_members_qs
     ]
