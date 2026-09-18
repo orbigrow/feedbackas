@@ -1,4 +1,4 @@
-import os
+ sąraimport os
 import django
 import random
 from datetime import timedelta

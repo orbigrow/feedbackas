@@ -748,7 +748,7 @@ def my_tasks_list(request):
     made_requests = FeedbackRequest.objects.filter(requester=request.user, is_self_initiated=False).select_related('requested_to', 'feedback').order_by('-due_date')
 
     # Feedback requests assigned to the current user (tasks to do) – only from others
-    assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user, is_self_initiated=False).select_related('requester').order_by('-due_date')
+    assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user, is_self_initiated=False).select_related('requester', 'feedback').order_by('-due_date')
 
     # All completed feedbacks received by the current user (from colleagues)
     received_feedbacks = Feedback.objects.filter(
@@ -771,6 +771,40 @@ def my_tasks_list(request):
         'active_tab': active_tab,
     }
     return render(request, 'my_tasks.html', context)
+
+@login_required
+@require_POST
+def save_feedback_comment(request, feedback_id):
+    """
+    Leidžia darbuotojui pridėti arba atnaujinti savo komentarą prie gauto atsiliepimo.
+    Šį komentarą mato pats darbuotojas ir jo vadovas.
+    """
+    feedback = get_object_or_404(Feedback, id=feedback_id)
+
+    # Tik atsiliepimą gavęs vartotojas (requester) gali komentuoti
+    if feedback.feedback_request.requester != request.user:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json' or request.POST.get('is_ajax') == 'true':
+            return JsonResponse({'error': 'Neturite teisių komentuoti šio atsiliepimo.'}, status=403)
+        messages.error(request, 'Neturite teisių komentuoti šio atsiliepimo.')
+        return redirect('my_tasks_list')
+
+    comment_text = request.POST.get('comment', '').strip()
+    feedback.employee_comment = comment_text
+    feedback.employee_comment_updated_at = timezone.now()
+    feedback.save(update_fields=['employee_comment', 'employee_comment_updated_at'])
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json' or request.POST.get('is_ajax') == 'true':
+        return JsonResponse({
+            'success': True,
+            'comment': comment_text,
+            'updated_at': feedback.employee_comment_updated_at.strftime('%Y-%m-%d') if feedback.employee_comment_updated_at else ''
+        })
+
+    messages.success(request, 'Komentaras sėkmingai išsaugotas.')
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
+    return redirect('my_tasks_list')
 
 @login_required
 @require_POST

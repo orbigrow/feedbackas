@@ -53,6 +53,7 @@ urlpatterns = [
     path('feedback/fill/<hashid:request_id>/', views.fill_feedback, name='fill_feedback'),
     path('team/', views.team_members_list, name='team_members_list'),
     path('tasks/dashboard/', views.my_tasks_list, name='my_tasks_list'),
+    path('feedback/<hashid:feedback_id>/comment/', views.save_feedback_comment, name='save_feedback_comment'),
     path('request/<hashid:request_id>/cancel/', views.cancel_feedback_request, name='cancel_feedback_request'),
     path('request/<hashid:request_id>/reject/', views.reject_feedback_request, name='reject_feedback_request'),
     path('request/<hashid:request_id>/edit/', views.edit_feedback_request, name='edit_feedback_request'),

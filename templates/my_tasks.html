@@ -100,7 +100,11 @@
                             {% if request.is_self_initiated %}{% trans "Tęsti pildymą" %}{% else %}{% trans "Pildyti atsiliepimą" %}{% endif %}
                         </a>
                         {% else %}
-                        <span class="block w-full sm:w-auto text-center px-8 py-3 text-slate-400 font-bold cursor-default">{% trans "Atlikta" %}</span>
+                        <button type="button" onclick="toggleFeedbackDetail(this)" class="block w-full sm:w-auto text-center px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-colors flex items-center gap-2 justify-center">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                            {% trans "Peržiūrėti" %}
+                            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-300 expand-icon"></i>
+                        </button>
                         {% endif %}
                         <form action="{% url 'reject_feedback_request' request.id %}" method="POST" class="w-full sm:w-auto" onsubmit="return confirm('{% trans "Ar tikrai norite ištrinti šią užduotį?" %}');">
                             {% csrf_token %}
@@ -110,6 +114,72 @@
                         </form>
                     </div>
                 </div>
+                {% if request.status == 'completed' %}
+                {% with fb=request.feedback %}
+                {% if fb %}
+                <div class="feedback-detail hidden bg-white border border-slate-100 rounded-2xl mx-2 mb-4 -mt-2 p-5 shadow-sm animate-slideDown">
+                    <!-- AI sugeneruotas atsiliepimas -->
+                    {% if fb.feedback %}
+                    <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4 relative">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-teal-500"></i>
+                            <p class="text-[12px] font-bold text-slate-500 uppercase tracking-wide">{% trans "Sugeneruotas atsiliepimas" %}</p>
+                        </div>
+                        <p class="text-[14px] text-slate-700 font-medium leading-relaxed italic">„{{ fb.feedback }}"</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Komentaras -->
+                    {% if fb.comments %}
+                    <div class="bg-amber-50/60 border border-amber-100 rounded-xl p-4 mb-4">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <i data-lucide="message-circle" class="w-4 h-4 text-amber-500"></i>
+                            <p class="text-[12px] font-bold text-amber-700 uppercase tracking-wide">{% trans "Mano komentaras" %}</p>
+                        </div>
+                        <p class="text-[14px] text-amber-900 font-medium">{{ fb.comments }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Raktiniai žodžiai -->
+                    {% if fb.keywords %}
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wide mr-1">
+                            <i data-lucide="tag" class="w-3.5 h-3.5"></i>
+                            {% trans "Raktažodžiai" %}:
+                        </span>
+                        {% for kw in fb.keywords.split %}
+                        <span class="px-2.5 py-1 bg-teal-50 text-teal-700 rounded-lg text-[12px] font-bold border border-teal-100">{{ kw }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Kompetencijų balai -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Komanda" %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.teamwork_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Komunikacija" %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.communication_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Iniciatyvumas" %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.initiative_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Techninės ž." %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.technical_skills_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Prob. sprend." %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.problem_solving_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
+                {% endif %}
                 {% empty %}
                 <div class="bg-white p-10 rounded-3xl border border-slate-100 text-center flex flex-col items-center justify-center min-h-[250px]">
                     <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
@@ -159,22 +229,11 @@
                     </div>
                     <div class="w-full md:w-auto flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                         {% if request.status == 'completed' and request.feedback %}
-                        <button type="button" data-project="{% if request.project_name == "Atsiliepimas" %}{% trans "Atsiliepimas" %}{% else %}{{ request.project_name }}{% endif %}"
-                            data-rname="{{ request.requested_to.get_full_name|default:request.requested_to.username }}"
-                            data-rating="{{ request.feedback.rating }}"
-                            data-date="{{ request.feedback.created_at|default:request.created_at|date:'Y-m-d' }}"
-                            data-feedback="{{ request.feedback.feedback|default:'' }}"
-                            data-comments="{{ request.feedback.comments|default:'' }}"
-                            data-teamwork="{{ request.feedback.teamwork_rating }}"
-                            data-communication="{{ request.feedback.communication_rating }}"
-                            data-initiative="{{ request.feedback.initiative_rating }}"
-                            data-technical="{{ request.feedback.technical_skills_rating }}"
-                            data-problem="{{ request.feedback.problem_solving_rating }}"
-                            data-keywords="{{ request.feedback.keywords|default:'' }}" {% if request.feedback.trait_ratings.exists %}
-                            data-traits='[{% for tr in request.feedback.trait_ratings.all %}{"name": "{{ tr.trait.name|escapejs }}", "rating": {{ tr.rating }}}{% if not forloop.last %},{% endif %}{% endfor %}]'
-                            {% endif %} onclick="openViewModal(this)"
-                            class="block w-full sm:w-auto text-center px-8 py-3 bg-white border border-slate-200 text-slate-800 font-bold rounded-2xl hover:bg-slate-50 transition-colors">
+                        <button type="button" onclick="toggleFeedbackDetail(this)"
+                            class="block w-full sm:w-auto text-center px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-colors flex items-center gap-2 justify-center">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
                             {% trans "Peržiūrėti" %}
+                            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-300 expand-icon"></i>
                         </button>
                         {% else %}
                             {% with reqto=request.requested_to %}
@@ -196,6 +255,111 @@
                         </form>
                     </div>
                 </div>
+                {% if request.status == 'completed' and request.feedback %}
+                {% with fb=request.feedback %}
+                <div class="feedback-detail hidden bg-white border border-slate-100 rounded-2xl mx-2 mb-4 -mt-2 p-5 shadow-sm animate-slideDown">
+                    <!-- AI sugeneruotas atsiliepimas -->
+                    {% if fb.feedback %}
+                    <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4 relative">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-teal-500"></i>
+                            <p class="text-[12px] font-bold text-slate-500 uppercase tracking-wide">{% trans "Sugeneruotas atsiliepimas" %}</p>
+                        </div>
+                        <p class="text-[14px] text-slate-700 font-medium leading-relaxed italic">„{{ fb.feedback }}"</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Komentaras -->
+                    {% if fb.comments %}
+                    <div class="bg-amber-50/60 border border-amber-100 rounded-xl p-4 mb-4">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <i data-lucide="message-circle" class="w-4 h-4 text-amber-500"></i>
+                            <p class="text-[12px] font-bold text-amber-700 uppercase tracking-wide">{% trans "Komentaras" %}</p>
+                        </div>
+                        <p class="text-[14px] text-amber-900 font-medium">{{ fb.comments }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Raktiniai žodžiai -->
+                    {% if fb.keywords %}
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <span class="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wide mr-1">
+                            <i data-lucide="tag" class="w-3.5 h-3.5"></i>
+                            {% trans "Raktažodžiai" %}:
+                        </span>
+                        {% for kw in fb.keywords.split %}
+                        <span class="px-2.5 py-1 bg-teal-50 text-teal-700 rounded-lg text-[12px] font-bold border border-teal-100">{{ kw }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Kompetencijų balai -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Komanda" %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.teamwork_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Komunikacija" %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.communication_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Iniciatyvumas" %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.initiative_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Techninės ž." %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.technical_skills_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                        <div class="text-center p-2 rounded-xl bg-slate-50">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{% trans "Prob. sprend." %}</div>
+                            <div class="text-lg font-extrabold text-slate-700">{{ fb.problem_solving_rating }}<span class="text-[11px] text-slate-400 font-semibold">/4</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Darbuotojo komentaras (matomas vadovui) -->
+                    <div class="employee-comment-box mt-4 pt-4 border-t border-slate-100" data-feedback-id="{{ fb.id }}">
+                        <div class="flex items-center justify-between gap-2 mb-2.5">
+                            <div class="flex items-center gap-1.5">
+                                <i data-lucide="message-square" class="w-4 h-4 text-blue-600"></i>
+                                <span class="text-[12px] font-bold text-slate-700 uppercase tracking-wide">{% trans "Mano komentaras (matomas vadovui)" %}</span>
+                            </div>
+                            <button type="button" onclick="toggleEditCommentBox(this)" class="btn-edit-comment text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors {% if not fb.employee_comment %}hidden{% endif %}">
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                <span>{% trans "Redaguoti" %}</span>
+                            </button>
+                        </div>
+
+                        <!-- Display existing comment if present -->
+                        <div class="comment-display {% if not fb.employee_comment %}hidden{% endif %} bg-blue-50/50 border border-blue-100/80 rounded-2xl p-4">
+                            <p class="comment-text text-[14px] text-slate-800 leading-relaxed font-normal whitespace-pre-line">{{ fb.employee_comment|default:'' }}</p>
+                            <p class="comment-date text-[11px] text-slate-400 mt-2 font-medium {% if not fb.employee_comment_updated_at %}hidden{% endif %} flex items-center gap-1">
+                                <i data-lucide="clock" class="w-3 h-3 text-slate-400"></i>
+                                <span>{% trans "Atnaujinta" %}: <span class="date-val">{{ fb.employee_comment_updated_at|date:"Y-m-d" }}</span></span>
+                            </p>
+                        </div>
+
+                        <!-- Edit / Create Form -->
+                        <form action="{% url 'save_feedback_comment' fb.id %}" method="POST" onsubmit="submitCommentForm(event, this, '{{ fb.id }}')" class="comment-form {% if fb.employee_comment %}hidden{% endif %} space-y-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="is_ajax" value="true">
+                            <textarea name="comment" rows="3"
+                                placeholder="{% trans "Parašykite savo pastebėjimus ar refleksiją apie šį atsiliepimą... Šį komentarą peržiūros metu matys jūsų vadovas." %}"
+                                class="comment-input w-full text-sm rounded-2xl border border-slate-200 p-3.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-slate-400 text-slate-800 bg-white resize-y">{{ fb.employee_comment|default:'' }}</textarea>
+                            <div class="flex items-center gap-2 justify-end">
+                                <button type="button" onclick="cancelEditCommentBox(this)" class="btn-cancel-comment px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors {% if not fb.employee_comment %}hidden{% endif %}">
+                                    {% trans "Atšaukti" %}
+                                </button>
+                                <button type="submit" class="btn-submit-comment px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors shadow-sm flex items-center gap-1.5">
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                    <span class="submit-text">{% trans "Išsaugoti komentarą" %}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endwith %}
+                {% endif %}
                 {% empty %}
                 <div class="bg-white p-10 rounded-3xl border border-slate-100 text-center flex flex-col items-center justify-center min-h-[250px]">
                     <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
@@ -264,14 +428,14 @@
                             </div>
                         </div>
 
-                        <!-- Action / Accordion chevron -->
-                        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-                            <span class="text-xs font-semibold text-slate-400 group-hover:text-slate-600">
-                                {% trans "Išskleisti atsiliepimą" %}
-                            </span>
-                            <div id="feedback-chevron-{{ fb.id }}" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-500 transition-transform duration-200">
-                                <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                            </div>
+                        <!-- Action button -->
+                        <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+                            <button type="button" onclick="event.stopPropagation(); toggleFeedbackAccordion('{{ fb.id }}')"
+                                class="block w-full sm:w-auto text-center px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-colors flex items-center gap-2 justify-center">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                                {% trans "Peržiūrėti" %}
+                                <i data-lucide="chevron-down" id="feedback-chevron-{{ fb.id }}" class="w-4 h-4 transition-transform duration-300 expand-icon"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -314,6 +478,47 @@
                                         <p class="text-sm font-bold text-slate-800 mt-0.5">{{ fb.problem_solving_rating }}/4</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Darbuotojo komentaras (matomas vadovui) -->
+                            <div class="employee-comment-box bg-white border border-slate-200/70 rounded-2xl p-5 shadow-sm" data-feedback-id="{{ fb.id }}">
+                                <div class="flex items-center justify-between gap-2 mb-2.5">
+                                    <div class="flex items-center gap-1.5">
+                                        <i data-lucide="message-square" class="w-4 h-4 text-blue-600"></i>
+                                        <span class="text-xs font-bold uppercase tracking-wider text-slate-600">{% trans "Mano komentaras (matomas vadovui)" %}</span>
+                                    </div>
+                                    <button type="button" onclick="toggleEditCommentBox(this)" class="btn-edit-comment text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors {% if not fb.employee_comment %}hidden{% endif %}">
+                                        <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                        <span>{% trans "Redaguoti" %}</span>
+                                    </button>
+                                </div>
+
+                                <!-- Display existing comment if present -->
+                                <div class="comment-display {% if not fb.employee_comment %}hidden{% endif %} bg-blue-50/50 border border-blue-100/80 rounded-2xl p-4">
+                                    <p class="comment-text text-[14px] text-slate-800 leading-relaxed font-normal whitespace-pre-line">{{ fb.employee_comment|default:'' }}</p>
+                                    <p class="comment-date text-[11px] text-slate-400 mt-2 font-medium {% if not fb.employee_comment_updated_at %}hidden{% endif %} flex items-center gap-1">
+                                        <i data-lucide="clock" class="w-3 h-3 text-slate-400"></i>
+                                        <span>{% trans "Atnaujinta" %}: <span class="date-val">{{ fb.employee_comment_updated_at|date:"Y-m-d" }}</span></span>
+                                    </p>
+                                </div>
+
+                                <!-- Edit / Create Form -->
+                                <form action="{% url 'save_feedback_comment' fb.id %}" method="POST" onsubmit="submitCommentForm(event, this, '{{ fb.id }}')" class="comment-form {% if fb.employee_comment %}hidden{% endif %} space-y-3">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="is_ajax" value="true">
+                                    <textarea name="comment" rows="3"
+                                        placeholder="{% trans "Parašykite savo pastebėjimus ar refleksiją apie šį atsiliepimą... Šį komentarą peržiūros metu matys jūsų vadovas." %}"
+                                        class="comment-input w-full text-sm rounded-2xl border border-slate-200 p-3.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-slate-400 text-slate-800 bg-white resize-y">{{ fb.employee_comment|default:'' }}</textarea>
+                                    <div class="flex items-center gap-2 justify-end">
+                                        <button type="button" onclick="cancelEditCommentBox(this)" class="btn-cancel-comment px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors {% if not fb.employee_comment %}hidden{% endif %}">
+                                            {% trans "Atšaukti" %}
+                                        </button>
+                                        <button type="submit" class="btn-submit-comment px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors shadow-sm flex items-center gap-1.5">
+                                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                            <span class="submit-text">{% trans "Išsaugoti komentarą" %}</span>
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -425,10 +630,16 @@
 
         if (content.classList.contains('hidden')) {
             content.classList.remove('hidden');
-            if (chevron) chevron.classList.add('rotate-180');
+            if (chevron) {
+                chevron.classList.add('rotate-180');
+                chevron.style.transform = 'rotate(180deg)';
+            }
         } else {
             content.classList.add('hidden');
-            if (chevron) chevron.classList.remove('rotate-180');
+            if (chevron) {
+                chevron.classList.remove('rotate-180');
+                chevron.style.transform = 'rotate(0deg)';
+            }
         }
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
@@ -493,5 +704,130 @@
             lucide.createIcons();
         }
     });
+    // Išskleidžiamo atsiliepimo detalių mygtukas
+    function toggleFeedbackDetail(btn) {
+        const card = btn.closest('.space-y-4 > div, .space-y-4 > :first-child')
+            || btn.closest('[class*="rounded-3xl"]');
+        const detail = card ? card.nextElementSibling : null;
+        if (!detail || !detail.classList.contains('feedback-detail')) return;
+
+        const icon = btn.querySelector('.expand-icon');
+        if (detail.classList.contains('hidden')) {
+            detail.classList.remove('hidden');
+            if (icon) icon.style.transform = 'rotate(180deg)';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } else {
+            detail.classList.add('hidden');
+            if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    // Komentarų valdymas (redagavimas ir AJAX saugojimas)
+    function toggleEditCommentBox(btn) {
+        const box = btn.closest('.employee-comment-box');
+        if (!box) return;
+        const display = box.querySelector('.comment-display');
+        const form = box.querySelector('.comment-form');
+        const editBtn = box.querySelector('.btn-edit-comment');
+        const cancelBtn = box.querySelector('.btn-cancel-comment');
+        
+        if (display) display.classList.add('hidden');
+        if (form) form.classList.remove('hidden');
+        if (editBtn) editBtn.classList.add('hidden');
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+        const textarea = form ? form.querySelector('textarea') : null;
+        if (textarea) textarea.focus();
+    }
+
+    function cancelEditCommentBox(btn) {
+        const box = btn.closest('.employee-comment-box');
+        if (!box) return;
+        const display = box.querySelector('.comment-display');
+        const form = box.querySelector('.comment-form');
+        const editBtn = box.querySelector('.btn-edit-comment');
+        const textElem = box.querySelector('.comment-text');
+        const textarea = box.querySelector('.comment-input');
+        
+        if (textarea && textElem) {
+            textarea.value = textElem.textContent.trim();
+        }
+        if (textElem && textElem.textContent.trim()) {
+            if (display) display.classList.remove('hidden');
+            if (form) form.classList.add('hidden');
+            if (editBtn) editBtn.classList.remove('hidden');
+        }
+    }
+
+    async function submitCommentForm(event, form, feedbackId) {
+        event.preventDefault();
+        const btn = form.querySelector('.btn-submit-comment');
+        const submitText = btn ? btn.querySelector('.submit-text') : null;
+        const origText = submitText ? submitText.textContent : '';
+        if (submitText) submitText.textContent = 'Saugoma...';
+        if (btn) btn.disabled = true;
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                // Atnaujinti visas to paties atsiliepimo dėžutes puslapyje
+                document.querySelectorAll(`.employee-comment-box[data-feedback-id="${feedbackId}"]`).forEach(box => {
+                    const display = box.querySelector('.comment-display');
+                    const boxForm = box.querySelector('.comment-form');
+                    const textElem = box.querySelector('.comment-text');
+                    const inputElem = box.querySelector('.comment-input');
+                    const editBtn = box.querySelector('.btn-edit-comment');
+                    const cancelBtn = box.querySelector('.btn-cancel-comment');
+                    const dateElem = box.querySelector('.comment-date');
+                    const dateVal = box.querySelector('.date-val');
+
+                    if (textElem) textElem.textContent = data.comment;
+                    if (inputElem) inputElem.value = data.comment;
+
+                    if (data.comment) {
+                        if (display) display.classList.remove('hidden');
+                        if (boxForm) boxForm.classList.add('hidden');
+                        if (editBtn) editBtn.classList.remove('hidden');
+                        if (cancelBtn) cancelBtn.classList.remove('hidden');
+                        if (dateElem && data.updated_at) {
+                            dateElem.classList.remove('hidden');
+                            if (dateVal) dateVal.textContent = data.updated_at;
+                        }
+                    } else {
+                        if (display) display.classList.add('hidden');
+                        if (boxForm) boxForm.classList.remove('hidden');
+                        if (editBtn) editBtn.classList.add('hidden');
+                        if (cancelBtn) cancelBtn.classList.add('hidden');
+                    }
+                });
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } else if (data.error) {
+                alert(data.error);
+            }
+        } catch (err) {
+            console.error('Error saving comment:', err);
+            form.submit();
+        } finally {
+            if (submitText) submitText.textContent = origText;
+            if (btn) btn.disabled = false;
+        }
+    }
 </script>
+
+<style>
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slideDown:not(.hidden) {
+        animation: slideDown 0.3s ease-out;
+    }
+</style>
 {% endblock %}

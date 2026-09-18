@@ -35,6 +35,10 @@ class Feedback(models.Model):
     extracted_strengths = models.JSONField(default=list, blank=True)
     extracted_improvements = models.JSONField(default=list, blank=True)
 
+    # Atsiliepimą gavusio darbuotojo komentaras / refleksija (matomas vadovui)
+    employee_comment = models.TextField(blank=True, null=True, help_text="Atsiliepimą gavusio darbuotojo komentaras/refleksija")
+    employee_comment_updated_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return f"Feedback for {self.feedback_request}"
 
