@@ -25,7 +25,7 @@
     </div>
 
     <!-- Navigacija -->
-    <nav class="flex-1 overflow-y-auto space-y-1 p-4 text-slate-600">
+    <nav class="flex-1 overflow-y-auto min-h-0 space-y-1 p-4 text-slate-600">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3">Pagrindinis</p>
         <a href="{% url 'superadmin_dashboard' %}" onclick="closeMobileDrawer()"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_dashboard' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
@@ -95,13 +95,48 @@
             </svg>
             <span>Funkcionalumai</span>
         </a>
-        <a href="{% url 'superadmin_descriptions' %}" onclick="closeMobileDrawer()"
-            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if request.resolver_match.url_name == 'superadmin_descriptions' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-            <span>Aprašymai</span>
-        </a>
+        <!-- Aprašymai submenu -->
+        <div>
+            <button type="button" onclick="toggleMobileDescriptionsMenu()"
+                class="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold transition {% if 'superadmin_descriptions' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    <span>Aprašymai</span>
+                </span>
+                <svg id="mobile-desc-chevron" class="w-4 h-4 transition-transform duration-200 {% if 'superadmin_descriptions' in request.resolver_match.url_name %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div id="mobile-desc-submenu" class="ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-200 {% if 'superadmin_descriptions' in request.resolver_match.url_name %}max-h-[500px]{% else %}max-h-0{% endif %}">
+                <a href="{% url 'superadmin_descriptions_hero' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_descriptions_hero' or request.resolver_match.url_name == 'superadmin_descriptions' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_hero' or request.resolver_match.url_name == 'superadmin_descriptions' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Hero karuselė
+                </a>
+                <a href="{% url 'superadmin_descriptions_index' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_descriptions_index' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_index' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Pradžios puslapis
+                </a>
+                <a href="{% url 'superadmin_descriptions_about' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_descriptions_about' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_about' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Apie mus
+                </a>
+                <a href="{% url 'superadmin_descriptions_security' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_descriptions_security' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_security' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Saugumas
+                </a>
+                <a href="{% url 'superadmin_descriptions_pages' %}" onclick="closeMobileDrawer()"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_descriptions_pages' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_pages' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                    Sukurti puslapiai
+                </a>
+            </div>
+        </div>
 
         <!-- Laiškai submenu -->
         <div>
@@ -117,7 +152,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
-            <div id="mobile-mail-submenu" class="ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-200 {% if 'superadmin_email' in request.resolver_match.url_name %}max-h-60{% else %}max-h-0{% endif %}">
+            <div id="mobile-mail-submenu" class="ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-200 {% if 'superadmin_email' in request.resolver_match.url_name %}max-h-[500px]{% else %}max-h-0{% endif %}">
                 <a href="{% url 'superadmin_email_new_survey' %}" onclick="closeMobileDrawer()"
                     class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition {% if request.resolver_match.url_name == 'superadmin_email_new_survey' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
                     <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_email_new_survey' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
@@ -163,15 +198,29 @@
 </div>
 
 <script>
+    function toggleMobileDescriptionsMenu() {
+        const submenu = document.getElementById('mobile-desc-submenu');
+        const chevron = document.getElementById('mobile-desc-chevron');
+        if (submenu.classList.contains('max-h-0')) {
+            submenu.classList.remove('max-h-0');
+            submenu.classList.add('max-h-[500px]');
+            chevron.classList.add('rotate-180');
+        } else {
+            submenu.classList.remove('max-h-[500px]');
+            submenu.classList.add('max-h-0');
+            chevron.classList.remove('rotate-180');
+        }
+    }
+
     function toggleMobileMailMenu() {
         const submenu = document.getElementById('mobile-mail-submenu');
         const chevron = document.getElementById('mobile-mail-chevron');
         if (submenu.classList.contains('max-h-0')) {
             submenu.classList.remove('max-h-0');
-            submenu.classList.add('max-h-60');
+            submenu.classList.add('max-h-[500px]');
             chevron.classList.add('rotate-180');
         } else {
-            submenu.classList.remove('max-h-60');
+            submenu.classList.remove('max-h-[500px]');
             submenu.classList.add('max-h-0');
             chevron.classList.remove('rotate-180');
         }

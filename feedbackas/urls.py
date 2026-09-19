@@ -110,6 +110,18 @@ urlpatterns = [
     path('superadmin/users/', views.superadmin_users_list, name='superadmin_users_list'),
     path('superadmin/users/<hashid:user_id>/delete/', views.superadmin_delete_user, name='superadmin_delete_user'),
     path('superadmin/descriptions/', views.superadmin_descriptions, name='superadmin_descriptions'),
+    path('superadmin/descriptions/hero/', views.superadmin_descriptions_hero, name='superadmin_descriptions_hero'),
+    path('superadmin/descriptions/index/', views.superadmin_descriptions_index, name='superadmin_descriptions_index'),
+    path('superadmin/descriptions/about/', views.superadmin_descriptions_about, name='superadmin_descriptions_about'),
+    path('superadmin/descriptions/security/', views.superadmin_descriptions_security, name='superadmin_descriptions_security'),
+    path('superadmin/descriptions/pages/', views.superadmin_descriptions_pages, name='superadmin_descriptions_pages'),
+    path('superadmin/custom-pages/<int:page_id>/delete/', views.superadmin_delete_custom_page, name='superadmin_delete_custom_page'),
+    path('superadmin/hero-slides/save/', views.superadmin_save_hero_slide, name='superadmin_save_hero_slide'),
+    path('superadmin/hero-slides/interval/', views.superadmin_save_carousel_interval, name='superadmin_save_carousel_interval'),
+    path('superadmin/hero-slides/<int:slide_id>/delete/', views.superadmin_delete_hero_slide, name='superadmin_delete_hero_slide'),
+    path('superadmin/custom-pages/save/', views.superadmin_save_custom_page, name='superadmin_save_custom_page'),
+    path('superadmin/custom-pages/upload-image/', views.superadmin_upload_page_image, name='superadmin_upload_page_image'),
+    path('p/<slug:slug>/', views.custom_page_detail, name='custom_page_detail'),
 
     # Email templates
     path('superadmin/emails/new-survey/', views.superadmin_email_new_survey, name='superadmin_email_new_survey'),

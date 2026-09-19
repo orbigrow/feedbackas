@@ -1,0 +1,405 @@
+{% extends 'superadmin/base_superadmin.html' %}
+{% load static %}
+
+{% block title %}Sukurti puslapiai - Aprašymai - Orbigrow.lt{% endblock %}
+
+{% block content %}
+<main class="flex-1 overflow-y-auto bg-bg-secondary p-8">
+    <div class="max-w-5xl mx-auto space-y-8">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">
+                <span>Aprašymai</span>
+                <span>/</span>
+                <span>Sukurti puslapiai</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-text-main mb-2">Sukurti Puslapiai</h1>
+                    <p class="text-text-muted">Valdykite savo sukurtus informacinius puslapius, redaguokite jų turinį bei kopijuokite nuorodas.</p>
+                </div>
+                <button type="button" onclick="openPageEditorModal()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition shrink-0 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Kurti naują puslapį
+                </button>
+            </div>
+        </div>
+
+        <!-- PRANEŠIMAI -->
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl text-sm font-medium {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- PUSLAPIŲ SĄRAŠAS -->
+        <div class="bg-bg-main rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {% if custom_pages %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 border-b border-gray-100 text-xs uppercase font-bold text-slate-500 tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4">Pavadinimas</th>
+                            <th class="px-6 py-4">Nuoroda (URL)</th>
+                            <th class="px-6 py-4 text-center">Būsena</th>
+                            <th class="px-6 py-4">Sukurta</th>
+                            <th class="px-6 py-4 text-right">Veiksmai</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-slate-700">
+                        {% for page in custom_pages %}
+                        <tr class="hover:bg-slate-50/70 transition">
+                            <td class="px-6 py-4 font-semibold text-slate-900">
+                                {{ page.title }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="inline-flex items-center gap-2">
+                                    <code class="px-2.5 py-1 rounded-md bg-slate-100 text-indigo-700 text-xs font-mono font-medium">/p/{{ page.slug }}/</code>
+                                    <button type="button" onclick="copyToClipboard('/p/{{ page.slug }}/', this)" class="text-slate-400 hover:text-slate-700 transition cursor-pointer p-1" title="Kopijuoti nuorodą">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                {% if page.is_published %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Publikuotas</span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Juodraštis</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-500">
+                                {{ page.created_at|date:"Y-m-d H:i" }}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="inline-flex items-center gap-2">
+                                    <a href="{% url 'custom_page_detail' page.slug %}" target="_blank" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition">
+                                        Peržiūrėti
+                                    </a>
+                                    <button type="button"
+                                            class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition cursor-pointer"
+                                            data-id="{{ page.id }}"
+                                            data-title="{{ page.title|escapejs }}"
+                                            data-slug="{{ page.slug|escapejs }}"
+                                            data-is-published="{{ page.is_published|yesno:'true,false' }}"
+                                            onclick="editCustomPage(this)">
+                                        Redaguoti
+                                    </button>
+                                    <form method="POST" action="{% url 'superadmin_delete_custom_page' page.id %}" onsubmit="return confirm('Ar tikrai norite ištrinti šį puslapį?');" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="px-3 py-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 text-red-600 text-xs font-semibold shadow-xs transition cursor-pointer">
+                                            Ištrinti
+                                        </button>
+                                    </form>
+                                </div>
+                                <!-- Paslėptas turinys redagavimui -->
+                                <template id="page_content_{{ page.id }}">{{ page.content|safe }}</template>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-12 px-4 space-y-3">
+                <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-base font-bold text-slate-800">Nėra sukurtų puslapių</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto">Spustelėkite mygtuką viršuje ir sukurkite pirmąjį puslapį su formatuotu tekstu, lentelėmis bei vaizdais.</p>
+                <div class="pt-2">
+                    <button type="button" onclick="openPageEditorModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow-sm cursor-pointer">
+                        + Sukurti pirmąjį puslapį
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</main>
+
+<!-- PUSLAPIO KŪRIMO / REDAGAVIMO MODALAS -->
+<div id="customPageEditorModal" class="hidden fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all my-6 flex flex-col max-h-[90vh]">
+        <!-- Antraštė -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                    </span>
+                    <h3 id="customPageModalTitle" class="text-lg font-bold text-slate-800">Kurti naują puslapį</h3>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Sukurkite arba redaguokite puslapį su formatuotu tekstu, paveikslėliais ir lentelėmis.</p>
+            </div>
+            <button type="button" onclick="closePageEditorModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Forma -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" id="custom_page_id" value="">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Puslapio pavadinimas <span class="text-red-500">*</span></label>
+                    <input type="text" id="custom_page_title" required placeholder="pvz. Grįžtamojo ryšio gairės ir patarimai"
+                           oninput="autoGenerateSlug(this.value)"
+                           class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Puslapio URL adresas (slug)</label>
+                    <div class="flex items-center rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
+                        <span class="px-3 text-xs font-medium text-slate-400 select-none">/p/</span>
+                        <input type="text" id="custom_page_slug" placeholder="griztamojo-rysio-gaires"
+                               class="w-full bg-white border-0 px-2 py-2.5 text-sm font-medium focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Puslapio turinys (tekstas, paveikslėliai, lentelės)</label>
+                <textarea id="custom_page_content" class="w-full"></textarea>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="custom_page_is_published" checked
+                           class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                    <span class="text-xs font-semibold text-slate-700">Puslapis viešai matomas</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+            <button type="button" onclick="closePageEditorModal()" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-semibold transition cursor-pointer">
+                Atšaukti
+            </button>
+            <button type="button" id="savePageBtn" onclick="submitCustomPageForm()" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition shadow-sm cursor-pointer">
+                <span>Išsaugoti puslapį</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .tox-tinymce-aux {
+        z-index: 99999 !important;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" integrity="sha384-AUkjbmYH/gLzIdjaiPwIJsySqqCqUBpVx+IIRZ4zOGhYwPkWoD1b9eFHVNOtwsBe" crossorigin="anonymous" referrerpolicy="origin"></script>
+<script>
+    let customPageEditorInitialized = false;
+
+    function initCustomPageEditor() {
+        if (customPageEditorInitialized) return;
+        if (typeof tinymce !== 'undefined') {
+            tinymce.init({
+                selector: '#custom_page_content',
+                height: 400,
+                menubar: 'edit insert view format table tools',
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                ],
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | ' +
+                         'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
+                         'bullist numlist outdent indent | link image media table | removeformat code | fullscreen',
+                images_upload_url: '{% url "superadmin_upload_page_image" %}',
+                automatic_uploads: true,
+                images_upload_handler: function(blobInfo, progress) {
+                    return new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.withCredentials = true;
+                        xhr.open('POST', '{% url "superadmin_upload_page_image" %}');
+                        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+                        if (csrfEl) {
+                            xhr.setRequestHeader('X-CSRFToken', csrfEl.value);
+                        }
+                        xhr.upload.onprogress = (e) => {
+                            progress(e.loaded / e.total * 100);
+                        };
+                        xhr.onload = () => {
+                            if (xhr.status < 200 || xhr.status >= 300) {
+                                reject('Klaida įkeliant nuotrauką: HTTP ' + xhr.status);
+                                return;
+                            }
+                            try {
+                                const json = JSON.parse(xhr.responseText);
+                                if (!json || typeof json.location !== 'string') {
+                                    reject('Neteisingas serverio atsakymas.');
+                                    return;
+                                }
+                                resolve(json.location);
+                            } catch (err) {
+                                reject('Klaida apdorojant serverio atsakymą.');
+                            }
+                        };
+                        xhr.onerror = () => {
+                            reject('Tinklo klaida įkeliant paveikslėlį.');
+                        };
+                        const formData = new FormData();
+                        formData.append('file', blobInfo.blob(), blobInfo.filename());
+                        xhr.send(formData);
+                    });
+                },
+                content_style: 'body { font-family:Inter,Helvetica,Arial,sans-serif; font-size:16px; line-height:1.6; } img { max-width: 100%; height: auto; border-radius: 8px; }'
+            });
+            customPageEditorInitialized = true;
+        }
+    }
+
+    function openPageEditorModal() {
+        const modal = document.getElementById('customPageEditorModal');
+        document.getElementById('customPageModalTitle').textContent = 'Kurti naują puslapį';
+        document.getElementById('custom_page_id').value = '';
+        document.getElementById('custom_page_title').value = '';
+        const slugInput = document.getElementById('custom_page_slug');
+        slugInput.value = '';
+        slugInput.dataset.manualEdit = '';
+        document.getElementById('custom_page_is_published').checked = true;
+
+        initCustomPageEditor();
+        setTimeout(() => {
+            if (typeof tinymce !== 'undefined' && tinymce.get('custom_page_content')) {
+                tinymce.get('custom_page_content').setContent('');
+            } else {
+                document.getElementById('custom_page_content').value = '';
+            }
+        }, 100);
+
+        modal.classList.remove('hidden');
+    }
+
+    function editCustomPage(btn) {
+        const modal = document.getElementById('customPageEditorModal');
+        const id = btn.dataset.id;
+        document.getElementById('customPageModalTitle').textContent = 'Redaguoti puslapį';
+        document.getElementById('custom_page_id').value = id;
+        document.getElementById('custom_page_title').value = btn.dataset.title || '';
+        const slugInput = document.getElementById('custom_page_slug');
+        slugInput.value = btn.dataset.slug || '';
+        slugInput.dataset.manualEdit = 'true';
+        document.getElementById('custom_page_is_published').checked = btn.dataset.isPublished === 'true';
+
+        const templateEl = document.getElementById('page_content_' + id);
+        const rawContent = templateEl ? templateEl.innerHTML : '';
+
+        initCustomPageEditor();
+        setTimeout(() => {
+            if (typeof tinymce !== 'undefined' && tinymce.get('custom_page_content')) {
+                tinymce.get('custom_page_content').setContent(rawContent);
+            } else {
+                document.getElementById('custom_page_content').value = rawContent;
+            }
+        }, 100);
+
+        modal.classList.remove('hidden');
+    }
+
+    function closePageEditorModal() {
+        document.getElementById('customPageEditorModal').classList.add('hidden');
+    }
+
+    function autoGenerateSlug(text) {
+        const slugInput = document.getElementById('custom_page_slug');
+        if (!slugInput.dataset.manualEdit) {
+            const ltMap = {'ą':'a','č':'c','ę':'e','ė':'e','į':'i','š':'s','ų':'u','ū':'u','ž':'z',
+                           'Ą':'a','Č':'c','Ę':'e','Ė':'e','Į':'i','Š':'s','Ų':'u','Ū':'u','Ž':'z'};
+            let s = text.replace(/[ąčęėįšųūžĄČĘĖĮŠŲŪŽ]/g, match => ltMap[match] || match);
+            s = s.toLowerCase()
+                 .trim()
+                 .replace(/[^a-z0-9\s-]/g, '')
+                 .replace(/[\s-]+/g, '-')
+                 .replace(/^-+|-+$/g, '');
+            slugInput.value = s;
+        }
+    }
+
+    function submitCustomPageForm() {
+        const title = document.getElementById('custom_page_title').value.trim();
+        if (!title) {
+            alert('Įveskite puslapio pavadinimą.');
+            document.getElementById('custom_page_title').focus();
+            return;
+        }
+
+        const slug = document.getElementById('custom_page_slug').value.trim();
+        let content = '';
+        if (typeof tinymce !== 'undefined' && tinymce.get('custom_page_content')) {
+            content = tinymce.get('custom_page_content').getContent();
+        } else {
+            content = document.getElementById('custom_page_content').value;
+        }
+
+        const isPublished = document.getElementById('custom_page_is_published').checked;
+        const pageId = document.getElementById('custom_page_id').value;
+
+        const btn = document.getElementById('savePageBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span>Saugoma...</span>';
+
+        const formData = new FormData();
+        formData.append('page_id', pageId);
+        formData.append('title', title);
+        formData.append('slug', slug);
+        formData.append('content', content);
+        formData.append('is_published', isPublished ? 'true' : 'false');
+
+        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrfToken = csrfEl ? csrfEl.value : '';
+
+        fetch('{% url "superadmin_save_custom_page" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Išsaugoti puslapį</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>';
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Klaida: ' + (data.error || 'Nepavyko išsaugoti puslapio'));
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Išsaugoti puslapį</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>';
+            alert('Įvyko klaida išsaugant puslapį.');
+            console.error(err);
+        });
+    }
+
+    function copyToClipboard(text, btn) {
+        navigator.clipboard.writeText(window.location.origin + text).then(() => {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+            setTimeout(() => { btn.innerHTML = orig; }, 1500);
+        });
+    }
+</script>
+{% endblock %}

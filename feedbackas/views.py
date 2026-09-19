@@ -88,20 +88,282 @@ from django.contrib.auth.decorators import user_passes_test
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def superadmin_descriptions(request):
+    return redirect('superadmin_descriptions_hero')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_descriptions_hero(request):
     page_description = PageDescription.load()
-    from .forms import PageDescriptionForm
+    from .forms import PageDescriptionHeroForm
+    from .models import HeroSlide, CustomPage
     if request.method == 'POST':
-        form = PageDescriptionForm(request.POST, instance=page_description)
+        form = PageDescriptionHeroForm(request.POST, instance=page_description)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Aprašymai sėkmingai atnaujinti.')
-            return redirect('superadmin_descriptions')
+            messages.success(request, 'Hero nustatymai sėkmingai atnaujinti.')
+            return redirect('superadmin_descriptions_hero')
     else:
-        form = PageDescriptionForm(instance=page_description)
+        form = PageDescriptionHeroForm(instance=page_description)
     
-    return render(request, 'superadmin_descriptions.html', {
-        'form': form
+    hero_slides = HeroSlide.objects.all().order_by('order', 'id')
+    custom_pages = CustomPage.objects.all().order_by('-created_at')
+    
+    return render(request, 'superadmin/descriptions/hero.html', {
+        'form': form,
+        'hero_slides': hero_slides,
+        'page_description': page_description,
+        'custom_pages': custom_pages,
     })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_descriptions_index(request):
+    page_description = PageDescription.load()
+    from .forms import PageDescriptionIndexForm
+    if request.method == 'POST':
+        form = PageDescriptionIndexForm(request.POST, instance=page_description)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Pradžios puslapio tekstai sėkmingai atnaujinti.')
+            return redirect('superadmin_descriptions_index')
+    else:
+        form = PageDescriptionIndexForm(instance=page_description)
+    
+    return render(request, 'superadmin/descriptions/index.html', {
+        'form': form,
+        'page_description': page_description,
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_descriptions_about(request):
+    page_description = PageDescription.load()
+    from .forms import PageDescriptionAboutForm
+    if request.method == 'POST':
+        form = PageDescriptionAboutForm(request.POST, instance=page_description)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Puslapio „Apie mus“ tekstai sėkmingai atnaujinti.')
+            return redirect('superadmin_descriptions_about')
+    else:
+        form = PageDescriptionAboutForm(instance=page_description)
+    
+    return render(request, 'superadmin/descriptions/about.html', {
+        'form': form,
+        'page_description': page_description,
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_descriptions_security(request):
+    page_description = PageDescription.load()
+    from .forms import PageDescriptionSecurityForm
+    if request.method == 'POST':
+        form = PageDescriptionSecurityForm(request.POST, instance=page_description)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Saugumo puslapio tekstas sėkmingai atnaujintas.')
+            return redirect('superadmin_descriptions_security')
+    else:
+        form = PageDescriptionSecurityForm(instance=page_description)
+    
+    return render(request, 'superadmin/descriptions/security.html', {
+        'form': form,
+        'page_description': page_description,
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_descriptions_pages(request):
+    from .models import CustomPage
+    custom_pages = CustomPage.objects.all().order_by('-created_at')
+    return render(request, 'superadmin/descriptions/pages.html', {
+        'custom_pages': custom_pages,
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_delete_custom_page(request, page_id):
+    from .models import CustomPage
+    page = get_object_or_404(CustomPage, id=page_id)
+    title = page.title
+    page.delete()
+    messages.success(request, f'Puslapis „{title}“ sėkmingai pašalintas.')
+    return redirect('superadmin_descriptions_pages')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_save_carousel_interval(request):
+    if request.method == 'POST':
+        page_description = PageDescription.load()
+        val = request.POST.get('home_carousel_interval', '').strip()
+        try:
+            interval = int(val)
+            if interval < 1:
+                interval = 1
+            page_description.home_carousel_interval = interval
+            page_description.save()
+            messages.success(request, f'Karuselės keitimosi intervalas sėkmingai atnaujintas: {interval} sek.')
+        except (ValueError, TypeError):
+            messages.error(request, 'Neteisingas sekundžių skaičius.')
+    return redirect('superadmin_descriptions_hero')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_save_hero_slide(request):
+    if request.method != 'POST':
+        return redirect('superadmin_descriptions_hero')
+    from .models import HeroSlide
+    slide_id = request.POST.get('slide_id')
+    title = request.POST.get('title', '').strip()
+    title_en = request.POST.get('title_en', '').strip()
+    description = request.POST.get('description', '').strip()
+    description_en = request.POST.get('description_en', '').strip()
+    button_text = request.POST.get('button_text', '').strip()
+    button_text_en = request.POST.get('button_text_en', '').strip()
+    button_url = request.POST.get('button_url', '').strip()
+    order_val = request.POST.get('order', 0)
+    try:
+        order = int(order_val)
+    except (ValueError, TypeError):
+        order = 0
+    is_active = request.POST.get('is_active') in ['true', 'True', '1', 'on', True]
+
+    if not title:
+        messages.error(request, 'Skaidrės antraštė yra privaloma.')
+        return redirect('superadmin_descriptions_hero')
+
+    if slide_id:
+        slide = get_object_or_404(HeroSlide, id=slide_id)
+        slide.title = title
+        slide.title_en = title_en
+        slide.description = description
+        slide.description_en = description_en
+        slide.button_text = button_text
+        slide.button_text_en = button_text_en
+        slide.button_url = button_url
+        slide.order = order
+        slide.is_active = is_active
+        slide.save()
+        messages.success(request, 'Skaidrė sėkmingai atnaujinta.')
+    else:
+        HeroSlide.objects.create(
+            title=title,
+            title_en=title_en,
+            description=description,
+            description_en=description_en,
+            button_text=button_text,
+            button_text_en=button_text_en,
+            button_url=button_url,
+            order=order,
+            is_active=is_active
+        )
+        messages.success(request, 'Nauja skaidrė sėkmingai sukurta.')
+
+    return redirect('superadmin_descriptions_hero')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_delete_hero_slide(request, slide_id):
+    from .models import HeroSlide
+    slide = get_object_or_404(HeroSlide, id=slide_id)
+    slide.delete()
+    messages.success(request, 'Skaidrė sėkmingai pašalinta.')
+    return redirect('superadmin_descriptions_hero')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_save_custom_page(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Tik POST metodas leidžiamas'}, status=405)
+    
+    from .models import CustomPage
+    from django.utils.text import slugify
+
+    page_id = request.POST.get('page_id')
+    title = request.POST.get('title', '').strip()
+    slug_val = request.POST.get('slug', '').strip()
+    content = request.POST.get('content', '')
+    is_published = request.POST.get('is_published') in ['true', 'True', '1', 'on', True]
+
+    if not title:
+        return JsonResponse({'success': False, 'error': 'Puslapio pavadinimas yra privalomas.'}, status=400)
+    
+    if not slug_val:
+        slug = slugify(title)
+        if not slug:
+            slug = 'puslapis'
+    else:
+        slug = slugify(slug_val)
+
+    # Ensure unique slug
+    base_slug = slug
+    counter = 1
+    qs = CustomPage.objects.all()
+    if page_id:
+        qs = qs.exclude(id=page_id)
+    while qs.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    if page_id:
+        page = get_object_or_404(CustomPage, id=page_id)
+        page.title = title
+        page.slug = slug
+        page.content = content
+        page.is_published = is_published
+        page.save()
+    else:
+        page = CustomPage.objects.create(
+            title=title,
+            slug=slug,
+            content=content,
+            is_published=is_published
+        )
+
+    return JsonResponse({
+        'success': True,
+        'id': page.id,
+        'title': page.title,
+        'slug': page.slug,
+        'url': f'/p/{page.slug}/',
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_upload_page_image(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Tik POST metodas leidžiamas'}, status=405)
+    
+    import os, uuid
+    from django.core.files.storage import default_storage
+
+    file = request.FILES.get('file')
+    if not file:
+        return JsonResponse({'error': 'Failas nebuvo pateiktas.'}, status=400)
+    
+    ext = os.path.splitext(file.name)[1].lower()
+    allowed_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
+    if ext not in allowed_exts:
+        return JsonResponse({'error': 'Netinkamas failo formatas. Leidžiami: JPG, PNG, GIF, WEBP, SVG.'}, status=400)
+    
+    if file.size > 10 * 1024 * 1024:
+        return JsonResponse({'error': 'Failas per didelis (maks. 10MB).'}, status=400)
+    
+    filename = f"custom_pages/{uuid.uuid4().hex}{ext}"
+    saved_path = default_storage.save(filename, file)
+    file_url = default_storage.url(saved_path)
+
+    return JsonResponse({'location': file_url})
+
+def custom_page_detail(request, slug):
+    from .models import CustomPage
+    if request.user.is_authenticated and request.user.is_superuser:
+        page = get_object_or_404(CustomPage, slug=slug)
+    else:
+        page = get_object_or_404(CustomPage, slug=slug, is_published=True)
+    
+    return render(request, 'custom_page.html', {'page': page})
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
@@ -308,6 +570,9 @@ def home(request):
     years = FeedbackRequest.objects.filter(requester=request.user).dates('created_at', 'year')
     available_years = sorted(list(set([y.year for y in years] + [current_year])), reverse=True)
 
+    from .models import HeroSlide
+    hero_slides = list(HeroSlide.objects.filter(is_active=True).order_by('order', 'id'))
+
     context = {
         'feedback_requests': feedback_requests,
         'received_requests_data': received_requests_data,
@@ -321,6 +586,7 @@ def home(request):
         'available_years': available_years,
         'selected_year': selected_year,
         'page_desc': PageDescription.load(),
+        'hero_slides': hero_slides,
     }
     return render(request, 'home.html', context)
 

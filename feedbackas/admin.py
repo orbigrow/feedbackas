@@ -20,7 +20,7 @@ admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 
 from django.db.models import Sum
-from .models import AIUsageLog, GlobalSettings, PageDescription
+from .models import AIUsageLog, GlobalSettings, PageDescription, HeroSlide, CustomPage
 
 @admin.register(AIUsageLog)
 class AIUsageLogAdmin(admin.ModelAdmin):
@@ -60,3 +60,28 @@ class GlobalSettingsAdmin(admin.ModelAdmin):
 @admin.register(PageDescription)
 class PageDescriptionAdmin(admin.ModelAdmin):
     list_display = ('maintenance_mode', 'maintenance_title')
+
+@admin.register(HeroSlide)
+class HeroSlideAdmin(admin.ModelAdmin):
+    list_display = ('title', 'order', 'is_active', 'button_text', 'updated_at')
+    list_editable = ('order', 'is_active')
+    list_filter = ('is_active',)
+    ordering = ('order', 'id')
+    fieldsets = (
+        ('Lietuvių kalba', {
+            'fields': ('title', 'description', 'button_text', 'button_url')
+        }),
+        ('English', {
+            'fields': ('title_en', 'description_en', 'button_text_en'),
+        }),
+        ('Nustatymai', {
+            'fields': ('order', 'is_active')
+        }),
+    )
+
+@admin.register(CustomPage)
+class CustomPageAdmin(admin.ModelAdmin):
+    list_display = ('title', 'slug', 'is_published', 'created_at', 'updated_at')
+    list_filter = ('is_published', 'created_at')
+    search_fields = ('title', 'slug', 'content')
+    prepopulated_fields = {'slug': ('title',)}

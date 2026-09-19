@@ -6,15 +6,18 @@
 {% endblock %}
 
 {% block sidebar %}
-<aside class="hidden md:flex w-64 flex-col bg-bg-main text-slate-600 border-r border-slate-200 shrink-0">
-    <div class="p-6">
-        <!-- Tikras Logotipas -->
-        <div class="mb-8 px-2">
+<aside class="hidden md:flex w-64 flex-col h-full bg-bg-main text-slate-600 border-r border-slate-200 shrink-0 overflow-hidden">
+    <!-- Logotipas (viršuje) -->
+    <div class="px-6 pt-6 pb-4 shrink-0">
+        <div class="px-2">
             <a href="{% url 'home' %}" class="block outline-none">
                 <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-8 w-auto object-contain">
             </a>
         </div>
+    </div>
 
+    <!-- Slankiojanti navigacija -->
+    <div class="flex-1 overflow-y-auto min-h-0 px-6 py-2 custom-sidebar-scroll">
         <nav class="space-y-1">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-4">Pagrindinis</p>
             <a href="{% url 'superadmin_dashboard' %}"
@@ -86,13 +89,48 @@
                 </svg>
                 <span class="font-semibold">Funkcionalumai</span>
             </a>
-            <a href="{% url 'superadmin_descriptions' %}"
-                class="flex items-center gap-3 px-4 py-3 rounded-xl transition {% if request.resolver_match.url_name == 'superadmin_descriptions' %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}text-slate-600 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-                <span class="font-semibold">Aprašymai</span>
-            </a>
+            <!-- Aprašymai – collapsible submenu -->
+            <div>
+                <button type="button" onclick="toggleDescriptionsMenu()"
+                    class="flex items-center justify-between w-full px-4 py-3 rounded-xl transition {% if 'superadmin_descriptions' in request.resolver_match.url_name %}bg-indigo-50 text-indigo-600 shadow-sm{% else %}text-slate-600 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <span class="font-semibold">Aprašymai</span>
+                    </span>
+                    <svg id="desc-chevron" class="w-4 h-4 transition-transform duration-200 {% if 'superadmin_descriptions' in request.resolver_match.url_name %}rotate-180{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div id="desc-submenu" class="ml-8 mt-1 space-y-1 overflow-hidden transition-all duration-200 {% if 'superadmin_descriptions' in request.resolver_match.url_name %}max-h-[500px]{% else %}max-h-0{% endif %}">
+                    <a href="{% url 'superadmin_descriptions_hero' %}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_descriptions_hero' or request.resolver_match.url_name == 'superadmin_descriptions' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_hero' or request.resolver_match.url_name == 'superadmin_descriptions' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                        Hero karuselė
+                    </a>
+                    <a href="{% url 'superadmin_descriptions_index' %}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_descriptions_index' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_index' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                        Pradžios puslapis
+                    </a>
+                    <a href="{% url 'superadmin_descriptions_about' %}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_descriptions_about' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_about' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                        Apie mus
+                    </a>
+                    <a href="{% url 'superadmin_descriptions_security' %}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_descriptions_security' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_security' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                        Saugumas
+                    </a>
+                    <a href="{% url 'superadmin_descriptions_pages' %}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_descriptions_pages' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_pages' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                        Sukurti puslapiai
+                    </a>
+                </div>
+            </div>
             <!-- Laiškai – collapsible submenu -->
             <div>
                 <button type="button" onclick="toggleMailMenu()"
@@ -107,7 +145,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
-                <div id="mail-submenu" class="ml-8 mt-1 space-y-1 overflow-hidden transition-all duration-200 {% if 'superadmin_email' in request.resolver_match.url_name %}max-h-60{% else %}max-h-0{% endif %}">
+                <div id="mail-submenu" class="ml-8 mt-1 space-y-1 overflow-hidden transition-all duration-200 {% if 'superadmin_email' in request.resolver_match.url_name %}max-h-[500px]{% else %}max-h-0{% endif %}">
                     <a href="{% url 'superadmin_email_new_survey' %}"
                         class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_email_new_survey' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
                         <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_email_new_survey' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
@@ -134,15 +172,29 @@
             </a>
 
             <script>
+                function toggleDescriptionsMenu() {
+                    const submenu = document.getElementById('desc-submenu');
+                    const chevron = document.getElementById('desc-chevron');
+                    if (submenu.classList.contains('max-h-0')) {
+                        submenu.classList.remove('max-h-0');
+                        submenu.classList.add('max-h-[500px]');
+                        chevron.classList.add('rotate-180');
+                    } else {
+                        submenu.classList.remove('max-h-[500px]');
+                        submenu.classList.add('max-h-0');
+                        chevron.classList.remove('rotate-180');
+                    }
+                }
+
                 function toggleMailMenu() {
                     const submenu = document.getElementById('mail-submenu');
                     const chevron = document.getElementById('mail-chevron');
                     if (submenu.classList.contains('max-h-0')) {
                         submenu.classList.remove('max-h-0');
-                        submenu.classList.add('max-h-40');
+                        submenu.classList.add('max-h-[500px]');
                         chevron.classList.add('rotate-180');
                     } else {
-                        submenu.classList.remove('max-h-40');
+                        submenu.classList.remove('max-h-[500px]');
                         submenu.classList.add('max-h-0');
                         chevron.classList.remove('rotate-180');
                     }
@@ -151,7 +203,8 @@
         </nav>
     </div>
 
-    <div class="mt-auto p-6 border-t border-slate-100 bg-slate-50/50">
+    <!-- Vartotojas apačioje (nejudantis) -->
+    <div class="mt-auto p-6 border-t border-slate-100 bg-slate-50/50 shrink-0">
         <div class="flex items-center gap-3">
             <img src="{{ user|user_avatar }}" class="w-10 h-10 rounded-full object-cover border border-slate-200" alt="Admin">
             <div class="overflow-hidden">
@@ -161,4 +214,20 @@
         </div>
     </div>
 </aside>
+
+<style>
+    .custom-sidebar-scroll::-webkit-scrollbar {
+        width: 5px;
+    }
+    .custom-sidebar-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-sidebar-scroll::-webkit-scrollbar-thumb {
+        background: rgba(203, 213, 225, 0.7);
+        border-radius: 9999px;
+    }
+    .custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.9);
+    }
+</style>
 {% endblock %}

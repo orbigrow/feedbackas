@@ -103,12 +103,7 @@ class DepartmentForm(forms.ModelForm):
             self.fields['parent'].queryset = Department.objects.filter(company=company_link)
             self.fields['manager'].queryset = User.objects.filter(profile__company_link=company_link)
 
-class PageDescriptionForm(forms.ModelForm):
-    class Meta:
-        model = __import__('feedbackas.models').models.PageDescription
-        fields = '__all__'
-        widgets = {}
-        
+class BasePageDescriptionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
@@ -118,6 +113,55 @@ class PageDescriptionForm(forms.ModelForm):
                 field.widget.attrs.update({'class': 'w-6 h-6 text-primary rounded focus:ring-primary border-gray-300'})
             else:
                 field.widget.attrs.update({'class': 'w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-purple-500 outline-none transition-all'})
+
+class PageDescriptionForm(BasePageDescriptionForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.PageDescription
+        fields = '__all__'
+
+class PageDescriptionHeroForm(BasePageDescriptionForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.PageDescription
+        fields = [
+            'maintenance_mode', 'maintenance_title', 'maintenance_title_en',
+            'maintenance_desc', 'maintenance_desc_en', 'home_carousel_interval',
+            'home_hero_title', 'home_hero_title_en', 'home_hero_desc', 'home_hero_desc_en'
+        ]
+
+class PageDescriptionIndexForm(BasePageDescriptionForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.PageDescription
+        fields = [
+            'index_hero_title', 'index_hero_title_en', 'index_hero_desc', 'index_hero_desc_en',
+            'index_features_title', 'index_features_title_en',
+            'index_feature1_title', 'index_feature1_title_en', 'index_feature1_desc', 'index_feature1_desc_en',
+            'index_feature2_title', 'index_feature2_title_en', 'index_feature2_desc', 'index_feature2_desc_en',
+            'index_feature3_title', 'index_feature3_title_en', 'index_feature3_desc', 'index_feature3_desc_en',
+            'index_howitworks_title', 'index_howitworks_title_en',
+            'index_step1_title', 'index_step1_title_en', 'index_step1_desc', 'index_step1_desc_en',
+            'index_step2_title', 'index_step2_title_en', 'index_step2_desc', 'index_step2_desc_en',
+            'index_step3_title', 'index_step3_title_en', 'index_step3_desc', 'index_step3_desc_en',
+            'index_cta_title', 'index_cta_title_en', 'index_cta_desc', 'index_cta_desc_en'
+        ]
+
+class PageDescriptionAboutForm(BasePageDescriptionForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.PageDescription
+        fields = [
+            'about_hero_title', 'about_hero_title_en', 'about_hero_desc', 'about_hero_desc_en',
+            'about_mission_title', 'about_mission_title_en', 'about_mission_desc1', 'about_mission_desc1_en',
+            'about_mission_desc2', 'about_mission_desc2_en',
+            'about_values_title', 'about_values_title_en', 'about_values_subtitle', 'about_values_subtitle_en',
+            'about_value1_title', 'about_value1_title_en', 'about_value1_desc', 'about_value1_desc_en',
+            'about_value2_title', 'about_value2_title_en', 'about_value2_desc', 'about_value2_desc_en',
+            'about_value3_title', 'about_value3_title_en', 'about_value3_desc', 'about_value3_desc_en',
+            'about_value4_title', 'about_value4_title_en', 'about_value4_desc', 'about_value4_desc_en'
+        ]
+
+class PageDescriptionSecurityForm(BasePageDescriptionForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.PageDescription
+        fields = ['security_content', 'security_content_en']
 
 class BaseEmailTemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):

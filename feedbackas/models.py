@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.urls import reverse
 
 class FeedbackRequest(models.Model):
     requester = models.ForeignKey(User, related_name='made_requests', on_delete=models.CASCADE)
@@ -111,6 +112,7 @@ class PageDescription(models.Model):
     maintenance_desc_en = models.TextField(default="We are currently updating our system. Please check back soon!", blank=True)
 
     # home.html (prisijungusio vartotojo pagrindinis puslapis)
+    home_carousel_interval = models.PositiveIntegerField(default=6, help_text="Karuselės skaidrių keitimosi intervalas sekundėmis (pvz. 6)")
     home_hero_title = models.CharField(max_length=255, default="Jūs jau žinote. Mes tiesiog randame žodžius.")
     home_hero_title_en = models.CharField(max_length=255, default="You already know. We just find the words.", blank=True)
     home_hero_desc = models.TextField(default="Pasirinkite raktinius žodžius, pridėkite komentarą — sistema per kelias sekundes pavers tai aiškiu, į augimą orientuotu grįžtamuoju ryšiu.")
@@ -255,3 +257,46 @@ class EmailTemplate(models.Model):
     def __str__(self):
         return "El. laiškų šablonai"
 
+
+class HeroSlide(models.Model):
+    """Karuselės skaidrė, rodoma prisijungusio vartotojo pagrindiniame puslapyje (hero sekcija)."""
+    title = models.CharField(max_length=255, help_text="Pagrindinė antraštė (LT)")
+    title_en = models.CharField(max_length=255, blank=True, help_text="Pagrindinė antraštė (EN)")
+    description = models.TextField(blank=True, help_text="Papildomas aprašymas po antrašte (LT)")
+    description_en = models.TextField(blank=True, help_text="Papildomas aprašymas po antrašte (EN)")
+    button_text = models.CharField(max_length=100, blank=True, help_text="Mygtuko tekstas (LT). Palikite tuščią jei nenorima mygtuko.")
+    button_text_en = models.CharField(max_length=100, blank=True, help_text="Mygtuko tekstas (EN)")
+    button_url = models.CharField(max_length=500, blank=True, help_text="Nuoroda, kur veda mygtukas (pvz. /results/ arba https://...)")
+    order = models.PositiveIntegerField(default=0, help_text="Rikiavimo eilė (mažesnis = pirmas)")
+    is_active = models.BooleanField(default=True, help_text="Ar rodyti šią skaidrę?")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Hero skaidrė"
+        verbose_name_plural = "Hero skaidrės"
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return self.title[:60]
+
+
+class CustomPage(models.Model):
+    """Turinio puslapis, kurį administratorius sukuria per teksto redaktorių."""
+    title = models.CharField(max_length=255, help_text="Puslapio pavadinimas")
+    slug = models.SlugField(max_length=255, unique=True, help_text="Puslapio URL dalis (pvz. naujienos)")
+    content = models.TextField(blank=True, help_text="Puslapio turinys (HTML formatu)")
+    is_published = models.BooleanField(default=True, help_text="Ar puslapis yra matomas?")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Puslapis"
+        verbose_name_plural = "Puslapiai"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('custom_page_detail', kwargs={'slug': self.slug})

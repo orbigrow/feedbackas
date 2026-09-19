@@ -84,3 +84,243 @@ class AILinguisticsTest(TestCase):
                 self.assertEqual(voc, exp_voc)
                 self.assertEqual(g, exp_gender)
 
+
+class HeroSlideTest(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(username='superadmin', password='password', email='admin@test.com')
+        self.regular_user = User.objects.create_user(username='regular', password='password', email='user@test.com')
+
+    def test_save_and_delete_hero_slide_as_superuser(self):
+        self.client.force_login(self.superuser)
+        # Create slide
+        response = self.client.post('/superadmin/hero-slides/save/', {
+            'title': 'Test title',
+            'title_en': 'Test title EN',
+            'description': 'Test desc',
+            'description_en': 'Test desc EN',
+            'button_text': 'Click here',
+            'button_text_en': 'Click EN',
+            'button_url': '/test-url/',
+            'order': 1,
+            'is_active': 'on'
+        })
+        self.assertEqual(response.status_code, 302)
+        from .models import HeroSlide
+        slide = HeroSlide.objects.get(title='Test title')
+        self.assertEqual(slide.title_en, 'Test title EN')
+        self.assertEqual(slide.button_text, 'Click here')
+        self.assertEqual(slide.button_url, '/test-url/')
+        self.assertTrue(slide.is_active)
+
+        # Update slide
+        response = self.client.post('/superadmin/hero-slides/save/', {
+            'slide_id': slide.id,
+            'title': 'Updated title',
+            'title_en': 'Updated EN',
+            'description': 'Updated desc',
+            'description_en': 'Updated desc EN',
+            'button_text': 'Updated btn',
+            'button_text_en': 'Updated btn EN',
+            'button_url': '/updated-url/',
+            'order': 2,
+            'is_active': 'on'
+        })
+        self.assertEqual(response.status_code, 302)
+        slide.refresh_from_db()
+        self.assertEqual(slide.title, 'Updated title')
+        self.assertEqual(slide.order, 2)
+
+        # Delete slide
+        response = self.client.post(f'/superadmin/hero-slides/{slide.id}/delete/')
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(HeroSlide.objects.filter(id=slide.id).exists())
+
+    def test_regular_user_cannot_access_hero_slides(self):
+        self.client.force_login(self.regular_user)
+        response = self.client.post('/superadmin/hero-slides/save/', {'title': 'Hack'})
+        self.assertEqual(response.status_code, 302)
+        from .models import HeroSlide
+        self.assertFalse(HeroSlide.objects.filter(title='Hack').exists())
+
+    def test_save_carousel_interval(self):
+        self.client.force_login(self.superuser)
+        response = self.client.post('/superadmin/hero-slides/interval/', {
+            'home_carousel_interval': '9'
+        })
+        self.assertEqual(response.status_code, 302)
+        from .models import PageDescription
+        p = PageDescription.load()
+        self.assertEqual(p.home_carousel_interval, 9)
+
+
+class CustomPageTest(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(username='admin2', password='password', email='admin2@test.com')
+        self.regular_user = User.objects.create_user(username='regular2', password='password', email='regular2@test.com')
+
+    def test_save_custom_page_and_view(self):
+        self.client.force_login(self.superuser)
+        response = self.client.post('/superadmin/custom-pages/save/', {
+            'title': 'Grįžtamojo ryšio gairės',
+            'slug': 'griztamojo-rysio-gaires',
+            'content': '<h2>Mūsų taisyklės</h2><p>Turinys čia...</p>',
+            'is_published': 'true'
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['url'], '/p/griztamojo-rysio-gaires/')
+
+        # View the created page
+        page_response = self.client.get('/p/griztamojo-rysio-gaires/')
+        self.assertEqual(page_response.status_code, 200)
+        self.assertContains(page_response, 'Grįžtamojo ryšio gairės')
+        self.assertContains(page_response, 'Mūsų taisyklės')
+
+    def test_upload_page_image(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.superuser)
+        test_file = SimpleUploadedFile("test.png", b"fake_image_content", content_type="image/png")
+        response = self.client.post('/superadmin/custom-pages/upload-image/', {'file': test_file})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('location', data)
+        self.assertTrue(data['location'].startswith('/media/custom_pages/'))
+
+
+class DescriptionsSubpagesTest(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(username='subadmin', password='password', email='subadmin@test.com')
+        self.client.force_login(self.superuser)
+
+    def test_descriptions_redirects_to_hero(self):
+        response = self.client.get('/superadmin/descriptions/')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/superadmin/descriptions/hero/')
+
+    def test_descriptions_hero_page(self):
+        response = self.client.get('/superadmin/descriptions/hero/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hero Karuselė ir Pagrindinis Puslapis')
+
+    def test_descriptions_index_page_and_save(self):
+        response = self.client.get('/superadmin/descriptions/index/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pradžios Puslapis (Index)')
+
+        post_resp = self.client.post('/superadmin/descriptions/index/', {
+            'index_hero_title': 'Nauja pradžios antraštė',
+            'index_hero_title_en': 'New index title',
+            'index_hero_desc': 'Naujas aprašymas',
+            'index_hero_desc_en': 'New description',
+            'index_features_title': 'Funkcijos',
+            'index_features_title_en': 'Features',
+            'index_feature1_title': 'F1',
+            'index_feature1_title_en': 'F1 EN',
+            'index_feature1_desc': 'F1 D',
+            'index_feature1_desc_en': 'F1 D EN',
+            'index_feature2_title': 'F2',
+            'index_feature2_title_en': 'F2 EN',
+            'index_feature2_desc': 'F2 D',
+            'index_feature2_desc_en': 'F2 D EN',
+            'index_feature3_title': 'F3',
+            'index_feature3_title_en': 'F3 EN',
+            'index_feature3_desc': 'F3 D',
+            'index_feature3_desc_en': 'F3 D EN',
+            'index_howitworks_title': 'Kaip veikia',
+            'index_howitworks_title_en': 'How it works',
+            'index_step1_title': 'S1',
+            'index_step1_title_en': 'S1 EN',
+            'index_step1_desc': 'S1 D',
+            'index_step1_desc_en': 'S1 D EN',
+            'index_step2_title': 'S2',
+            'index_step2_title_en': 'S2 EN',
+            'index_step2_desc': 'S2 D',
+            'index_step2_desc_en': 'S2 D EN',
+            'index_step3_title': 'S3',
+            'index_step3_title_en': 'S3 EN',
+            'index_step3_desc': 'S3 D',
+            'index_step3_desc_en': 'S3 D EN',
+            'index_cta_title': 'CTA',
+            'index_cta_title_en': 'CTA EN',
+            'index_cta_desc': 'CTA D',
+            'index_cta_desc_en': 'CTA D EN',
+        })
+        self.assertEqual(post_resp.status_code, 302)
+        from .models import PageDescription
+        p = PageDescription.load()
+        self.assertEqual(p.index_hero_title, 'Nauja pradžios antraštė')
+
+    def test_descriptions_about_page_and_save(self):
+        response = self.client.get('/superadmin/descriptions/about/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Puslapis „Apie mus“')
+
+        post_resp = self.client.post('/superadmin/descriptions/about/', {
+            'about_hero_title': 'Apie mus nauja antraštė',
+            'about_hero_title_en': 'About us new title',
+            'about_hero_desc': 'Apie mus naujas aprašymas',
+            'about_hero_desc_en': 'About us new desc',
+            'about_mission_title': 'Misija',
+            'about_mission_title_en': 'Mission',
+            'about_mission_desc1': 'M1',
+            'about_mission_desc1_en': 'M1 EN',
+            'about_mission_desc2': 'M2',
+            'about_mission_desc2_en': 'M2 EN',
+            'about_values_title': 'Vertybės',
+            'about_values_title_en': 'Values',
+            'about_values_subtitle': 'Sub',
+            'about_values_subtitle_en': 'Sub EN',
+            'about_value1_title': 'V1',
+            'about_value1_title_en': 'V1 EN',
+            'about_value1_desc': 'V1 D',
+            'about_value1_desc_en': 'V1 D EN',
+            'about_value2_title': 'V2',
+            'about_value2_title_en': 'V2 EN',
+            'about_value2_desc': 'V2 D',
+            'about_value2_desc_en': 'V2 D EN',
+            'about_value3_title': 'V3',
+            'about_value3_title_en': 'V3 EN',
+            'about_value3_desc': 'V3 D',
+            'about_value3_desc_en': 'V3 D EN',
+            'about_value4_title': 'V4',
+            'about_value4_title_en': 'V4 EN',
+            'about_value4_desc': 'V4 D',
+            'about_value4_desc_en': 'V4 D EN',
+        })
+        self.assertEqual(post_resp.status_code, 302)
+        from .models import PageDescription
+        p = PageDescription.load()
+        self.assertEqual(p.about_hero_title, 'Apie mus nauja antraštė')
+
+    def test_descriptions_security_page_and_save(self):
+        response = self.client.get('/superadmin/descriptions/security/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Saugumo Užtikrinimas')
+
+        post_resp = self.client.post('/superadmin/descriptions/security/', {
+            'security_content': '<p>Atnaujintas saugumo tekstas</p>',
+            'security_content_en': '<p>Updated security content</p>',
+        })
+        self.assertEqual(post_resp.status_code, 302)
+        from .models import PageDescription
+        p = PageDescription.load()
+        self.assertEqual(p.security_content, '<p>Atnaujintas saugumo tekstas</p>')
+
+    def test_descriptions_pages_and_delete(self):
+        from .models import CustomPage
+        page = CustomPage.objects.create(
+            title='Trinamas puslapis',
+            slug='trinamas-puslapis',
+            content='<p>Test</p>',
+            is_published=True
+        )
+        response = self.client.get('/superadmin/descriptions/pages/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Trinamas puslapis')
+
+        del_resp = self.client.post(f'/superadmin/custom-pages/{page.id}/delete/')
+        self.assertEqual(del_resp.status_code, 302)
+        self.assertFalse(CustomPage.objects.filter(id=page.id).exists())
+
+
