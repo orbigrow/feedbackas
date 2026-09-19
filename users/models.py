@@ -60,6 +60,7 @@ class Profile(models.Model):
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
     manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='subordinates')
     is_company_admin = models.BooleanField(default=False)
+    has_completed_tour = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.user.username} Profile'

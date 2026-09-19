@@ -163,6 +163,19 @@ class PageDescriptionSecurityForm(BasePageDescriptionForm):
         model = __import__('feedbackas.models').models.PageDescription
         fields = ['security_content', 'security_content_en']
 
+class PageDescriptionTourForm(BasePageDescriptionForm):
+    class Meta:
+        model = __import__('feedbackas.models').models.PageDescription
+        fields = [
+            'tour_welcome_title', 'tour_welcome_title_en', 'tour_welcome_desc', 'tour_welcome_desc_en', 'tour_welcome_btn', 'tour_welcome_btn_en',
+            'tour_request_title', 'tour_request_title_en', 'tour_request_desc', 'tour_request_desc_en',
+            'tour_send_title', 'tour_send_title_en', 'tour_send_desc', 'tour_send_desc_en',
+            'tour_tasks_title', 'tour_tasks_title_en', 'tour_tasks_desc', 'tour_tasks_desc_en',
+            'tour_results_title', 'tour_results_title_en', 'tour_results_desc', 'tour_results_desc_en',
+            'tour_team_title', 'tour_team_title_en', 'tour_team_desc', 'tour_team_desc_en',
+            'tour_finish_title', 'tour_finish_title_en', 'tour_finish_desc', 'tour_finish_desc_en', 'tour_finish_btn', 'tour_finish_btn_en',
+        ]
+
 class BaseEmailTemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

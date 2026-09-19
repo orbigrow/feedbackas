@@ -1,0 +1,369 @@
+{% extends 'superadmin/base_superadmin.html' %}
+{% load static %}
+
+{% block title %}Svetainės turas - Aprašymai - Orbigrow.lt{% endblock %}
+
+{% block content %}
+<main class="flex-1 overflow-y-auto bg-bg-secondary p-8">
+    <div class="max-w-4xl mx-auto space-y-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">
+                    <span>Aprašymai</span>
+                    <span>/</span>
+                    <span>Svetainės turas</span>
+                </div>
+                <h1 class="text-3xl font-extrabold text-text-main mb-2">Svetainės turas (Onboarding)</h1>
+                <p class="text-text-muted">Čia redaguojami interaktyvaus turo žingsnių tekstai, rodomi pirmą kartą prisijungusiam vartotojui.</p>
+            </div>
+            <div>
+                <a href="{% url 'home' %}?start_tour=1" target="_blank"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-xl text-sm transition-colors cursor-pointer border border-indigo-200 shadow-sm">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                    </svg>
+                    Išbandyti turą
+                </a>
+            </div>
+        </div>
+
+        <!-- PRANEŠIMAI -->
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl text-sm font-medium {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'superadmin_descriptions_tour' %}" class="bg-bg-main p-8 rounded-2xl shadow-sm border border-gray-100">
+            {% csrf_token %}
+
+            <!-- KALBOS PASIRINKIMO TABAI -->
+            <div class="mb-6 border-b border-gray-200">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="langTabs" role="tablist">
+                    <li class="mr-2" role="presentation">
+                        <button class="inline-block p-4 border-b-2 rounded-t-lg text-primary border-primary active font-bold cursor-pointer" id="lt-tab" type="button" role="tab" onclick="switchLangTab('lt')">Lietuvių</button>
+                    </li>
+                    <li class="mr-2" role="presentation">
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-gray-300 text-gray-500 font-bold cursor-pointer" id="en-tab" type="button" role="tab" onclick="switchLangTab('en')">English</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- LIETUVIŲ KALBOS LAUKAI -->
+            <div id="lt-content" class="tab-pane block space-y-8">
+                
+                <!-- 1. Įvadas (Welcome) -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">1</span>
+                        Įvadas (Centruotas pasveikinimo langas)
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Antraštė</label>
+                            {{ form.tour_welcome_title }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Aprašymas</label>
+                            {{ form.tour_welcome_desc }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Mygtuko tekstas</label>
+                            {{ form.tour_welcome_btn }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Prašyti įvertinimo -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">2</span>
+                        Mygtukas „Prašyti įvertinimo“
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Kortelės antraštė</label>
+                            {{ form.tour_request_title }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Paaiškinimo tekstas</label>
+                            {{ form.tour_request_desc }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Siųsti įvertinimą -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">3</span>
+                        Mygtukas „Siųsti įvertinimą“
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Kortelės antraštė</label>
+                            {{ form.tour_send_title }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Paaiškinimo tekstas</label>
+                            {{ form.tour_send_desc }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Mano Užduotys -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">4</span>
+                        Šoninis meniu „Mano Užduotys“
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Kortelės antraštė</label>
+                            {{ form.tour_tasks_title }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Paaiškinimo tekstas</label>
+                            {{ form.tour_tasks_desc }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Rezultatai -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">5</span>
+                        Šoninis meniu „Rezultatai“
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Kortelės antraštė</label>
+                            {{ form.tour_results_title }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Paaiškinimo tekstas</label>
+                            {{ form.tour_results_desc }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Mano Komanda -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">6</span>
+                        Šoninis meniu „Mano Komanda“
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Kortelės antraštė</label>
+                            {{ form.tour_team_title }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Paaiškinimo tekstas</label>
+                            {{ form.tour_team_desc }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Pabaiga -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">7</span>
+                        Pabaiga (Užbaigimo langas)
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Antraštė</label>
+                            {{ form.tour_finish_title }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Aprašymas</label>
+                            {{ form.tour_finish_desc }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Mygtuko tekstas</label>
+                            {{ form.tour_finish_btn }}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ANGLŲ KALBOS LAUKAI -->
+            <div id="en-content" class="tab-pane hidden space-y-8">
+                
+                <!-- 1. Intro (Welcome) -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">1</span>
+                        Intro (Centered Welcome Modal) [EN]
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Title</label>
+                            {{ form.tour_welcome_title_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Description</label>
+                            {{ form.tour_welcome_desc_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Button text</label>
+                            {{ form.tour_welcome_btn_en }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Request feedback -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">2</span>
+                        "Request Feedback" button [EN]
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Card title</label>
+                            {{ form.tour_request_title_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Description text</label>
+                            {{ form.tour_request_desc_en }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Send feedback -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">3</span>
+                        "Send Feedback" button [EN]
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Card title</label>
+                            {{ form.tour_send_title_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Description text</label>
+                            {{ form.tour_send_desc_en }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. My Tasks -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">4</span>
+                        Sidebar "My Tasks" [EN]
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Card title</label>
+                            {{ form.tour_tasks_title_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Description text</label>
+                            {{ form.tour_tasks_desc_en }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Results -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">5</span>
+                        Sidebar "Results" [EN]
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Card title</label>
+                            {{ form.tour_results_title_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Description text</label>
+                            {{ form.tour_results_desc_en }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. My Team -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">6</span>
+                        Sidebar "My Team" [EN]
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Card title</label>
+                            {{ form.tour_team_title_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Description text</label>
+                            {{ form.tour_team_desc_en }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Finish -->
+                <div class="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">7</span>
+                        Finish (Completion Modal) [EN]
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Title</label>
+                            {{ form.tour_finish_title_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Description</label>
+                            {{ form.tour_finish_desc_en }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-main mb-1">Button text</label>
+                            {{ form.tour_finish_btn_en }}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="pt-6 border-t flex justify-end">
+                <button type="submit" class="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-purple-700 transition-colors shadow-sm cursor-pointer">
+                    Išsaugoti Pakeitimus
+                </button>
+            </div>
+        </form>
+    </div>
+</main>
+
+<script>
+    function switchLangTab(lang) {
+        const ltTab = document.getElementById('lt-tab');
+        const enTab = document.getElementById('en-tab');
+        const ltContent = document.getElementById('lt-content');
+        const enContent = document.getElementById('en-content');
+
+        if (!ltTab || !enTab || !ltContent || !enContent) return;
+
+        if (lang === 'lt') {
+            ltTab.className = 'inline-block p-4 border-b-2 rounded-t-lg text-primary border-primary active font-bold cursor-pointer';
+            enTab.className = 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-gray-300 text-gray-500 font-bold cursor-pointer';
+            ltContent.classList.remove('hidden');
+            ltContent.classList.add('block');
+            enContent.classList.remove('block');
+            enContent.classList.add('hidden');
+        } else {
+            enTab.className = 'inline-block p-4 border-b-2 rounded-t-lg text-primary border-primary active font-bold cursor-pointer';
+            ltTab.className = 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-gray-300 text-gray-500 font-bold cursor-pointer';
+            enContent.classList.remove('hidden');
+            enContent.classList.add('block');
+            ltContent.classList.remove('block');
+            ltContent.classList.add('hidden');
+        }
+    }
+</script>
+{% endblock %}

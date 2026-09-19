@@ -174,6 +174,25 @@ def superadmin_descriptions_security(request):
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
+def superadmin_descriptions_tour(request):
+    page_description = PageDescription.load()
+    from .forms import PageDescriptionTourForm
+    if request.method == 'POST':
+        form = PageDescriptionTourForm(request.POST, instance=page_description)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Svetainės turo aprašymai sėkmingai atnaujinti.')
+            return redirect('superadmin_descriptions_tour')
+    else:
+        form = PageDescriptionTourForm(instance=page_description)
+
+    return render(request, 'superadmin/descriptions/tour.html', {
+        'form': form,
+        'page_description': page_description,
+    })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def superadmin_descriptions_pages(request):
     from .models import CustomPage
     custom_pages = CustomPage.objects.all().order_by('-created_at')
@@ -3352,3 +3371,18 @@ def superadmin_features(request):
         return redirect('superadmin_features')
         
     return render(request, 'superadmin/features.html', {'settings': settings})
+
+
+@login_required
+@require_POST
+def complete_onboarding_tour(request):
+    """Pažymi, kad vartotojas peržiūrėjo arba praleido įvadinį svetainės turą."""
+    try:
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        reset = request.POST.get('reset') == 'true'
+        profile.has_completed_tour = not reset
+        profile.save(update_fields=['has_completed_tour'])
+        return JsonResponse({'status': 'ok', 'has_completed_tour': profile.has_completed_tour})
+    except Exception as e:
+        logger.error(f"Klaida išsaugant turo būseną: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

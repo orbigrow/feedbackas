@@ -192,6 +192,46 @@ class PageDescription(models.Model):
     security_content = models.TextField(default="""<h2>Mūsų saugumo praktikos</h2><p>Čia pateikiama informacija apie tai, kaip saugome jūsų duomenis.</p>""")
     security_content_en = models.TextField(default="""<h2>Our Security Practices</h2><p>Here is information on how we protect your data.</p>""", blank=True)
 
+    # Svetainės turas (Onboarding Tour)
+    tour_welcome_title = models.CharField(max_length=255, default="Sveiki atvykę į Orbigrow!")
+    tour_welcome_title_en = models.CharField(max_length=255, default="Welcome to Orbigrow!", blank=True)
+    tour_welcome_desc = models.TextField(default="Tai jūsų komandos 360° grįžtamojo ryšio ir kompetencijų auginimo sistema. Skirkite 1 minutę susipažinti su svarbiausiomis funkcijomis.")
+    tour_welcome_desc_en = models.TextField(default="This is your team's 360° feedback and skill growth platform. Take 1 minute to explore the key features.", blank=True)
+    tour_welcome_btn = models.CharField(max_length=100, default="Pradėti turą")
+    tour_welcome_btn_en = models.CharField(max_length=100, default="Start tour", blank=True)
+
+    tour_request_title = models.CharField(max_length=255, default="Prašykite įvertinimo")
+    tour_request_title_en = models.CharField(max_length=255, default="Request feedback", blank=True)
+    tour_request_desc = models.TextField(default="Norite sužinoti, kaip sekėsi įgyvendinti projektą ar užduotį? Spustelėkite šį mygtuką, pasirinkite kolegas bei klausimyną ir išsiųskite prašymą.")
+    tour_request_desc_en = models.TextField(default="Want to know how your project or task went? Click this button, choose colleagues and a questionnaire, and send a request.", blank=True)
+
+    tour_send_title = models.CharField(max_length=255, default="Siųskite įvertinimą bet kada")
+    tour_send_title_en = models.CharField(max_length=255, default="Send feedback anytime", blank=True)
+    tour_send_desc = models.TextField(default="Pastebėjote puikų kolegos darbą ar pagalbą? Nelaukite prašymo – proaktyviai išreikškite padėką ar pateikite vertingų įžvalgų.")
+    tour_send_desc_en = models.TextField(default="Noticed great work or help from a teammate? Don't wait for a request – proactively show appreciation or share constructive insights.", blank=True)
+
+    tour_tasks_title = models.CharField(max_length=255, default="Mano Užduotys")
+    tour_tasks_title_en = models.CharField(max_length=255, default="My Tasks", blank=True)
+    tour_tasks_desc = models.TextField(default="Čia matysite visus kolegų atsiųstus prašymus įvertinti jų darbą. Stebėkite terminus ir patogiai pildykite atsakymus.")
+    tour_tasks_desc_en = models.TextField(default="Here you will see all feedback requests sent to you by colleagues. Track deadlines and easily complete evaluations.", blank=True)
+
+    tour_results_title = models.CharField(max_length=255, default="Rezultatai ir tobulėjimas")
+    tour_results_title_en = models.CharField(max_length=255, default="Results & Growth", blank=True)
+    tour_results_desc = models.TextField(default="Jūsų asmeninė kompetencijų statistika: interaktyvus radaras, stiprybės, tobulintinos sritys bei AI sugeneruotos įžvalgos.")
+    tour_results_desc_en = models.TextField(default="Your personal skill statistics: interactive radar chart, strengths, areas for improvement, and AI-generated insights.", blank=True)
+
+    tour_team_title = models.CharField(max_length=255, default="Mano Komanda")
+    tour_team_title_en = models.CharField(max_length=255, default="My Team", blank=True)
+    tour_team_desc = models.TextField(default="Komandos narių sąrašas ir jų profiliai. Galite tiesiogiai peržiūrėti bendradarbių atvirą informaciją bei siųsti jiems įvertinimus.")
+    tour_team_desc_en = models.TextField(default="List of team members and their profiles. You can view open teammate info and send them feedback directly.", blank=True)
+
+    tour_finish_title = models.CharField(max_length=255, default="Viskas paruošta!")
+    tour_finish_title_en = models.CharField(max_length=255, default="All set!", blank=True)
+    tour_finish_desc = models.TextField(default="Sveikiname susipažinus su Orbigrow. Bet kada prireikus peržiūrėti šį turą iš naujo, jį rasite savo Profilio puslapyje.")
+    tour_finish_desc_en = models.TextField(default="Congratulations on exploring Orbigrow. If you ever need to replay this tour, you can find it in your Profile page.", blank=True)
+    tour_finish_btn = models.CharField(max_length=100, default="Pradėti darbą")
+    tour_finish_btn_en = models.CharField(max_length=100, default="Get started", blank=True)
+
     class Meta:
         verbose_name_plural = "Page Descriptions"
 

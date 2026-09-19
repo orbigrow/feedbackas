@@ -324,3 +324,115 @@ class DescriptionsSubpagesTest(TestCase):
         self.assertFalse(CustomPage.objects.filter(id=page.id).exists())
 
 
+class OnboardingTourTests(TestCase):
+    def setUp(self):
+        self.company = Company.objects.create(name='TourCorp', is_active=True)
+        self.user = User.objects.create_user(username='touruser', password='password123')
+        self.profile = self.user.profile
+        self.profile.company_link = self.company
+        self.profile.save()
+
+    def test_complete_onboarding_tour_unauthenticated(self):
+        response = self.client.post('/api/complete-tour/')
+        self.assertEqual(response.status_code, 302)
+
+    def test_complete_onboarding_tour_success(self):
+        self.client.force_login(self.user)
+        self.assertFalse(self.profile.has_completed_tour)
+
+        response = self.client.post('/api/complete-tour/')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('status'), 'ok')
+        self.assertTrue(data.get('has_completed_tour'))
+
+        self.profile.refresh_from_db()
+        self.assertTrue(self.profile.has_completed_tour)
+
+    def test_reset_onboarding_tour(self):
+        self.profile.has_completed_tour = True
+        self.profile.save()
+        self.client.force_login(self.user)
+
+        response = self.client.post('/api/complete-tour/', {'reset': 'true'})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('status'), 'ok')
+        self.assertFalse(data.get('has_completed_tour'))
+
+        self.profile.refresh_from_db()
+        self.assertFalse(self.profile.has_completed_tour)
+
+    def test_home_page_contains_tour_elements(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/home/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'onboarding-tour-root')
+        self.assertContains(response, 'tour-spotlight-mask')
+        self.assertContains(response, 'tour-btn-request')
+        self.assertContains(response, 'tour-btn-send')
+        self.assertContains(response, 'tour-nav-tasks')
+        self.assertContains(response, 'Kartoti turą')
+
+
+class SuperadminTourDescriptionsTest(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(username='superadmin_tour', password='password123', email='admin_tour@test.com')
+        self.regular_user = User.objects.create_user(username='regular_tour', password='password123')
+
+    def test_tour_descriptions_get_as_superuser(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get('/superadmin/descriptions/tour/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Svetainės turas (Onboarding)')
+        self.assertContains(response, 'tour_welcome_title')
+
+    def test_tour_descriptions_get_as_regular_user_forbidden(self):
+        self.client.force_login(self.regular_user)
+        response = self.client.get('/superadmin/descriptions/tour/')
+        self.assertEqual(response.status_code, 302)
+
+    def test_tour_descriptions_post_update(self):
+        self.client.force_login(self.superuser)
+        post_data = {
+            'tour_welcome_title': 'Atnaujintas pasveikinimas',
+            'tour_welcome_title_en': 'Updated welcome',
+            'tour_welcome_desc': 'Naujas aprašymas',
+            'tour_welcome_desc_en': 'New description',
+            'tour_welcome_btn': 'Pradėkime',
+            'tour_welcome_btn_en': 'Let us start',
+            'tour_request_title': 'Prašykite atsiliepimo',
+            'tour_request_title_en': 'Ask for feedback',
+            'tour_request_desc': 'Prašymo paaiškinimas',
+            'tour_request_desc_en': 'Request explanation',
+            'tour_send_title': 'Siųskite atsiliepimą',
+            'tour_send_title_en': 'Send review',
+            'tour_send_desc': 'Siuntimo paaiškinimas',
+            'tour_send_desc_en': 'Send explanation',
+            'tour_tasks_title': 'Užduotys',
+            'tour_tasks_title_en': 'Tasks',
+            'tour_tasks_desc': 'Užduočių paaiškinimas',
+            'tour_tasks_desc_en': 'Tasks explanation',
+            'tour_results_title': 'Rezultatai',
+            'tour_results_title_en': 'Results',
+            'tour_results_desc': 'Rezultatų paaiškinimas',
+            'tour_results_desc_en': 'Results explanation',
+            'tour_team_title': 'Komanda',
+            'tour_team_title_en': 'Team',
+            'tour_team_desc': 'Komandos paaiškinimas',
+            'tour_team_desc_en': 'Team explanation',
+            'tour_finish_title': 'Pabaiga!',
+            'tour_finish_title_en': 'Finish!',
+            'tour_finish_desc': 'Viskas atlikta',
+            'tour_finish_desc_en': 'All done',
+            'tour_finish_btn': 'Pirmyn',
+            'tour_finish_btn_en': 'Forward',
+        }
+        response = self.client.post('/superadmin/descriptions/tour/', post_data)
+        self.assertEqual(response.status_code, 302)
+        from .models import PageDescription
+        p = PageDescription.load()
+        self.assertEqual(p.tour_welcome_title, 'Atnaujintas pasveikinimas')
+        self.assertEqual(p.tour_welcome_title_en, 'Updated welcome')
+
+

@@ -124,6 +124,11 @@
                         <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_security' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
                         Saugumas
                     </a>
+                    <a href="{% url 'superadmin_descriptions_tour' %}"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_descriptions_tour' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_tour' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
+                        Svetainės turas
+                    </a>
                     <a href="{% url 'superadmin_descriptions_pages' %}"
                         class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition {% if request.resolver_match.url_name == 'superadmin_descriptions_pages' %}bg-indigo-50 text-indigo-600 font-semibold{% else %}text-slate-500 hover:bg-slate-50 hover:text-indigo-600{% endif %}">
                         <span class="w-1.5 h-1.5 rounded-full {% if request.resolver_match.url_name == 'superadmin_descriptions_pages' %}bg-indigo-500{% else %}bg-slate-300{% endif %}"></span>
