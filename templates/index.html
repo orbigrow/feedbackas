@@ -252,7 +252,11 @@
                     </form>
                 </div>
                 {% endif %}
-                <div class="space-x-2">
+                <div class="flex items-center space-x-3">
+                    <a href="https://calendar.app.google/3WsywNy1MNmxxgVTA" target="_blank" rel="noopener noreferrer"
+                        class="px-4 py-2 text-sm font-semibold text-[#2a5384] bg-[#2a5384]/10 hover:bg-[#2a5384]/20 rounded-lg transition-colors whitespace-nowrap">
+                        {% trans "Registruotis demo skambučiui" %}
+                    </a>
                     {% if user.is_authenticated %}
                     <a href="{% url 'home' %}"
                         class="px-4 py-2 text-sm font-medium text-white bg-[#2a5384] rounded-lg shadow-sm hover:opacity-90 transition-colors">
@@ -293,6 +297,9 @@
                 <a href="{% url 'index' %}#funkcijos" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Pradžia" %}</a>
                 <a href="{% url 'apie_mus' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Apie mus" %}</a>
                 <a href="{% url 'saugumas' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Saugumas" %}</a>
+                <a href="https://calendar.app.google/3WsywNy1MNmxxgVTA" target="_blank" rel="noopener noreferrer" onclick="closeLandingMobileMenu()" class="mt-1 px-4 py-2.5 text-center rounded-lg text-sm font-semibold text-white bg-[#2a5384] shadow-sm hover:opacity-90 transition-opacity">
+                    {% trans "Registruotis demo skambučiui" %}
+                </a>
             </div>
             
             {% if global_settings is None or global_settings.language_switcher_enabled %}
@@ -375,14 +382,23 @@
                     <div class="text-center md:text-left z-10 relative">
                         <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-text-main mb-6 leading-tight whitespace-pre-line">{{ page_description|translate_field:'index_hero_title' }}</h1>
                         <p class="text-lg text-text-muted mb-8 max-w-xl mx-auto md:mx-0 whitespace-pre-line">{{ page_description|translate_field:'index_hero_desc' }}</p>
-                        <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                        <div class="flex flex-col sm:flex-row gap-4 items-center justify-center md:justify-start flex-wrap">
+                            <a href="https://calendar.app.google/3WsywNy1MNmxxgVTA" target="_blank" rel="noopener noreferrer"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 text-lg font-bold text-white bg-primary rounded-xl shadow-lg hover:bg-primary/90 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 text-center whitespace-nowrap"
+                                style="padding: 0.875rem 2rem;">
+                                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                {% trans "Registruotis demo skambučiui" %}
+                            </a>
                             <button type="button" onclick="openContactModal()"
-                                class="px-8 py-3 text-lg font-medium text-white bg-primary/90 rounded-xl shadow-lg hover:bg-primary hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-center">
+                                class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 text-lg font-medium text-primary bg-bg-main border border-[#a5c6cf] rounded-xl shadow-sm hover:bg-bg-secondary hover:border-[#4a8e9e] transition-all duration-300 text-center whitespace-nowrap"
+                                style="padding: 0.875rem 2.25rem;">
                                 {% trans "Susisiekite su mumis" %}
                             </button>
                             <a href="#funkcijos"
-                                class="px-8 py-3 text-lg font-medium text-primary bg-bg-main border border-[#a5c6cf] rounded-xl shadow-sm hover:bg-bg-secondary hover:border-[#4a8e9e] transition-colors duration-300 text-center">
-                                Kaip tai veikia?
+                                class="w-full sm:w-auto px-4 py-2 text-base font-medium text-gray-500 hover:text-primary transition-colors duration-300 text-center whitespace-nowrap">
+                                {% trans "Kaip tai veikia?" %} &darr;
                             </a>
                         </div>
                     </div>
@@ -587,10 +603,21 @@
             <div class="container mx-auto px-4 py-20 text-center">
                 <h2 class="text-3xl md:text-4xl font-bold mb-4 whitespace-pre-line">{{ page_description|translate_field:'index_cta_title' }}</h2>
                 <p class="text-lg text-white/80 max-w-2xl mx-auto mb-8 whitespace-pre-line">{{ page_description|translate_field:'index_cta_desc' }}</p>
-                <button type="button" onclick="openContactModal()"
-                    class="px-8 py-3 text-lg font-bold text-primary bg-bg-main rounded-lg shadow-lg hover:bg-bg-secondary transition-colors duration-200">
-                    {% trans "Susisiekite su mumis" %}
-                </button>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a href="https://calendar.app.google/3WsywNy1MNmxxgVTA" target="_blank" rel="noopener noreferrer"
+                        class="inline-flex items-center justify-center gap-2 px-8 py-3.5 text-lg font-bold text-primary bg-bg-main rounded-xl shadow-lg hover:bg-bg-secondary hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap"
+                        style="padding: 0.875rem 2rem;">
+                        <svg class="w-5 h-5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {% trans "Registruotis demo skambučiui" %}
+                    </a>
+                    <button type="button" onclick="openContactModal()"
+                        class="inline-flex items-center justify-center px-8 py-3.5 text-lg font-semibold text-white bg-transparent border-2 border-white/60 rounded-xl hover:bg-white/10 transition-colors duration-200 whitespace-nowrap"
+                        style="padding: 0.875rem 2.25rem;">
+                        {% trans "Susisiekite su mumis" %}
+                    </button>
+                </div>
             </div>
         </section>
     </main>
