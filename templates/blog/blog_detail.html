@@ -1,0 +1,349 @@
+{% load static i18n translation_tags %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'lt' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} | {% trans "OrbiGrow Tinklaraštis" %}</title>
+    <meta name="description" content="{{ post.get_excerpt|striptags }}">
+    <link rel="canonical" href="https://orbigrow.lt{{ post.get_absolute_url }}">
+    
+    <!-- OpenGraph -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ post.title }}">
+    <meta property="og:description" content="{{ post.get_excerpt|striptags }}">
+    {% if post.featured_image %}
+    <meta property="og:image" content="https://orbigrow.lt{{ post.featured_image.url }}">
+    {% else %}
+    <meta property="og:image" content="https://orbigrow.lt{% static 'images/logo.png' %}">
+    {% endif %}
+    <meta property="article:published_time" content="{{ post.created_at|date:'c' }}">
+    <meta property="article:author" content="{{ post.author_name }}">
+
+    <!-- CSS and Fonts -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/fav.png' %}">
+    <link rel="shortcut icon" href="{% static 'images/fav.png' %}" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* WordPress Blog Typography Styles */
+        .blog-content {
+            font-size: 1.125rem;
+            line-height: 1.85;
+            color: #334155;
+        }
+        .blog-content p {
+            margin-bottom: 1.5rem;
+        }
+        .blog-content h1, .blog-content h2, .blog-content h3, .blog-content h4 {
+            color: #0f172a;
+            font-weight: 800;
+            line-height: 1.3;
+            margin-top: 2.25rem;
+            margin-bottom: 1rem;
+        }
+        .blog-content h2 { font-size: 1.875rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+        .blog-content h3 { font-size: 1.5rem; }
+        .blog-content h4 { font-size: 1.25rem; }
+        .blog-content ul {
+            list-style-type: disc;
+            padding-left: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .blog-content ol {
+            list-style-type: decimal;
+            padding-left: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .blog-content li {
+            margin-bottom: 0.5rem;
+        }
+        .blog-content blockquote {
+            border-left: 4px solid #2a5384;
+            padding: 0.75rem 0 0.75rem 1.5rem;
+            margin: 2rem 0;
+            font-style: italic;
+            color: #1e293b;
+            background-color: #f8fafc;
+            border-radius: 0 1rem 1rem 0;
+        }
+        .blog-content img {
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+            margin: 2rem auto;
+            max-width: 100%;
+            height: auto;
+        }
+        .blog-content a {
+            color: #2a5384;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+        .blog-content a:hover {
+            color: #1f3f65;
+        }
+        .blog-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+        .blog-content th, .blog-content td {
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+        .blog-content th {
+            background-color: #f1f5f9;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- 1. Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs">
+        <nav class="container mx-auto px-4 py-3.5 flex justify-between items-center">
+            <a href="{% url 'index' %}" class="block outline-none flex items-center group">
+                <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105">
+            </a>
+
+            <!-- Desktop Nav -->
+            <div class="hidden md:flex space-x-8 items-center">
+                <a href="{% url 'index' %}#funkcijos" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Pradžia" %}</a>
+                <a href="{% url 'blog_list' %}" class="text-[15px] font-semibold text-[#2a5384] transition-colors border-b-2 border-[#2a5384] pb-0.5">{% trans "Tinklaraštis" %}</a>
+                <a href="{% url 'apie_mus' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Apie mus" %}</a>
+                <a href="{% url 'saugumas' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Saugumas" %}</a>
+            </div>
+
+            <!-- Desktop Auth -->
+            <div class="hidden md:flex items-center space-x-3">
+                {% if user.is_authenticated %}
+                <a href="{% url 'home' %}"
+                    class="px-4 py-2 text-sm font-medium text-white bg-[#2a5384] rounded-lg shadow-sm hover:opacity-90 transition-colors">
+                    {% trans "Prietaisų skydelis" %}
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}"
+                    class="px-4 py-2 text-sm font-medium text-white bg-[#2a5384] rounded-lg shadow-sm hover:opacity-90 transition-colors">{% trans "Prisijungti" %}</a>
+                {% endif %}
+            </div>
+
+            <!-- Mobile menu button -->
+            <div class="flex items-center space-x-2 md:hidden">
+                {% if user.is_authenticated %}
+                <a href="{% url 'home' %}" class="px-3 py-1.5 text-xs font-semibold text-white bg-[#2a5384] rounded-lg shadow-sm">
+                    {% trans "Skydelis" %}
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}" class="px-3 py-1.5 text-xs font-semibold text-white bg-[#2a5384] rounded-lg shadow-sm">
+                    {% trans "Prisijungti" %}
+                </a>
+                {% endif %}
+                <button type="button" id="landing-mobile-menu-btn" onclick="toggleLandingMobileMenu()" class="p-2 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition-colors" aria-label="{% trans 'Meniu' %}">
+                    <svg id="landing-menu-icon" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                    <svg id="landing-close-icon" class="w-6 h-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </nav>
+
+        <div id="landing-mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-4 pt-3 pb-6 space-y-3 shadow-lg">
+            <div class="flex flex-col space-y-2">
+                <a href="{% url 'index' %}#funkcijos" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Pradžia" %}</a>
+                <a href="{% url 'blog_list' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-semibold text-[#2a5384] bg-slate-50">{% trans "Tinklaraštis" %}</a>
+                <a href="{% url 'apie_mus' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Apie mus" %}</a>
+                <a href="{% url 'saugumas' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Saugumas" %}</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. Pagrindinis Straipsnio Turinys -->
+    <main class="flex-grow py-10 md:py-16">
+        <div class="container mx-auto px-4 max-w-4xl">
+
+            <!-- Breadcrumbs -->
+            <nav class="flex items-center gap-2 text-xs font-medium text-slate-400 mb-8" aria-label="Breadcrumb">
+                <a href="{% url 'index' %}" class="hover:text-[#2a5384] transition-colors">{% trans "Pradžia" %}</a>
+                <span>/</span>
+                <a href="{% url 'blog_list' %}" class="hover:text-[#2a5384] transition-colors">{% trans "Tinklaraštis" %}</a>
+                <span>/</span>
+                <span class="text-slate-600 line-clamp-1 max-w-[200px] sm:max-w-none">{{ post.title }}</span>
+            </nav>
+
+            <article class="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+                <!-- Straipsnio Viršus / Meta -->
+                <div class="p-6 sm:p-10 md:p-12 pb-6 border-b border-slate-100">
+                    <div class="flex items-center gap-3 text-xs font-semibold text-slate-500 mb-4 flex-wrap">
+                        <span class="inline-flex items-center gap-1.5 text-[#2a5384] bg-indigo-50 px-3 py-1 rounded-full">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {{ post.created_at|date:"Y-m-d" }}
+                        </span>
+                        <span>•</span>
+                        <span>{{ post.reading_time }}</span>
+                        <span>•</span>
+                        <span class="text-slate-400">{{ post.views_count }} {% trans "peržiūros" %}</span>
+                    </div>
+
+                    <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
+                        {{ post.title }}
+                    </h1>
+
+                    <!-- Autoriaus informacija -->
+                    <div class="flex items-center gap-3 pt-4 border-t border-slate-100">
+                        <div class="w-10 h-10 rounded-full bg-[#2a5384] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                            {{ post.author_name|slice:":1"|upper }}
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-800">{{ post.author_name }}</p>
+                            <p class="text-xs text-slate-400">{% trans "OrbiGrow autorius ir komandos ekspertas" %}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagrindinė nuotrauka (jei yra) -->
+                {% if post.featured_image %}
+                <div class="px-6 sm:px-10 md:px-12 pt-8">
+                    <div class="rounded-2xl overflow-hidden aspect-[16/9] shadow-md bg-slate-100">
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="w-full h-full object-cover">
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Straipsnio Tekstas -->
+                <div class="p-6 sm:p-10 md:p-12 pt-8">
+                    <div class="blog-content">
+                        {{ post.content|safe }}
+                    </div>
+                </div>
+
+                <!-- Dalinimosi / Grįžimo juosta -->
+                <div class="px-6 sm:px-10 md:px-12 py-6 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <a href="{% url 'blog_list' %}" class="inline-flex items-center gap-2 text-sm font-bold text-[#2a5384] hover:text-[#1f3f65] transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        <span>{% trans "Grįžti į visus straipsnius" %}</span>
+                    </a>
+
+                    <div class="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                        <span>{% trans "Patiko straipsnis? Pasidalinkite:" %}</span>
+                        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://orbigrow.lt{{ post.get_absolute_url }}"
+                           target="_blank" rel="noopener noreferrer"
+                           class="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-[#0077b5] hover:border-[#0077b5] transition"
+                           title="LinkedIn">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=https://orbigrow.lt{{ post.get_absolute_url }}"
+                           target="_blank" rel="noopener noreferrer"
+                           class="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-[#1877f2] hover:border-[#1877f2] transition"
+                           title="Facebook">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 3. Demo Skambučio CTA Reklama -->
+            <div class="mt-12 bg-gradient-to-br from-[#2a5384] to-[#1a385c] text-white rounded-3xl p-8 sm:p-10 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="max-w-xl space-y-2 text-center md:text-left">
+                    <h3 class="text-2xl font-bold">{% trans "Norite sukurti atvirą grįžtamojo ryšio kultūrą?" %}</h3>
+                    <p class="text-sm text-white/80 leading-relaxed">
+                        {% trans "Išbandykite OrbiGrow – 360° vertinimo ir komandos mikroklimato sistemą. Užsiregistruokite trumpam 20 min. demo skambučiui." %}
+                    </p>
+                </div>
+                <a href="https://calendar.app.google/3WsywNy1MNmxxgVTA" target="_blank" rel="noopener noreferrer"
+                   class="shrink-0 px-8 py-3.5 rounded-xl bg-white text-[#2a5384] font-bold text-base shadow-lg hover:bg-slate-100 hover:shadow-xl transition-all whitespace-nowrap">
+                    {% trans "Registruotis demo skambučiui" %} &rarr;
+                </a>
+            </div>
+
+            <!-- 4. Naujausi / Kiti Straipsniai -->
+            {% if recent_posts %}
+            <div class="mt-16 pt-10 border-t border-slate-200">
+                <h3 class="text-2xl font-bold text-slate-900 mb-8">{% trans "Kiti naudingi straipsniai" %}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for r_post in recent_posts %}
+                    <a href="{{ r_post.get_absolute_url }}" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
+                        <div>
+                            <span class="text-xs font-semibold text-slate-400 mb-2 block">{{ r_post.created_at|date:"Y-m-d" }} • {{ r_post.reading_time }}</span>
+                            <h4 class="text-lg font-bold text-slate-900 group-hover:text-[#2a5384] transition-colors mb-2">
+                                {{ r_post.title }}
+                            </h4>
+                            <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                                {{ r_post.get_excerpt }}
+                            </p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs font-bold text-[#2a5384]">
+                            <span>{% trans "Skaityti straipsnį" %}</span>
+                            <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </main>
+
+    <!-- 5. Footer -->
+    <footer class="bg-white py-8 border-t border-slate-200 mt-auto">
+        <div class="container mx-auto px-4 text-center text-sm text-slate-500">
+            <p>&copy; 2026 Orbigrow.lt. Visos teisės saugomos.</p>
+            <div class="mt-3 space-x-4">
+                <a href="{% url 'blog_list' %}" class="hover:text-[#2a5384] transition-colors">Tinklaraštis</a>
+                <a href="{% url 'apie_mus' %}" class="hover:text-[#2a5384] transition-colors">Apie mus</a>
+                <a href="{% url 'saugumas' %}" class="hover:text-[#2a5384] transition-colors">Saugumas</a>
+                <a href="{% url 'privatumo_politika' %}" class="hover:text-[#2a5384] transition-colors">Privatumo politika</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Mobile menu script -->
+    <script>
+        function openLandingMobileMenu() {
+            var menu = document.getElementById('landing-mobile-menu');
+            var menuIcon = document.getElementById('landing-menu-icon');
+            var closeIcon = document.getElementById('landing-close-icon');
+            if (menu) {
+                menu.classList.remove('hidden');
+                if (menuIcon) menuIcon.classList.add('hidden');
+                if (closeIcon) closeIcon.classList.remove('hidden');
+            }
+        }
+        function closeLandingMobileMenu() {
+            var menu = document.getElementById('landing-mobile-menu');
+            var menuIcon = document.getElementById('landing-menu-icon');
+            var closeIcon = document.getElementById('landing-close-icon');
+            if (menu && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+                if (menuIcon) menuIcon.classList.remove('hidden');
+                if (closeIcon) closeIcon.classList.add('hidden');
+            }
+        }
+        function toggleLandingMobileMenu(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            var menu = document.getElementById('landing-mobile-menu');
+            if (menu) {
+                if (menu.classList.contains('hidden')) {
+                    openLandingMobileMenu();
+                } else {
+                    closeLandingMobileMenu();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

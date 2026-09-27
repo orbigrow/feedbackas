@@ -26,10 +26,11 @@ from users import views as user_views
 from django.views.generic.base import RedirectView, TemplateView
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.contrib.sitemaps.views import sitemap
-from .sitemaps import StaticViewSitemap
+from .sitemaps import StaticViewSitemap, BlogPostSitemap
 
 sitemaps = {
     'static': StaticViewSitemap,
+    'blog': BlogPostSitemap,
 }
 
 urlpatterns = [
@@ -39,6 +40,8 @@ urlpatterns = [
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('orbigrow-admin-panel/', admin.site.urls),
     path('', views.index, name='index'),
+    path('tinklarastis/', views.blog_list, name='blog_list'),
+    path('tinklarastis/<slug:slug>/', views.blog_detail, name='blog_detail'),
     path('apie-mus/', views.apie_mus, name='apie_mus'),
     path('saugumas/', views.security_page, name='saugumas'),
     path('privatumo-politika/', views.privacy_policy, name='privatumo_politika'),
@@ -124,6 +127,13 @@ urlpatterns = [
     path('superadmin/custom-pages/save/', views.superadmin_save_custom_page, name='superadmin_save_custom_page'),
     path('superadmin/custom-pages/upload-image/', views.superadmin_upload_page_image, name='superadmin_upload_page_image'),
     path('p/<slug:slug>/', views.custom_page_detail, name='custom_page_detail'),
+
+    # Blog (Tinklaraštis) management
+    path('superadmin/blog/', views.superadmin_blog_list, name='superadmin_blog_list'),
+    path('superadmin/blog/create/', views.superadmin_blog_create, name='superadmin_blog_create'),
+    path('superadmin/blog/<int:post_id>/edit/', views.superadmin_blog_edit, name='superadmin_blog_edit'),
+    path('superadmin/blog/<int:post_id>/delete/', views.superadmin_blog_delete, name='superadmin_blog_delete'),
+    path('superadmin/blog/upload-image/', views.superadmin_blog_upload_image, name='superadmin_blog_upload_image'),
 
     # Email templates
     path('superadmin/emails/new-survey/', views.superadmin_email_new_survey, name='superadmin_email_new_survey'),

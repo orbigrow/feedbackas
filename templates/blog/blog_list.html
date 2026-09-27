@@ -1,0 +1,364 @@
+{% load static i18n translation_tags %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'lt' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if query %}„{{ query }}“ | {% endif %}{% trans "Tinklaraštis | OrbiGrow – Įžvalgos ir patarimai komandoms" %}</title>
+    <meta name="description" content="{% trans 'Skaitykite OrbiGrow tinklaraštį: praktiniai patarimai apie 360° grįžtamąjį ryšį, komandos mikroklimatą, darbuotojų kompetencijų vertinimą ir šiuolaikinę organizacijų kultūrą.' %}">
+    <link rel="canonical" href="https://orbigrow.lt{% url 'blog_list' %}">
+    
+    <!-- OpenGraph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% trans 'OrbiGrow Tinklaraštis' %}">
+    <meta property="og:description" content="{% trans 'Praktiniai patarimai ir įžvalgos apie 360° grįžtamąjį ryšį bei komandos mikroklimatą.' %}">
+    <meta property="og:image" content="{% static 'images/logo.png' %}">
+
+    <!-- CSS and Fonts -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/fav.png' %}">
+    <link rel="shortcut icon" href="{% static 'images/fav.png' %}" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .blog-serif { font-family: 'Newsreader', Georgia, serif; }
+        .clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- 1. Viršutinė Navigacija (Header) -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs">
+        <nav class="container mx-auto px-4 py-3.5 flex justify-between items-center">
+            <!-- Logotipas -->
+            <a href="{% url 'index' %}" class="block outline-none flex items-center group">
+                <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105">
+            </a>
+
+            <!-- Navigacijos nuorodos (Desktop) -->
+            <div class="hidden md:flex space-x-8 items-center">
+                <a href="{% url 'index' %}#funkcijos" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Pradžia" %}</a>
+                <a href="{% url 'blog_list' %}" class="text-[15px] font-semibold text-[#2a5384] transition-colors border-b-2 border-[#2a5384] pb-0.5">{% trans "Tinklaraštis" %}</a>
+                <a href="{% url 'apie_mus' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Apie mus" %}</a>
+                <a href="{% url 'saugumas' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Saugumas" %}</a>
+            </div>
+
+            <!-- Prisijungimo mygtukai (Desktop) -->
+            <div class="hidden md:flex items-center space-x-3">
+                {% if user.is_authenticated %}
+                <a href="{% url 'home' %}"
+                    class="px-4 py-2 text-sm font-medium text-white bg-[#2a5384] rounded-lg shadow-sm hover:opacity-90 transition-colors">
+                    {% trans "Prietaisų skydelis" %}
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}"
+                    class="px-4 py-2 text-sm font-medium text-white bg-[#2a5384] rounded-lg shadow-sm hover:opacity-90 transition-colors">{% trans "Prisijungti" %}</a>
+                {% endif %}
+            </div>
+
+            <!-- Mobilus meniu mygtukas -->
+            <div class="flex items-center space-x-2 md:hidden">
+                {% if user.is_authenticated %}
+                <a href="{% url 'home' %}" class="px-3 py-1.5 text-xs font-semibold text-white bg-[#2a5384] rounded-lg shadow-sm">
+                    {% trans "Skydelis" %}
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}" class="px-3 py-1.5 text-xs font-semibold text-white bg-[#2a5384] rounded-lg shadow-sm">
+                    {% trans "Prisijungti" %}
+                </a>
+                {% endif %}
+                <button type="button" id="landing-mobile-menu-btn" onclick="toggleLandingMobileMenu()" class="p-2 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition-colors" aria-label="{% trans 'Meniu' %}">
+                    <svg id="landing-menu-icon" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                    <svg id="landing-close-icon" class="w-6 h-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Mobilus išskleidžiamas meniu -->
+        <div id="landing-mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-4 pt-3 pb-6 space-y-3 shadow-lg">
+            <div class="flex flex-col space-y-2">
+                <a href="{% url 'index' %}#funkcijos" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Pradžia" %}</a>
+                <a href="{% url 'blog_list' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-semibold text-[#2a5384] bg-slate-50">{% trans "Tinklaraštis" %}</a>
+                <a href="{% url 'apie_mus' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Apie mus" %}</a>
+                <a href="{% url 'saugumas' %}" onclick="closeLandingMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#2a5384]">{% trans "Saugumas" %}</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. WordPress Blog Antraštė -->
+    <section class="bg-white border-b border-slate-200/80 py-8 md:py-10">
+        <div class="container mx-auto px-4 max-w-6xl">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                {% trans "Tinklaraštis" %}
+            </h1>
+        </div>
+    </section>
+
+    <!-- 3. Pagrindinis Tinklaraščio Turinys (WordPress 2-stulpelių struktūra) -->
+    <main class="flex-grow py-12 md:py-16">
+        <div class="container mx-auto px-4 max-w-6xl">
+            {% if query %}
+            <div class="mb-8 flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200">
+                <p class="text-sm text-slate-600">
+                    {% trans "Paieškos rezultatai pagal frazę" %} <strong class="text-slate-900">„{{ query }}“</strong>: <span class="font-bold text-[#2a5384]">{{ total_count }}</span> {% trans "įrašų" %}
+                </p>
+                <a href="{% url 'blog_list' %}" class="text-xs font-semibold text-[#2a5384] hover:underline">
+                    {% trans "← Rodyti visus straipsnius" %}
+                </a>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                
+                <!-- Kairysis stulpelis: Straipsnių sąrašas (8 iš 12) -->
+                <div class="lg:col-span-8 space-y-10">
+                    {% if posts %}
+                        {% for post in posts %}
+                        <article class="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col group">
+                            {% if post.featured_image %}
+                            <a href="{{ post.get_absolute_url }}" class="block overflow-hidden relative aspect-[16/9] bg-slate-100">
+                                <img src="{{ post.featured_image.url }}" alt="{{ post.title }}"
+                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                            </a>
+                            {% else %}
+                            <a href="{{ post.get_absolute_url }}" class="block overflow-hidden relative aspect-[21/9] bg-gradient-to-r from-[#2a5384] via-[#4a8e9e] to-[#94c98d] p-8 flex items-center justify-center text-white/90">
+                                <div class="text-center space-y-2">
+                                    <svg class="w-10 h-10 mx-auto text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                                    </svg>
+                                    <span class="text-xs font-semibold tracking-wider uppercase text-white/90">OrbiGrow Įžvalgos</span>
+                                </div>
+                            </a>
+                            {% endif %}
+
+                            <div class="p-6 sm:p-8 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <!-- Meta informacija: data, autorius, skaitymo laikas -->
+                                    <div class="flex items-center gap-3 text-xs font-semibold text-slate-500 mb-3 flex-wrap">
+                                        <span class="inline-flex items-center gap-1.5 text-[#2a5384] bg-indigo-50 px-2.5 py-1 rounded-full">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            {{ post.created_at|date:"Y-m-d" }}
+                                        </span>
+                                        <span>•</span>
+                                        <span>{{ post.reading_time }}</span>
+                                        <span>•</span>
+                                        <span class="text-slate-700 font-medium">{{ post.author_name }}</span>
+                                    </div>
+
+                                    <!-- Straipsnio antraštė -->
+                                    <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3 group-hover:text-[#2a5384] transition-colors leading-tight">
+                                        <a href="{{ post.get_absolute_url }}">
+                                            {{ post.title }}
+                                        </a>
+                                    </h2>
+
+                                    <!-- Santrauka -->
+                                    <p class="text-slate-600 leading-relaxed text-sm sm:text-base clamp-3 mb-6">
+                                        {{ post.get_excerpt }}
+                                    </p>
+                                </div>
+
+                                <!-- Kortelės apačia / Nuoroda skaityti -->
+                                <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                                    <a href="{{ post.get_absolute_url }}" class="inline-flex items-center gap-2 text-sm font-bold text-[#2a5384] group-hover:gap-3 transition-all">
+                                        <span>{% trans "Skaityti toliau" %}</span>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                        </svg>
+                                    </a>
+                                    <span class="text-xs text-slate-400">
+                                        {{ post.views_count }} {% trans "peržiūros" %}
+                                    </span>
+                                </div>
+                            </div>
+                        </article>
+                        {% endfor %}
+
+                        <!-- 4. WordPress Stiliaus Puslapiavimas (10 įrašų puslapyje) -->
+                        {% if page_obj.has_other_pages %}
+                        <nav class="pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4" aria-label="{% trans 'Puslapiavimas' %}">
+                            <div class="text-xs text-slate-500 font-medium">
+                                {% blocktrans with current=page_obj.number total_pages=page_obj.paginator.num_pages total_items=total_count %}
+                                Puslapis {{ current }} iš {{ total_pages }} (iš viso {{ total_items }} straipsnių)
+                                {% endblocktrans %}
+                            </div>
+
+                            <ul class="inline-flex items-center -space-x-px text-sm">
+                                <!-- Ankstesnis -->
+                                {% if page_obj.has_previous %}
+                                <li>
+                                    <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}"
+                                       class="px-4 py-2.5 ml-0 leading-tight text-slate-700 bg-white border border-slate-300 rounded-l-xl hover:bg-slate-50 hover:text-[#2a5384] font-medium transition">
+                                        &laquo; {% trans "Ankstesnis" %}
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <span class="px-4 py-2.5 ml-0 leading-tight text-slate-400 bg-slate-50 border border-slate-200 rounded-l-xl cursor-not-allowed select-none">
+                                        &laquo; {% trans "Ankstesnis" %}
+                                    </span>
+                                </li>
+                                {% endif %}
+
+                                <!-- Puslapių numeriai -->
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if num == page_obj.number %}
+                                    <li>
+                                        <span class="z-10 px-4 py-2.5 leading-tight text-white bg-[#2a5384] border border-[#2a5384] font-bold select-none">
+                                            {{ num }}
+                                        </span>
+                                    </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li>
+                                        <a href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}"
+                                           class="px-4 py-2.5 leading-tight text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:text-[#2a5384] font-medium transition">
+                                            {{ num }}
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <!-- Kitas -->
+                                {% if page_obj.has_next %}
+                                <li>
+                                    <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}"
+                                       class="px-4 py-2.5 leading-tight text-slate-700 bg-white border border-slate-300 rounded-r-xl hover:bg-slate-50 hover:text-[#2a5384] font-medium transition">
+                                        {% trans "Kitas" %} &raquo;
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <span class="px-4 py-2.5 leading-tight text-slate-400 bg-slate-50 border border-slate-200 rounded-r-xl cursor-not-allowed select-none">
+                                        {% trans "Kitas" %} &raquo;
+                                    </span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <!-- Tuščia būsena -->
+                        <div class="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-4">
+                            <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">
+                                {% if query %}{% trans "Pagal jūsų paiešką straipsnių nerasta" %}{% else %}{% trans "Tinklaraštyje dar nėra straipsnių" %}{% endif %}
+                            </h3>
+                            <p class="text-slate-500 text-sm max-w-md mx-auto">
+                                {% if query %}
+                                    {% trans "Bandykite įvesti kitokį raktinį žodį arba peržiūrėkite visus straipsnius." %}
+                                {% else %}
+                                    {% trans "Netrukus čia pasirodys pirmieji straipsniai ir naudingos įžvalgos." %}
+                                {% endif %}
+                            </p>
+                            {% if query %}
+                            <div class="pt-2">
+                                <a href="{% url 'blog_list' %}" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2a5384] text-white text-sm font-semibold hover:bg-[#1f3f65] transition shadow-xs">
+                                    {% trans "Grįžti į visus straipsnius" %}
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Dešinysis stulpelis: WordPress Šoninė juosta (Sidebar) (4 iš 12) -->
+                <aside class="lg:col-span-4 space-y-8 sticky top-28">
+                    <!-- Demo rezervacijos CTA -->
+                    <div class="bg-gradient-to-br from-[#2a5384] to-[#1e3c60] text-white rounded-3xl p-7 shadow-lg relative overflow-hidden">
+                        <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
+                        <div class="inline-flex p-2.5 bg-white/10 rounded-xl mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">{% trans "Išbandykite OrbiGrow savo komandoje" %}</h3>
+                        <p class="text-xs text-white/80 leading-relaxed mb-6">
+                            {% trans "Užsiregistruokite asmeniniam demo skambučiui. Parodysime, kaip lengvai surinkti kokybišką grįžtamąjį ryšį ir analizuoti rezultatus." %}
+                        </p>
+                        <a href="https://calendar.app.google/3WsywNy1MNmxxgVTA" target="_blank" rel="noopener noreferrer"
+                           class="block w-full text-center py-3 px-4 rounded-xl bg-white text-[#2a5384] font-bold text-sm shadow-md hover:bg-slate-100 transition-all">
+                            {% trans "Registruotis demo skambučiui" %} &rarr;
+                        </a>
+                    </div>
+                </aside>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- 5. Poraštė (Footer) -->
+    <footer class="bg-white py-8 border-t border-slate-200 mt-auto">
+        <div class="container mx-auto px-4 text-center text-sm text-slate-500">
+            <p>&copy; 2026 Orbigrow.lt. Visos teisės saugomos.</p>
+            <div class="mt-3 space-x-4">
+                <a href="{% url 'blog_list' %}" class="hover:text-[#2a5384] transition-colors">Tinklaraštis</a>
+                <a href="{% url 'apie_mus' %}" class="hover:text-[#2a5384] transition-colors">Apie mus</a>
+                <a href="{% url 'saugumas' %}" class="hover:text-[#2a5384] transition-colors">Saugumas</a>
+                <a href="{% url 'privatumo_politika' %}" class="hover:text-[#2a5384] transition-colors">Privatumo politika</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Mobilus meniu JS -->
+    <script>
+        function openLandingMobileMenu() {
+            var menu = document.getElementById('landing-mobile-menu');
+            var menuIcon = document.getElementById('landing-menu-icon');
+            var closeIcon = document.getElementById('landing-close-icon');
+            if (menu) {
+                menu.classList.remove('hidden');
+                if (menuIcon) menuIcon.classList.add('hidden');
+                if (closeIcon) closeIcon.classList.remove('hidden');
+            }
+        }
+
+        function closeLandingMobileMenu() {
+            var menu = document.getElementById('landing-mobile-menu');
+            var menuIcon = document.getElementById('landing-menu-icon');
+            var closeIcon = document.getElementById('landing-close-icon');
+            if (menu && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+                if (menuIcon) menuIcon.classList.remove('hidden');
+                if (closeIcon) closeIcon.classList.add('hidden');
+            }
+        }
+
+        function toggleLandingMobileMenu(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            var menu = document.getElementById('landing-mobile-menu');
+            if (menu) {
+                if (menu.classList.contains('hidden')) {
+                    openLandingMobileMenu();
+                } else {
+                    closeLandingMobileMenu();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

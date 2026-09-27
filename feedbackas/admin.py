@@ -20,7 +20,7 @@ admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 
 from django.db.models import Sum
-from .models import AIUsageLog, GlobalSettings, PageDescription, HeroSlide, CustomPage
+from .models import AIUsageLog, GlobalSettings, PageDescription, HeroSlide, CustomPage, BlogPost
 
 @admin.register(AIUsageLog)
 class AIUsageLogAdmin(admin.ModelAdmin):
@@ -84,4 +84,12 @@ class CustomPageAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'is_published', 'created_at', 'updated_at')
     list_filter = ('is_published', 'created_at')
     search_fields = ('title', 'slug', 'content')
+    prepopulated_fields = {'slug': ('title',)}
+
+
+@admin.register(BlogPost)
+class BlogPostAdmin(admin.ModelAdmin):
+    list_display = ('title', 'slug', 'author_name', 'is_published', 'views_count', 'created_at')
+    list_filter = ('is_published', 'created_at')
+    search_fields = ('title', 'slug', 'excerpt', 'content', 'author_name')
     prepopulated_fields = {'slug': ('title',)}

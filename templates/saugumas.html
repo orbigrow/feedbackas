@@ -48,8 +48,9 @@
             </a>
             <div class="hidden md:flex space-x-8 items-center">
                 <a href="{% url 'index' %}#funkcijos" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Pradžia" %}</a>
+                <a href="{% url 'blog_list' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Tinklaraštis" %}</a>
                 <a href="{% url 'apie_mus' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Apie mus" %}</a>
-                <a href="{% url 'saugumas' %}" class="text-[15px] font-medium text-gray-500 hover:text-[#2a5384] transition-colors">{% trans "Saugumas" %}</a>
+                <a href="{% url 'saugumas' %}" class="text-[15px] font-medium text-[#2a5384] font-semibold transition-colors">{% trans "Saugumas" %}</a>
             </div>
             <div class="flex items-center space-x-4">
                 <!-- Kalbos pasirinkimas -->
@@ -118,7 +119,11 @@
             </div>
             <div class="text-sm font-medium text-slate-400 text-center">
                 &copy; 2026 Orbigrow.lt. Visos teisės saugomos.<br>
-                <a href="{% url 'saugumas' %}" class="hover:text-primary transition-colors mt-2 inline-block">Saugumo užtikrinimas</a>
+                <div class="mt-2 flex items-center justify-center gap-4">
+                    <a href="{% url 'blog_list' %}" class="hover:text-primary transition-colors">{% trans "Tinklaraštis" %}</a>
+                    <span>•</span>
+                    <a href="{% url 'saugumas' %}" class="hover:text-primary transition-colors">{% trans "Saugumo užtikrinimas" %}</a>
+                </div>
             </div>
         </div>
     </footer>

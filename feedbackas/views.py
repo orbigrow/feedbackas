@@ -384,6 +384,287 @@ def custom_page_detail(request, slug):
     
     return render(request, 'custom_page.html', {'page': page})
 
+
+# -------------------------------------------------------------
+# TINKLARAŠTIS (BLOG) - Viešos ir Superadmin funkcijos
+# -------------------------------------------------------------
+
+def blog_list(request):
+    """
+    Viešas tinklaraščio įrašų sąrašas „WordPress“ stiliumi.
+    Rodo po 10 tekstų viename puslapyje su puslapiavimu.
+    Prieinamas ir neprisijungusiems vartotojams.
+    """
+    from .models import BlogPost
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from django.db.models import Q
+
+    query = request.GET.get('q', '').strip()
+    posts = BlogPost.objects.filter(is_published=True).order_by('-created_at')
+
+    if query:
+        posts = posts.filter(
+            Q(title__icontains=query) |
+            Q(content__icontains=query) |
+            Q(excerpt__icontains=query) |
+            Q(author_name__icontains=query)
+        )
+
+    paginator = Paginator(posts, 10)  # 10 tekstų viename puslapyje
+    page_number = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.get_page(page_number)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.get_page(1)
+
+    recent_posts = BlogPost.objects.filter(is_published=True).order_by('-created_at')[:5]
+
+    return render(request, 'blog/blog_list.html', {
+        'page_obj': page_obj,
+        'posts': page_obj.object_list,
+        'query': query,
+        'recent_posts': recent_posts,
+        'total_count': paginator.count,
+    })
+
+
+def blog_detail(request, slug):
+    """
+    Viešas konkretaus tinklaraščio straipsnio peržiūros puslapis.
+    Prieinamas ir neprisijungusiems vartotojams.
+    """
+    from .models import BlogPost
+    from django.db.models import F
+
+    if request.user.is_authenticated and request.user.is_superuser:
+        post = get_object_or_404(BlogPost, slug=slug)
+    else:
+        post = get_object_or_404(BlogPost, slug=slug, is_published=True)
+
+    # Atnaujiname peržiūrų skaitliuką
+    BlogPost.objects.filter(id=post.id).update(views_count=F('views_count') + 1)
+    post.refresh_from_db(fields=['views_count'])
+
+    recent_posts = BlogPost.objects.filter(is_published=True).exclude(id=post.id).order_by('-created_at')[:4]
+
+    return render(request, 'blog/blog_detail.html', {
+        'post': post,
+        'recent_posts': recent_posts,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_blog_list(request):
+    """
+    Superadmin: tinklaraščio straipsnių sąrašas, paieška, būsenos filtrai ir statistika.
+    """
+    from .models import BlogPost
+    from django.core.paginator import Paginator
+    from django.db.models import Q, Sum
+
+    query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', 'all')
+
+    posts = BlogPost.objects.all().order_by('-created_at')
+
+    if query:
+        posts = posts.filter(
+            Q(title__icontains=query) |
+            Q(slug__icontains=query) |
+            Q(author_name__icontains=query)
+        )
+
+    if status_filter == 'published':
+        posts = posts.filter(is_published=True)
+    elif status_filter == 'draft':
+        posts = posts.filter(is_published=False)
+
+    total_posts = BlogPost.objects.count()
+    published_count = BlogPost.objects.filter(is_published=True).count()
+    draft_count = BlogPost.objects.filter(is_published=False).count()
+    total_views = BlogPost.objects.aggregate(Sum('views_count'))['views_count__sum'] or 0
+
+    paginator = Paginator(posts, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    return render(request, 'superadmin/blog/list.html', {
+        'page_obj': page_obj,
+        'posts': page_obj.object_list,
+        'query': query,
+        'status_filter': status_filter,
+        'total_posts': total_posts,
+        'published_count': published_count,
+        'draft_count': draft_count,
+        'total_views': total_views,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_blog_create(request):
+    """
+    Superadmin: kurti naują tinklaraščio įrašą su TinyMCE teksto redaktoriumi ir nuotraukomis.
+    """
+    from .models import BlogPost
+    from django.utils.text import slugify
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        slug = request.POST.get('slug', '').strip()
+        author_name = request.POST.get('author_name', '').strip() or 'OrbiGrow komanda'
+        excerpt = request.POST.get('excerpt', '').strip()
+        content = request.POST.get('content', '').strip()
+        is_published = request.POST.get('is_published') in ('on', 'true', '1')
+        featured_image = request.FILES.get('featured_image')
+
+        if not title:
+            messages.error(request, 'Klaida: Pavadinimas yra privalomas.')
+            return render(request, 'superadmin/blog/form.html', {'is_edit': False})
+
+        if not slug:
+            slug = slugify(title)
+        else:
+            slug = slugify(slug)
+
+        if not slug:
+            slug = 'straipsnis'
+
+        base_slug = slug
+        counter = 1
+        while BlogPost.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        post = BlogPost.objects.create(
+            title=title,
+            slug=slug,
+            author_name=author_name,
+            excerpt=excerpt,
+            content=content,
+            is_published=is_published,
+            featured_image=featured_image
+        )
+        messages.success(request, f'Straipsnis „{post.title}“ sėkmingai sukurtas!')
+        return redirect('superadmin_blog_list')
+
+    return render(request, 'superadmin/blog/form.html', {
+        'is_edit': False,
+        'post': None,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_blog_edit(request, post_id):
+    """
+    Superadmin: redaguoti esamą tinklaraščio įrašą.
+    """
+    from .models import BlogPost
+    from django.utils.text import slugify
+
+    post = get_object_or_404(BlogPost, id=post_id)
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        slug = request.POST.get('slug', '').strip()
+        author_name = request.POST.get('author_name', '').strip() or 'OrbiGrow komanda'
+        excerpt = request.POST.get('excerpt', '').strip()
+        content = request.POST.get('content', '').strip()
+        is_published = request.POST.get('is_published') in ('on', 'true', '1')
+        remove_image = request.POST.get('remove_image') == '1'
+        featured_image = request.FILES.get('featured_image')
+
+        if not title:
+            messages.error(request, 'Klaida: Pavadinimas yra privalomas.')
+            return render(request, 'superadmin/blog/form.html', {'is_edit': True, 'post': post})
+
+        if not slug:
+            slug = slugify(title)
+        else:
+            slug = slugify(slug)
+
+        if not slug:
+            slug = f'straipsnis-{post.id}'
+
+        base_slug = slug
+        counter = 1
+        while BlogPost.objects.filter(slug=slug).exclude(id=post.id).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        post.title = title
+        post.slug = slug
+        post.author_name = author_name
+        post.excerpt = excerpt
+        post.content = content
+        post.is_published = is_published
+
+        if featured_image:
+            post.featured_image = featured_image
+        elif remove_image:
+            if post.featured_image:
+                post.featured_image.delete(save=False)
+            post.featured_image = None
+
+        post.save()
+        messages.success(request, f'Straipsnis „{post.title}“ sėkmingai atnaujintas!')
+        return redirect('superadmin_blog_list')
+
+    return render(request, 'superadmin/blog/form.html', {
+        'is_edit': True,
+        'post': post,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_blog_delete(request, post_id):
+    """
+    Superadmin: ištrinti tinklaraščio įrašą.
+    """
+    from .models import BlogPost
+
+    if request.method == 'POST':
+        post = get_object_or_404(BlogPost, id=post_id)
+        title = post.title
+        if post.featured_image:
+            post.featured_image.delete(save=False)
+        post.delete()
+        messages.success(request, f'Straipsnis „{title}“ buvo sėkmingai ištrintas.')
+    return redirect('superadmin_blog_list')
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_blog_upload_image(request):
+    """
+    TinyMCE teksto redaktoriaus nuotraukų įkėlimo handleris.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Tik POST metodas leidžiamas'}, status=405)
+
+    import os, uuid
+    from django.core.files.storage import default_storage
+
+    file = request.FILES.get('file')
+    if not file:
+        return JsonResponse({'error': 'Failas nepateiktas.'}, status=400)
+
+    ext = os.path.splitext(file.name)[1].lower()
+    allowed_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
+    if ext not in allowed_exts:
+        return JsonResponse({'error': 'Netinkamas failo formatas. Leidžiami: JPG, PNG, GIF, WEBP, SVG.'}, status=400)
+
+    if file.size > 10 * 1024 * 1024:
+        return JsonResponse({'error': 'Failas per didelis (maks. 10MB).'}, status=400)
+
+    filename = f"blog/uploads/{uuid.uuid4().hex}{ext}"
+    saved_path = default_storage.save(filename, file)
+    file_url = default_storage.url(saved_path)
+
+    return JsonResponse({'location': file_url})
+
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def superadmin_email_new_survey(request):

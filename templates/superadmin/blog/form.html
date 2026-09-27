@@ -1,0 +1,247 @@
+{% extends 'superadmin/base_superadmin.html' %}
+{% load static i18n %}
+
+{% block content %}
+<main class="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 lg:p-8 pb-24 bg-slate-50">
+    <div class="max-w-5xl mx-auto space-y-6">
+
+        <!-- Navigacijos grįžimas ir antraštė -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <a href="{% url 'superadmin_blog_list' %}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition mb-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    <span>Grįžti į straipsnių sąrašą</span>
+                </a>
+                <h1 class="text-2xl font-bold text-slate-800">
+                    {% if is_edit %}Redaguoti straipsnį: „{{ post.title }}“{% else %}Naujas tinklaraščio straipsnis{% endif %}
+                </h1>
+                <p class="text-sm text-slate-500 mt-0.5">
+                    {% if is_edit %}Atnaujinkite straipsnio turinį, viršelį ar publikavimo nustatymus.{% else %}Sukurkite naują straipsnį naudodami išplėstinį teksto redaktorių su nuotraukomis.{% endif %}
+                </p>
+            </div>
+            {% if is_edit and post.is_published %}
+            <div>
+                <a href="{{ post.get_absolute_url }}" target="_blank"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition shadow-xs">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    <span>Peržiūrėti svetainėje</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Forma -->
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 sm:p-8 space-y-6">
+
+                <!-- Pavadinimas ir Slug -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="post_title" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                            Straipsnio pavadinimas <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="post_title" name="title" required
+                               value="{% if post %}{{ post.title }}{% endif %}"
+                               placeholder="pvz. Kaip tinkamai teikti 360 laipsnių grįžtamąjį ryšį"
+                               oninput="autoGenerateSlug(this.value)"
+                               class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                    </div>
+
+                    <div>
+                        <label for="post_slug" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                            URL adresas (slug) <span class="text-slate-400 font-normal">(automatinis)</span>
+                        </label>
+                        <div class="flex items-center rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
+                            <span class="px-3 text-xs font-medium text-slate-400 select-none">/tinklarastis/</span>
+                            <input type="text" id="post_slug" name="slug"
+                                   value="{% if post %}{{ post.slug }}{% endif %}"
+                                   placeholder="kaip-teikti-360-griztamaji-rysi"
+                                   class="w-full bg-white border-0 px-2 py-3 text-sm font-medium text-slate-700 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Autorius ir Viršelis -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-100">
+                    <div>
+                        <label for="post_author" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                            Autoriaus vardas / parašas
+                        </label>
+                        <input type="text" id="post_author" name="author_name"
+                               value="{% if post %}{{ post.author_name }}{% else %}OrbiGrow komanda{% endif %}"
+                               placeholder="pvz. OrbiGrow komanda arba Vardas Pavardė"
+                               class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                            Viršelio nuotrauka (rekomenduojama 16:9 proporcija)
+                        </label>
+                        <div class="space-y-3">
+                            {% if post and post.featured_image %}
+                            <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="w-16 h-12 rounded-lg object-cover bg-white">
+                                <div class="flex-1 min-w-0 text-xs">
+                                    <p class="font-semibold text-slate-700 truncate">Dabartinis viršelis</p>
+                                    <label class="inline-flex items-center gap-1.5 text-rose-600 font-semibold cursor-pointer hover:underline mt-0.5">
+                                        <input type="checkbox" name="remove_image" value="1" class="rounded text-rose-600 focus:ring-rose-500">
+                                        <span>Pašalinti esamą nuotrauką</span>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <input type="file" name="featured_image" accept="image/*"
+                                   class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Santrauka (Excerpt) -->
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="post_excerpt" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Trumpa santrauka (Excerpt)
+                        </label>
+                        <span class="text-[11px] text-slate-400">Rodoma straipsnių sąraše (jei tuščia, sugeneruojama automatiškai)</span>
+                    </div>
+                    <textarea id="post_excerpt" name="excerpt" rows="2"
+                              placeholder="Glausta straipsnio esmė 1–2 sakiniais..."
+                              class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none">{% if post %}{{ post.excerpt }}{% endif %}</textarea>
+                </div>
+
+                <!-- Pilnas tekstas su TinyMCE -->
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="flex items-center justify-between mb-2">
+                        <label for="post_content" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Straipsnio tekstas ir turinys <span class="text-rose-500">*</span>
+                        </label>
+                        <span class="text-[11px] text-slate-400">Naudokite antraštes, keiskite šriftų dydžius, kelkite nuotraukas</span>
+                    </div>
+                    <textarea id="post_content" name="content">{% if post %}{{ post.content|safe }}{% endif %}</textarea>
+                </div>
+
+                <!-- Būsenos jungiklis ir mygtukai -->
+                <div class="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                        <input type="checkbox" name="is_published" class="sr-only peer"
+                               {% if post %}{% if post.is_published %}checked{% endif %}{% else %}checked{% endif %}>
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        <div>
+                            <span class="text-sm font-bold text-slate-800">Publikuoti viešai</span>
+                            <p class="text-xs text-slate-400">Jei išjungta, straipsnis bus saugomas kaip juodraštis</p>
+                        </div>
+                    </label>
+
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        <a href="{% url 'superadmin_blog_list' %}"
+                           class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-semibold transition cursor-pointer">
+                            Atšaukti
+                        </a>
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition shadow-sm cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>{% if is_edit %}Atnaujinti straipsnį{% else %}Išsaugoti straipsnį{% endif %}</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+
+    </div>
+</main>
+
+<style>
+    .tox-tinymce {
+        border-radius: 1rem !important;
+        border-color: #e2e8f0 !important;
+    }
+</style>
+
+<!-- TinyMCE 6 Script -->
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" integrity="sha384-AUkjbmYH/gLzIdjaiPwIJsySqqCqUBpVx+IIRZ4zOGhYwPkWoD1b9eFHVNOtwsBe" crossorigin="anonymous" referrerpolicy="origin"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof tinymce !== 'undefined') {
+            tinymce.init({
+                selector: '#post_content',
+                height: 520,
+                menubar: 'edit insert view format table tools',
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                ],
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | ' +
+                         'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
+                         'bullist numlist outdent indent | link image media table | removeformat code | fullscreen',
+                font_size_formats: '10pt 12pt 14pt 16pt 18pt 24pt 32pt 36pt',
+                block_formats: 'Pastraipa=p; Antraštė 1=h1; Antraštė 2=h2; Antraštė 3=h3; Antraštė 4=h4; Citata=blockquote',
+                content_style: 'body { font-family: Inter, sans-serif; font-size: 16px; line-height: 1.7; color: #334155; } h1, h2, h3, h4 { color: #0f172a; } img { max-width: 100%; height: auto; border-radius: 8px; }',
+                images_upload_url: '{% url "superadmin_blog_upload_image" %}',
+                automatic_uploads: true,
+                images_upload_handler: function(blobInfo, progress) {
+                    return new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.withCredentials = true;
+                        xhr.open('POST', '{% url "superadmin_blog_upload_image" %}');
+                        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+                        if (csrfEl) {
+                            xhr.setRequestHeader('X-CSRFToken', csrfEl.value);
+                        }
+                        xhr.upload.onprogress = (e) => {
+                            progress(e.loaded / e.total * 100);
+                        };
+                        xhr.onload = () => {
+                            if (xhr.status < 200 || xhr.status >= 300) {
+                                reject('Klaida įkeliant nuotrauką: HTTP ' + xhr.status);
+                                return;
+                            }
+                            try {
+                                const json = JSON.parse(xhr.responseText);
+                                if (!json || typeof json.location !== 'string') {
+                                    reject('Neteisingas serverio atsakymas.');
+                                    return;
+                                }
+                                resolve(json.location);
+                            } catch (err) {
+                                reject('Klaida apdorojant serverio atsakymą.');
+                            }
+                        };
+                        xhr.onerror = () => {
+                            reject('Tinklo klaida įkeliant paveikslėlį.');
+                        };
+                        const formData = new FormData();
+                        formData.append('file', blobInfo.blob(), blobInfo.filename());
+                        xhr.send(formData);
+                    });
+                }
+            });
+        }
+    });
+
+    let slugManuallyEdited = false;
+    document.getElementById('post_slug').addEventListener('input', function() {
+        slugManuallyEdited = true;
+    });
+
+    function autoGenerateSlug(title) {
+        if (slugManuallyEdited) return;
+        const ltChars = {
+            'ą': 'a', 'č': 'c', 'ę': 'e', 'ė': 'e', 'į': 'i', 'š': 's', 'ų': 'u', 'ū': 'u', 'ž': 'z',
+            'Ą': 'a', 'Č': 'c', 'Ę': 'e', 'Ė': 'e', 'Į': 'i', 'Š': 's', 'Ų': 'u', 'Ū': 'u', 'Ž': 'z'
+        };
+        let slug = title.trim();
+        for (let char in ltChars) {
+            slug = slug.split(char).join(ltChars[char]);
+        }
+        slug = slug.toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
+        document.getElementById('post_slug').value = slug;
+    }
+</script>
+{% endblock %}

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.urls import reverse
+from django.utils.html import strip_tags
 
 class FeedbackRequest(models.Model):
     requester = models.ForeignKey(User, related_name='made_requests', on_delete=models.CASCADE)
@@ -340,3 +341,41 @@ class CustomPage(models.Model):
 
     def get_absolute_url(self):
         return reverse('custom_page_detail', kwargs={'slug': self.slug})
+
+
+class BlogPost(models.Model):
+    """Tinklaraščio straipsnis."""
+    title = models.CharField(max_length=255, help_text="Straipsnio pavadinimas")
+    slug = models.SlugField(max_length=255, unique=True, help_text="URL dalis (pvz. ka-reiskia-360-vertinimas)")
+    excerpt = models.TextField(blank=True, help_text="Trumpa santrauka (jei tuščia, bus sugeneruota automatiškai)")
+    content = models.TextField(blank=True, help_text="Straipsnio turinys (HTML formatu)")
+    featured_image = models.ImageField(upload_to='blog/', blank=True, null=True, help_text="Viršelio nuotrauka")
+    author_name = models.CharField(max_length=150, default="OrbiGrow komanda", help_text="Autoriaus vardas")
+    is_published = models.BooleanField(default=True, help_text="Ar straipsnis publikuotas?")
+    created_at = models.DateTimeField(default=timezone.now, help_text="Publikavimo data")
+    updated_at = models.DateTimeField(auto_now=True)
+    views_count = models.PositiveIntegerField(default=0, help_text="Peržiūrų skaičius")
+
+    class Meta:
+        verbose_name = "Tinklaraščio įrašas"
+        verbose_name_plural = "Tinklaraščio įrašai"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('blog_detail', kwargs={'slug': self.slug})
+
+    def get_excerpt(self, limit=180):
+        if self.excerpt and self.excerpt.strip():
+            return self.excerpt.strip()
+        plain = strip_tags(self.content or '').strip()
+        if len(plain) > limit:
+            return plain[:limit].rsplit(' ', 1)[0] + '...'
+        return plain or "Skaityti daugiau apie šį straipsnį..."
+
+    def reading_time(self):
+        words = len(strip_tags(self.content or '').split())
+        minutes = max(1, round(words / 180))
+        return f"{minutes} min."

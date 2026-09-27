@@ -48,6 +48,7 @@ class CompanyRequiredMiddleware:
         '/apie-mus/',
         '/saugumas/',
         '/privatumo-politika/',
+        '/tinklarastis/',
         '/favicon.ico',
         '/',  # index landing page
     ]
