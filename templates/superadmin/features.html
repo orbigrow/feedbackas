@@ -393,7 +393,178 @@
             </div>
 
 
-            <!-- 3. KORTELĖ: Kalbų pasirinkimas (Globalus nustatymas) -->
+            <!-- 3. KORTELĖ: Rizikos radaras (Flight & Burnout) -->
+            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden transition-all duration-200">
+                <!-- Spaudžiama antraštė kortelės suskleidimui / išskleidimui -->
+                <button type="button" onclick="toggleCard('rr')"
+                        class="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-slate-50/80 transition-colors cursor-pointer select-none">
+                    <div class="flex items-center gap-3.5 min-w-0 pr-4">
+                        <div class="w-11 h-11 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-base sm:text-lg font-bold text-slate-800">Išėjimo rizikos ir perdegimo indikatorius (Rizikos radaras)</h2>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5 truncate sm:whitespace-normal">
+                                Analitinis modulis vadovams ir HR: perdegimo lygis, išėjimo rizika, kvorumo apsauga bei 1-on-1 rekomendacijos.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 shrink-0">
+                        <span id="rr-badge" class="px-3 py-1 rounded-full text-xs font-semibold
+                            {% if settings.risk_radar_mode == 'all' %}
+                                bg-emerald-50 text-emerald-700 border border-emerald-200
+                            {% elif settings.risk_radar_mode == 'specific' %}
+                                bg-violet-50 text-violet-700 border border-violet-200
+                            {% else %}
+                                bg-rose-50 text-rose-700 border border-rose-200
+                            {% endif %}">
+                            {% if settings.risk_radar_mode == 'all' %}
+                                Visoms įmonėms
+                            {% elif settings.risk_radar_mode == 'specific' %}
+                                Konkrečioms ({{ rr_selected_ids|length }})
+                            {% else %}
+                                Išjungta
+                            {% endif %}
+                        </span>
+                        <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+                            <svg id="rr-chevron" class="w-4 h-4 transition-transform duration-200 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Išskleidžiamas turinys -->
+                <div id="rr-body" class="hidden px-5 pb-6 sm:px-8 sm:pb-8 pt-4 border-t border-slate-100 space-y-6">
+                    <!-- Režimo pasirinkimas (Radio kortelės) -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">Taikymo sritis:</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition select-none {% if settings.risk_radar_mode == 'all' %}border-violet-600 bg-violet-50/20{% else %}border-slate-200 hover:border-slate-300 bg-white{% endif %}">
+                                <input type="radio" name="risk_radar_mode" value="all"
+                                       {% if settings.risk_radar_mode == 'all' %}checked{% endif %}
+                                       onchange="toggleCompanyPicker('rr', this.value)"
+                                       class="sr-only">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Visoms įmonėms
+                                    </span>
+                                    <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center {% if settings.risk_radar_mode == 'all' %}border-violet-600 bg-violet-600{% else %}border-slate-300{% endif %}">
+                                        {% if settings.risk_radar_mode == 'all' %}<span class="w-1.5 h-1.5 bg-white rounded-full"></span>{% endif %}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    Įjungta visoms esamoms bei ateityje sukurtoms įmonėms.
+                                </p>
+                            </label>
+
+                            <label class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition select-none {% if settings.risk_radar_mode == 'specific' %}border-violet-600 bg-violet-50/20{% else %}border-slate-200 hover:border-slate-300 bg-white{% endif %}">
+                                <input type="radio" name="risk_radar_mode" value="specific"
+                                       {% if settings.risk_radar_mode == 'specific' %}checked{% endif %}
+                                       onchange="toggleCompanyPicker('rr', this.value)"
+                                       class="sr-only">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                        Konkrečioms įmonėms
+                                    </span>
+                                    <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center {% if settings.risk_radar_mode == 'specific' %}border-violet-600 bg-violet-600{% else %}border-slate-300{% endif %}">
+                                        {% if settings.risk_radar_mode == 'specific' %}<span class="w-1.5 h-1.5 bg-white rounded-full"></span>{% endif %}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    Leidžiama tik žemiau pažymėtoms konkrečioms įmonėms.
+                                </p>
+                            </label>
+
+                            <label class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition select-none {% if settings.risk_radar_mode == 'disabled' %}border-rose-500 bg-rose-50/20{% else %}border-slate-200 hover:border-slate-300 bg-white{% endif %}">
+                                <input type="radio" name="risk_radar_mode" value="disabled"
+                                       {% if settings.risk_radar_mode == 'disabled' %}checked{% endif %}
+                                       onchange="toggleCompanyPicker('rr', this.value)"
+                                       class="sr-only">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                        Išjungta visoms
+                                    </span>
+                                    <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center {% if settings.risk_radar_mode == 'disabled' %}border-rose-500 bg-rose-500{% else %}border-slate-300{% endif %}">
+                                        {% if settings.risk_radar_mode == 'disabled' %}<span class="w-1.5 h-1.5 bg-white rounded-full"></span>{% endif %}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    Funkcija išjungta visai platformai ir niekam nerodoma.
+                                </p>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Įmonių pasirinkimo skydelis (rodomas pasirinkus 'specific') -->
+                    <div id="rr-picker" class="{% if settings.risk_radar_mode != 'specific' %}hidden{% endif %} pt-4 border-t border-slate-100 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Pasirinkite įmones:</span>
+                                <span id="rr-counter" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700">
+                                    Pasirinkta: {{ rr_selected_ids|length }} iš {{ companies.count }}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="selectAllCompanies('rr', true)"
+                                        class="text-xs font-semibold text-violet-600 hover:text-violet-800 transition cursor-pointer">
+                                    Pažymėti visas
+                                </button>
+                                <span class="text-slate-300 text-xs">•</span>
+                                <button type="button" onclick="selectAllCompanies('rr', false)"
+                                        class="text-xs font-semibold text-slate-500 hover:text-slate-700 transition cursor-pointer">
+                                    Atžymėti visas
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Paieškos laukelis -->
+                        <div class="relative">
+                            <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <input type="text" placeholder="Ieškoti įmonės pagal pavadinimą arba domeną..."
+                                   oninput="filterCompanies('rr', this.value)"
+                                   class="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-violet-500 focus:outline-none transition">
+                        </div>
+
+                        <!-- Įmonių sąrašas -->
+                        <div id="rr-companies-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1 border border-slate-100 rounded-2xl bg-slate-50/50">
+                            {% for company in companies %}
+                            <label class="company-card flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/30 transition cursor-pointer select-none"
+                                   data-name="{{ company.name|lower }}" data-domain="{{ company.email_domain|lower }}">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <input type="checkbox" name="risk_radar_companies" value="{{ company.id }}"
+                                           class="rr-checkbox w-4 h-4 rounded text-violet-600 focus:ring-violet-500 border-slate-300 cursor-pointer"
+                                           {% if company.id in rr_selected_ids %}checked{% endif %}
+                                           onchange="updateCounter('rr')">
+                                    <div class="min-w-0">
+                                        <span class="text-sm font-semibold text-slate-800 block truncate">{{ company.name }}</span>
+                                        {% if company.email_domain %}
+                                        <span class="text-[11px] text-slate-400 font-mono block truncate">@{{ company.email_domain }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% if not company.is_active %}
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0">Neaktyvi</span>
+                                {% endif %}
+                            </label>
+                            {% empty %}
+                            <div class="col-span-2 p-6 text-center text-xs text-slate-400">Nėra sukurtų įmonių.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- 4. KORTELĖ: Kalbų pasirinkimas (Globalus nustatymas) -->
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="flex items-center gap-3.5 min-w-0">
@@ -457,7 +628,7 @@
 
     // Visų kortelių išskleidimas / suskleidimas
     function toggleAllCards(expand) {
-        ['pf', 'tf'].forEach(prefix => {
+        ['pf', 'tf', 'rr'].forEach(prefix => {
             const body = document.getElementById(`${prefix}-body`);
             const chevron = document.getElementById(`${prefix}-chevron`);
             if (!body || !chevron) return;
@@ -471,9 +642,20 @@
         });
     }
 
+    function getPrefixConfig(prefix) {
+        if (prefix === 'pf') {
+            return { field: 'personal_form_mode', color: 'indigo' };
+        } else if (prefix === 'tf') {
+            return { field: 'team_form_mode', color: 'blue' };
+        } else {
+            return { field: 'risk_radar_mode', color: 'violet' };
+        }
+    }
+
     // Statuso ženkliuko atnaujinimas antraštėje
     function updateStatusBadge(prefix) {
-        const modeInput = document.querySelector(`input[name="${prefix === 'pf' ? 'personal_form_mode' : 'team_form_mode'}"]:checked`);
+        const cfg = getPrefixConfig(prefix);
+        const modeInput = document.querySelector(`input[name="${cfg.field}"]:checked`);
         if (!modeInput) return;
         const mode = modeInput.value;
         const badge = document.getElementById(`${prefix}-badge`);
@@ -484,8 +666,7 @@
             badge.textContent = 'Visoms įmonėms';
         } else if (mode === 'specific') {
             const checked = document.querySelectorAll(`.${prefix}-checkbox:checked`).length;
-            const color = prefix === 'pf' ? 'indigo' : 'blue';
-            badge.className = `px-3 py-1 rounded-full text-xs font-semibold bg-${color}-50 text-${color}-700 border border-${color}-200`;
+            badge.className = `px-3 py-1 rounded-full text-xs font-semibold bg-${cfg.color}-50 text-${cfg.color}-700 border border-${cfg.color}-200`;
             badge.textContent = `Konkrečioms (${checked})`;
         } else {
             badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200';
@@ -503,13 +684,14 @@
             }
         }
         // Update styling of the parent radio cards
-        const radios = document.querySelectorAll(`input[name="${prefix === 'pf' ? 'personal_form_mode' : 'team_form_mode'}"]`);
+        const cfg = getPrefixConfig(prefix);
+        const radios = document.querySelectorAll(`input[name="${cfg.field}"]`);
         radios.forEach(r => {
             const card = r.closest('label');
             const dot = card.querySelector('span.rounded-full');
-            const colorClass = prefix === 'pf' ? 'border-indigo-600' : 'border-blue-600';
-            const bgClass = prefix === 'pf' ? 'bg-indigo-50/20' : 'bg-blue-50/20';
-            const dotBg = prefix === 'pf' ? 'bg-indigo-600' : 'bg-blue-600';
+            const colorClass = `border-${cfg.color}-600`;
+            const bgClass = `bg-${cfg.color}-50/20`;
+            const dotBg = `bg-${cfg.color}-600`;
 
             if (r.checked) {
                 if (r.value === 'disabled') {

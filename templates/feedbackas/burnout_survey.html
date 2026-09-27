@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Savijautos ir perdegimo anketa" %} | OrbiGrow{% endblock %}
+
+{% block content %}
+<main class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900 pb-20">
+    <div class="max-w-3xl mx-auto space-y-6">
+
+        <!-- Viršutinė navigacija -->
+        <div class="flex items-center justify-between">
+            <a href="{% url 'home' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span>{% trans "Grįžti į pradžią" %}</span>
+            </a>
+
+            <div class="flex items-center gap-2.5">
+                <a href="{% url 'wellbeing_history' %}"
+                   class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-primary hover:border-primary/40 text-xs font-bold shadow-2xs transition">
+                    <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                    </svg>
+                    <span>{% trans "Savijautos istorija" %}</span>
+                </a>
+
+                {% if latest_response %}
+                <span class="hidden sm:inline-flex text-xs font-medium text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                    {% trans "Paskutinis:" %} {{ latest_response.created_at|date:"Y-m-d H:i" }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pagrindinė anketos kortelė -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-xs p-6 sm:p-8 space-y-9">
+
+            <form method="POST" id="wellbeingForm" class="space-y-9">
+                {% csrf_token %}
+
+                <!-- 1. BENDROJI NUOTAIKA ŠIANDIEN -->
+                <section class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">1</span>
+                            <h2 class="text-xs sm:text-sm font-bold tracking-wider text-slate-500 uppercase">
+                                {% trans "BENDROJI NUOTAIKA ŠIANDIEN" %}
+                            </h2>
+                        </div>
+                        <span id="moodBadge" class="px-3.5 py-1 rounded-full bg-primary/10 text-primary font-semibold text-xs transition-colors">
+                            {% trans "Puiki nuotaika" %}
+                        </span>
+                    </div>
+
+                    <input type="hidden" name="mood_score" id="moodScoreInput" value="{% if latest_response %}{{ latest_response.mood_score }}{% else %}5{% endif %}">
+
+                    <div class="grid grid-cols-5 gap-2.5 sm:gap-3.5">
+                        <!-- 1: Prasta -->
+                        <button type="button" onclick="selectMood(1)" id="moodCard1"
+                                class="mood-card flex flex-col items-center justify-center py-4 px-2 rounded-2xl border border-slate-100 bg-[#f8fafc] hover:border-slate-300 hover:bg-white transition-all cursor-pointer select-none">
+                            <span class="text-3xl sm:text-4xl mb-2 filter drop-shadow-2xs">😞</span>
+                            <span class="text-xs sm:text-sm font-medium text-slate-600">{% trans "Prasta" %}</span>
+                        </button>
+
+                        <!-- 2: Sunkoka -->
+                        <button type="button" onclick="selectMood(2)" id="moodCard2"
+                                class="mood-card flex flex-col items-center justify-center py-4 px-2 rounded-2xl border border-slate-100 bg-[#f8fafc] hover:border-slate-300 hover:bg-white transition-all cursor-pointer select-none">
+                            <span class="text-3xl sm:text-4xl mb-2 filter drop-shadow-2xs">🙁</span>
+                            <span class="text-xs sm:text-sm font-medium text-slate-600">{% trans "Sunkoka" %}</span>
+                        </button>
+
+                        <!-- 3: Vidutinė -->
+                        <button type="button" onclick="selectMood(3)" id="moodCard3"
+                                class="mood-card flex flex-col items-center justify-center py-4 px-2 rounded-2xl border border-slate-100 bg-[#f8fafc] hover:border-slate-300 hover:bg-white transition-all cursor-pointer select-none">
+                            <span class="text-3xl sm:text-4xl mb-2 filter drop-shadow-2xs">😐</span>
+                            <span class="text-xs sm:text-sm font-medium text-slate-600">{% trans "Vidutinė" %}</span>
+                        </button>
+
+                        <!-- 4: Gera -->
+                        <button type="button" onclick="selectMood(4)" id="moodCard4"
+                                class="mood-card flex flex-col items-center justify-center py-4 px-2 rounded-2xl border border-slate-100 bg-[#f8fafc] hover:border-slate-300 hover:bg-white transition-all cursor-pointer select-none">
+                            <span class="text-3xl sm:text-4xl mb-2 filter drop-shadow-2xs">🙂</span>
+                            <span class="text-xs sm:text-sm font-medium text-slate-600">{% trans "Gera" %}</span>
+                        </button>
+
+                        <!-- 5: Puiki -->
+                        <button type="button" onclick="selectMood(5)" id="moodCard5"
+                                class="mood-card flex flex-col items-center justify-center py-4 px-2 rounded-2xl border border-slate-100 bg-[#f8fafc] hover:border-slate-300 hover:bg-white transition-all cursor-pointer select-none">
+                            <span class="text-3xl sm:text-4xl mb-2 filter drop-shadow-2xs">🤩</span>
+                            <span class="text-xs sm:text-sm font-medium text-slate-600">{% trans "Puiki" %}</span>
+                        </button>
+                    </div>
+                </section>
+
+                <hr class="border-slate-100">
+
+                <!-- 2. PAGRINDINIAI BŪSENOS RODIKLIAI -->
+                <section class="space-y-6">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">2</span>
+                        <h2 class="text-xs sm:text-sm font-bold tracking-wider text-slate-500 uppercase">
+                            {% trans "PAGRINDINIAI BŪSENOS RODIKLIAI" %}
+                        </h2>
+                    </div>
+
+                    <!-- Energijos lygis (1 - 10) -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center gap-2 font-bold text-slate-800">
+                                <span class="text-amber-500 text-base">⚡</span>
+                                <span>{% trans "Energijos lygis" %}</span>
+                            </div>
+                            <div class="font-bold text-slate-800 text-sm">
+                                <span id="valEnergy">{% if latest_response %}{{ latest_response.energy_level }}{% else %}8{% endif %}</span> / 10
+                            </div>
+                        </div>
+                        <input type="range" name="energy_level" min="1" max="10" step="1"
+                               value="{% if latest_response %}{{ latest_response.energy_level }}{% else %}8{% endif %}"
+                               class="survey-slider w-full"
+                               id="sliderEnergy"
+                               oninput="document.getElementById('valEnergy').textContent = this.value">
+                    </div>
+
+                    <!-- Patiriamas streso lygis (1 - 10) -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center gap-2 font-bold text-slate-800">
+                                <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                                </svg>
+                                <span>{% trans "Patiriamas streso lygis" %}</span>
+                            </div>
+                            <div class="font-bold text-slate-800 text-sm">
+                                <span id="valStress">{% if latest_response %}{{ latest_response.stress_level }}{% else %}3{% endif %}</span> / 10
+                            </div>
+                        </div>
+                        <input type="range" name="stress_level" min="1" max="10" step="1"
+                               value="{% if latest_response %}{{ latest_response.stress_level }}{% else %}3{% endif %}"
+                               class="survey-slider w-full"
+                               id="sliderStress"
+                               oninput="document.getElementById('valStress').textContent = this.value">
+                    </div>
+
+                    <!-- Darbo krūvis (1 - 5) -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center gap-2 font-bold text-slate-800">
+                                <svg class="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" />
+                                </svg>
+                                <span>{% trans "Darbo krūvis" %}</span>
+                            </div>
+                            <div class="font-bold text-slate-800 text-sm">
+                                <span id="valWorkload">{% if latest_response %}{% if latest_response.workload_level == 1 %}Labai mažas (1/5){% elif latest_response.workload_level == 2 %}Nedidelis (2/5){% elif latest_response.workload_level == 3 %}Subalansuotas (3/5){% elif latest_response.workload_level == 4 %}Optimalus (4/5){% else %}Kritinė perkrova (5/5){% endif %}{% else %}Optimalus (4/5){% endif %}</span>
+                            </div>
+                        </div>
+                        <input type="range" name="workload_level" min="1" max="5" step="1"
+                               value="{% if latest_response %}{{ latest_response.workload_level }}{% else %}4{% endif %}"
+                               class="survey-slider w-full"
+                               id="sliderWorkload"
+                               oninput="updateWorkloadText(this.value)">
+                    </div>
+                </section>
+
+                <hr class="border-slate-100">
+
+                <!-- 3. KAS LABIAUSIAI PRISIDEDA PRIE ŠIOS SAVIJAUTOS? -->
+                <section class="space-y-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">3</span>
+                        <h2 class="text-xs sm:text-sm font-bold tracking-wider text-slate-500 uppercase">
+                            {% trans "KAS LABIAUSIAI PRISIDEDA PRIE ŠIOS SAVIJAUTOS?" %}
+                        </h2>
+                    </div>
+
+                    <!-- Raktiniai žodžiai (Chips) -->
+                    <div class="flex flex-wrap gap-2.5 sm:gap-3" id="factorsContainer">
+                        <label class="factor-chip cursor-pointer select-none">
+                            <input type="checkbox" name="contributing_factors" value="Aiškūs tikslai" class="hidden" checked onchange="toggleChip(this)">
+                            <span class="chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-primary text-white shadow-xs">
+                                <span>🎯</span>
+                                <span>{% trans "Aiškūs tikslai" %}</span>
+                            </span>
+                        </label>
+
+                        <label class="factor-chip cursor-pointer select-none">
+                            <input type="checkbox" name="contributing_factors" value="Komandos palaikymas" class="hidden" checked onchange="toggleChip(this)">
+                            <span class="chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-primary text-white shadow-xs">
+                                <span>🤝</span>
+                                <span>{% trans "Komandos palaikymas" %}</span>
+                            </span>
+                        </label>
+
+                        <label class="factor-chip cursor-pointer select-none">
+                            <input type="checkbox" name="contributing_factors" value="Miego trūkumas" class="hidden" onchange="toggleChip(this)">
+                            <span class="chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-white border border-slate-200 text-slate-700 hover:border-primary/40">
+                                <span>😴</span>
+                                <span>{% trans "Miego trūkumas" %}</span>
+                            </span>
+                        </label>
+
+                        <label class="factor-chip cursor-pointer select-none">
+                            <input type="checkbox" name="contributing_factors" value="Skubūs terminai" class="hidden" onchange="toggleChip(this)">
+                            <span class="chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-white border border-slate-200 text-slate-700 hover:border-primary/40">
+                                <span>⏰</span>
+                                <span>{% trans "Skubūs terminai" %}</span>
+                            </span>
+                        </label>
+
+                        <label class="factor-chip cursor-pointer select-none">
+                            <input type="checkbox" name="contributing_factors" value="Geras poilsis" class="hidden" onchange="toggleChip(this)">
+                            <span class="chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-white border border-slate-200 text-slate-700 hover:border-primary/40">
+                                <span>☕</span>
+                                <span>{% trans "Geras poilsis" %}</span>
+                            </span>
+                        </label>
+
+                        <label class="factor-chip cursor-pointer select-none">
+                            <input type="checkbox" name="contributing_factors" value="Pasiektas rezultatas" class="hidden" onchange="toggleChip(this)">
+                            <span class="chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-white border border-slate-200 text-slate-700 hover:border-primary/40">
+                                <span>🚀</span>
+                                <span>{% trans "Pasiektas rezultatas" %}</span>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <hr class="border-slate-100">
+
+                <!-- 4. KOMENTARAS AR ASMENINĖ PASTABA -->
+                <section class="space-y-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">4</span>
+                        <h2 class="text-xs sm:text-sm font-bold tracking-wider text-slate-500 uppercase">
+                            {% trans "KOMENTARAS AR ASMENINĖ PASTABA" %}
+                        </h2>
+                    </div>
+
+                    <textarea name="comment" rows="4"
+                              placeholder="{% trans 'Papasakok detaliau: kas šiandien džiugina ar kelia nerimą?' %}"
+                              class="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:border-primary focus:ring-3 focus:ring-primary/15 transition outline-none text-sm leading-relaxed resize-none"></textarea>
+
+                    <!-- Matomumo pasirinkimas (3 kortelės) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <!-- Tik sau -->
+                        <label class="visibility-card flex items-start gap-3 p-4 rounded-2xl border transition-all cursor-pointer select-none" id="visCardPrivate">
+                            <input type="radio" name="visibility" value="private" class="mt-0.5 w-4 h-4 text-primary accent-primary focus:ring-primary cursor-pointer" onchange="updateVisibilityCards()">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">{% trans "Tik sau" %}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">{% trans "Asmeninis dienoraštis" %}</p>
+                            </div>
+                        </label>
+
+                        <!-- Vadovui -->
+                        <label class="visibility-card flex items-start gap-3 p-4 rounded-2xl border transition-all cursor-pointer select-none" id="visCardManager">
+                            <input type="radio" name="visibility" value="manager" class="mt-0.5 w-4 h-4 text-primary accent-primary focus:ring-primary cursor-pointer" onchange="updateVisibilityCards()">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">{% trans "Vadovui" %}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">{% trans "1-on-1 pokalbiams" %}</p>
+                            </div>
+                        </label>
+
+                        <!-- Anonimiškai -->
+                        <label class="visibility-card flex items-start gap-3 p-4 rounded-2xl border transition-all cursor-pointer select-none" id="visCardAnonymous">
+                            <input type="radio" name="visibility" value="anonymous" class="mt-0.5 w-4 h-4 text-primary accent-primary focus:ring-primary cursor-pointer" checked onchange="updateVisibilityCards()">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">{% trans "Anonimiškai" %}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">{% trans "Rizikos & pulso analizei" %}</p>
+                            </div>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Veiksmų mygtukai -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                    <a href="{% url 'home' %}" class="w-full sm:w-auto px-5 py-3 text-center text-sm font-semibold text-slate-500 hover:text-slate-800 transition rounded-xl hover:bg-slate-100">
+                        {% trans "Atšaukti" %}
+                    </a>
+
+                    <button type="submit"
+                            class="w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-[#233a5e] text-white font-bold rounded-2xl shadow-md shadow-primary/25 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer">
+                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>{% trans "Išsaugoti atsakymus" %}</span>
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</main>
+
+<style>
+/* Slankiklių stilius atitinkantis platformos primarią spalvą */
+.survey-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 9999px;
+    outline: none;
+    cursor: pointer;
+}
+
+.survey-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--color-primary, #2A5384);
+    border: 3px solid #ffffff;
+    box-shadow: 0 4px 10px rgba(42, 83, 132, 0.4);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.survey-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 6px 14px rgba(42, 83, 132, 0.6);
+}
+
+.survey-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--color-primary, #2A5384);
+    border: 3px solid #ffffff;
+    box-shadow: 0 4px 10px rgba(42, 83, 132, 0.4);
+    cursor: pointer;
+}
+</style>
+
+<script>
+const moodLabels = {
+    1: "{% trans 'Prasta nuotaika' %}",
+    2: "{% trans 'Sunkoka nuotaika' %}",
+    3: "{% trans 'Vidutinė nuotaika' %}",
+    4: "{% trans 'Gera nuotaika' %}",
+    5: "{% trans 'Puiki nuotaika' %}"
+};
+
+const workloadTexts = {
+    1: "{% trans 'Labai mažas' %} (1/5)",
+    2: "{% trans 'Nedidelis' %} (2/5)",
+    3: "{% trans 'Subalansuotas' %} (3/5)",
+    4: "{% trans 'Optimalus' %} (4/5)",
+    5: "{% trans 'Kritinė perkrova' %} (5/5)"
+};
+
+function selectMood(val) {
+    document.getElementById('moodScoreInput').value = val;
+    document.getElementById('moodBadge').textContent = moodLabels[val] || '';
+
+    for (let i = 1; i <= 5; i++) {
+        const card = document.getElementById('moodCard' + i);
+        if (i === val) {
+            card.classList.remove('border-slate-100', 'bg-[#f8fafc]', 'hover:border-slate-300', 'hover:bg-white');
+            card.classList.add('border-primary', 'bg-white', 'ring-2', 'ring-primary/20', 'shadow-md', 'shadow-primary/10');
+        } else {
+            card.classList.remove('border-primary', 'bg-white', 'ring-2', 'ring-primary/20', 'shadow-md', 'shadow-primary/10');
+            card.classList.add('border-slate-100', 'bg-[#f8fafc]', 'hover:border-slate-300', 'hover:bg-white');
+        }
+    }
+}
+
+function updateWorkloadText(val) {
+    document.getElementById('valWorkload').textContent = workloadTexts[val] || val + '/5';
+}
+
+function toggleChip(input) {
+    const span = input.nextElementSibling;
+    if (input.checked) {
+        span.className = "chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-primary text-white shadow-xs";
+    } else {
+        span.className = "chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-white border border-slate-200 text-slate-700 hover:border-primary/40";
+    }
+}
+
+function updateVisibilityCards() {
+    const cards = {
+        'private': document.getElementById('visCardPrivate'),
+        'manager': document.getElementById('visCardManager'),
+        'anonymous': document.getElementById('visCardAnonymous'),
+    };
+
+    const selectedVal = document.querySelector('input[name="visibility"]:checked')?.value || 'anonymous';
+
+    for (const [key, el] of Object.entries(cards)) {
+        if (!el) continue;
+        if (key === selectedVal) {
+            el.className = "visibility-card flex items-start gap-3 p-4 rounded-2xl border border-primary bg-primary/5 transition-all cursor-pointer select-none ring-1 ring-primary/30";
+        } else {
+            el.className = "visibility-card flex items-start gap-3 p-4 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition-all cursor-pointer select-none";
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const initialMood = parseInt(document.getElementById('moodScoreInput').value) || 5;
+    selectMood(initialMood);
+    updateVisibilityCards();
+});
+</script>
+{% endblock %}

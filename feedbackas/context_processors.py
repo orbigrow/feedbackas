@@ -28,6 +28,14 @@ class RequestSettingsProxy:
         return self._settings.is_team_form_enabled_for_company(self.company)
 
     @property
+    def risk_radar_enabled(self):
+        if not self._settings:
+            return True
+        if self.is_superuser:
+            return self._settings.risk_radar_enabled
+        return self._settings.is_risk_radar_enabled_for_company(self.company)
+
+    @property
     def language_switcher_enabled(self):
         if not self._settings:
             return True
@@ -54,6 +62,7 @@ def global_settings_processor(request):
     user = getattr(request, 'user', None)
     company = None
     is_superuser = False
+    pending_tasks_count = 0
     if user and user.is_authenticated:
         is_superuser = user.is_superuser
         try:
@@ -61,10 +70,20 @@ def global_settings_processor(request):
         except Exception:
             company = None
 
+        try:
+            from .models import FeedbackRequest
+            pending_tasks_count = FeedbackRequest.objects.filter(
+                requested_to=user,
+                status='pending'
+            ).count()
+        except Exception:
+            pending_tasks_count = 0
+
     proxy_settings = RequestSettingsProxy(settings, company=company, is_superuser=is_superuser)
 
     return {
         'global_settings': proxy_settings,
         'raw_global_settings': settings,
         'page_description': page_description,
+        'pending_tasks_count': pending_tasks_count,
     }

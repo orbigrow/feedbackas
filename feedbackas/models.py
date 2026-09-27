@@ -87,6 +87,51 @@ class AIUsageLog(models.Model):
     def __str__(self):
         return f"{self.request_type} by {self.user} ({self.total_cost}$)"
 
+class WellbeingCheckin(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wellbeing_checkins')
+    company = models.ForeignKey('users.Company', on_delete=models.CASCADE, null=True, blank=True, related_name='wellbeing_checkins')
+    department = models.ForeignKey('users.Department', on_delete=models.SET_NULL, null=True, blank=True, related_name='wellbeing_checkins')
+
+    # Rodikliai pagal calculate_team_risk_metrics (risk_service.py):
+    mood_score = models.IntegerField(default=3, help_text="Nuotaika: 1 (labai blogai) iki 5 (puikiai)")
+    energy_level = models.IntegerField(default=5, help_text="Energijos lygis: 1 (visiškas išsekimas) iki 10 (pilnas energijos)")
+    stress_level = models.IntegerField(default=5, help_text="Streso lygis: 1 (visiškai ramus) iki 10 (maksimalus stresas)")
+    workload_level = models.IntegerField(default=3, help_text="Darbo krūvis: 1 (lengvas) iki 5 (perkrova)")
+
+    # Veiksniai ir matomumas
+    contributing_factors = models.TextField(blank=True, help_text="Raktiniai žodžiai, prisidedantys prie savijautos (kableliu atskirti)")
+    visibility = models.CharField(
+        max_length=20,
+        default='anonymous',
+        choices=[
+            ('private', 'Tik sau – asmeninis dienoraštis'),
+            ('manager', 'Vadovui – 1-on-1 pokalbiams'),
+            ('anonymous', 'Anonimiškai – rizikos & pulso analizei'),
+        ],
+        help_text="Anketos matomumo lygis"
+    )
+
+    comment = models.TextField(blank=True, help_text="Neprivalomi darbuotojo komentarai ar pastebėjimai")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Savijautos ir perdegimo anketa"
+        verbose_name_plural = "Savijautos ir perdegimo anketos"
+
+    @property
+    def factors_list(self):
+        """Grąžina prisidedančių veiksnių sąrašą (išskaidytą pagal kablelį)."""
+        if not self.contributing_factors:
+            return []
+        return [f.strip() for f in self.contributing_factors.split(',') if f.strip()]
+
+    def __str__(self):
+        return f"WellbeingCheckin #{self.id} by {self.user.username} ({self.created_at.strftime('%Y-%m-%d')})"
+
+# Atgalinio suderinamumo alias
+BurnoutSurveyResponse = WellbeingCheckin
+
 class GlobalSettings(models.Model):
     personal_form_enabled = models.BooleanField(default=True, help_text="Bendrai įjungti 'Individuali forma' funkcionalumą.")
     personal_form_all_companies = models.BooleanField(default=True, help_text="Taikyti 'Individuali forma' visoms įmonėms.")
@@ -95,6 +140,10 @@ class GlobalSettings(models.Model):
     team_form_enabled = models.BooleanField(default=True, help_text="Bendrai įjungti 'Komandinė forma' funkcionalumą.")
     team_form_all_companies = models.BooleanField(default=True, help_text="Taikyti 'Komandinė forma' visoms įmonėms.")
     team_form_companies = models.ManyToManyField('users.Company', blank=True, related_name='team_form_settings')
+
+    risk_radar_enabled = models.BooleanField(default=True, help_text="Bendrai įjungti 'Rizikos radaras' (Flight & Burnout) funkcionalumą.")
+    risk_radar_all_companies = models.BooleanField(default=True, help_text="Taikyti 'Rizikos radaras' visoms įmonėms.")
+    risk_radar_companies = models.ManyToManyField('users.Company', blank=True, related_name='risk_radar_settings')
 
     language_switcher_enabled = models.BooleanField(default=True, help_text="Įjungti kalbų pasirinkimą (LT/EN) visoje platformoje.")
 
@@ -126,6 +175,14 @@ class GlobalSettings(models.Model):
             return 'all'
         return 'specific'
 
+    @property
+    def risk_radar_mode(self):
+        if not self.risk_radar_enabled:
+            return 'disabled'
+        if self.risk_radar_all_companies:
+            return 'all'
+        return 'specific'
+
     def is_personal_form_enabled_for_company(self, company):
         if not self.personal_form_enabled:
             return False
@@ -143,6 +200,15 @@ class GlobalSettings(models.Model):
         if not company:
             return False
         return self.team_form_companies.filter(id=company.id).exists()
+
+    def is_risk_radar_enabled_for_company(self, company):
+        if not self.risk_radar_enabled:
+            return False
+        if self.risk_radar_all_companies:
+            return True
+        if not company:
+            return False
+        return self.risk_radar_companies.filter(id=company.id).exists()
 
 class PageDescription(models.Model):
     # Priežiūros režimas

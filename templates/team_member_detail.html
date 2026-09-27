@@ -136,6 +136,89 @@
             </div>
         </div>
 
+        <!-- Vadovui skirtos savijautos anketos (1-on-1) -->
+        {% if wellbeing_checkins %}
+        <div class="bg-white rounded-3xl shadow-sm border border-indigo-100 overflow-hidden mb-8">
+            <div class="p-6 sm:p-8 border-b border-indigo-50 flex items-center justify-between bg-indigo-50/40">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-indigo-100/70 rounded-xl text-indigo-700">
+                        <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">{% trans "Savijautos anketos vadovui (1-on-1)" %}</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">{% trans "Darbuotojo asmeniškai vadovui pateiktos savijautos ir krūvio anketos" %}</p>
+                    </div>
+                </div>
+                <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-bold">
+                    {{ wellbeing_checkins|length }} {% trans "anketa(-os)" %}
+                </span>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+                {% for checkin in wellbeing_checkins %}
+                <div class="p-6 sm:p-8 hover:bg-slate-50/50 transition">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400">{{ checkin.created_at|date:"Y-m-d H:i" }}</span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800">
+                                <i data-lucide="user-check" class="w-3 h-3"></i>
+                                {% trans "1-on-1 vadovui" %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 rounded-2xl p-4 mb-4 text-center border border-slate-100">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-slate-400">{% trans "Nuotaika" %}</span>
+                            <div class="text-sm font-bold mt-1">
+                                {% if checkin.mood_score == 5 %}<span>🤩 Puikiai</span>
+                                {% elif checkin.mood_score == 4 %}<span>🙂 Gerai</span>
+                                {% elif checkin.mood_score == 3 %}<span>😐 Normaliai</span>
+                                {% elif checkin.mood_score == 2 %}<span>😕 Prastai</span>
+                                {% else %}<span>😫 Labai blogai</span>{% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-slate-400">{% trans "Energija" %}</span>
+                            <div class="text-sm font-bold text-slate-800 mt-1">⚡ {{ checkin.energy_level }}/10</div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-slate-400">{% trans "Stresas" %}</span>
+                            <div class="text-sm font-bold mt-1 {% if checkin.stress_level >= 7 %}text-rose-600{% elif checkin.stress_level >= 4 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                                🔥 {{ checkin.stress_level }}/10
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-slate-400">{% trans "Darbo krūvis" %}</span>
+                            <div class="text-sm font-bold text-slate-800 mt-1">💼 {{ checkin.workload_level }}/5</div>
+                        </div>
+                    </div>
+
+                    {% if checkin.factors_list %}
+                    <div class="flex flex-wrap gap-1.5 mb-3">
+                        {% for f in checkin.factors_list %}
+                        <span class="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-medium">
+                            {{ f }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if checkin.comment %}
+                    <div class="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-4">
+                        <div class="flex items-center gap-1.5 font-bold text-indigo-900 text-xs mb-1">
+                            <i data-lucide="message-square" class="w-3.5 h-3.5 text-indigo-600"></i>
+                            <span>{% trans "Darbuotojo komentaras vadovui:" %}</span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-700 italic whitespace-pre-line">{{ checkin.comment }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- 3. All feedbacks timeline -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-8 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">

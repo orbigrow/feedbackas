@@ -152,13 +152,20 @@
                     <span>{% trans "Pagrindinis" %}</span>
                 </a>
                 <a id="tour-nav-tasks" href="{% url 'my_tasks_list' %}"
-                    class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'my_tasks_list' or request.resolver_match.url_name == 'fill_feedback' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
-                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.336a3.75 3.75 0 0 1 1.3 0c.94.12 1.708.743 2.052 1.543a.75.75 0 0 0 .634.416 3.377 3.377 0 0 1 3.165 3.377v11.082a3.377 3.377 0 0 1-3.377 3.377H8.876a3.377 3.377 0 0 1-3.377-3.377V8.672a3.377 3.377 0 0 1 3.165-3.377.75.75 0 0 0 .634-.416 3.75 3.75 0 0 1 2.052-1.543Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 13.5H12M9 16.5H12M15 13.5H15.008V13.508H15V13.5ZM15 16.5H15.008V16.508H15V16.5ZM15 10.5H15.008V10.508H15V10.5ZM9 10.5H12" />
-                    </svg>
-                    <span>{% trans "Mano Užduotys" %}</span>
+                    class="flex items-center justify-between px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'my_tasks_list' or request.resolver_match.url_name == 'fill_feedback' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
+                    <div class="flex items-center space-x-3 min-w-0">
+                        <svg class="w-6 h-6 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.336a3.75 3.75 0 0 1 1.3 0c.94.12 1.708.743 2.052 1.543a.75.75 0 0 0 .634.416 3.377 3.377 0 0 1 3.165 3.377v11.082a3.377 3.377 0 0 1-3.377 3.377H8.876a3.377 3.377 0 0 1-3.377-3.377V8.672a3.377 3.377 0 0 1 3.165-3.377.75.75 0 0 0 .634-.416 3.75 3.75 0 0 1 2.052-1.543Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 13.5H12M9 16.5H12M15 13.5H15.008V13.508H15V13.5ZM15 16.5H15.008V16.508H15V16.5ZM15 10.5H15.008V10.508H15V10.5ZM9 10.5H12" />
+                        </svg>
+                        <span class="truncate">{% trans "Mano Užduotys" %}</span>
+                    </div>
+                    {% if pending_tasks_count > 0 %}
+                    <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-amber-500 rounded-full animate-pulse shadow-sm" title="{% trans 'Laukia pildymo' %}">
+                        {{ pending_tasks_count }}
+                    </span>
+                    {% endif %}
                 </a>
                 <a id="tour-nav-team" href="{% url 'team_members_list' %}"
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'team_members_list' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
@@ -208,6 +215,25 @@
                     </svg>
                     <span>{% trans "Komandos statistika" %}</span>
                 </a>
+                {% endif %}
+
+                {% if global_settings is None or global_settings.risk_radar_enabled %}
+                <a href="{% url 'burnout_survey' %}"
+                    class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name in 'burnout_survey,burnout_survey_success' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                    <span>{% trans "Savijautos anketa" %}</span>
+                </a>
+                {% if user.is_superuser or user.profile.is_company_admin or user.managed_departments.exists %}
+                <a href="{% url 'team_risk_radar' %}"
+                    class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'team_risk_radar' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                    <span>{% trans "Rizikos radaras" %}</span>
+                </a>
+                {% endif %}
                 {% endif %}
 
                 {% endif %}

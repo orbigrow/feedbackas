@@ -20,7 +20,14 @@ admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 
 from django.db.models import Sum
-from .models import AIUsageLog, GlobalSettings, PageDescription, HeroSlide, CustomPage, BlogPost
+from .models import AIUsageLog, GlobalSettings, PageDescription, HeroSlide, CustomPage, BlogPost, WellbeingCheckin
+
+@admin.register(WellbeingCheckin)
+class WellbeingCheckinAdmin(admin.ModelAdmin):
+    list_display = ('user', 'company', 'department', 'mood_score', 'energy_level', 'stress_level', 'workload_level', 'created_at')
+    list_filter = ('company', 'department', 'created_at')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'comment')
+
 
 @admin.register(AIUsageLog)
 class AIUsageLogAdmin(admin.ModelAdmin):
@@ -55,8 +62,8 @@ class AIUsageLogAdmin(admin.ModelAdmin):
 
 @admin.register(GlobalSettings)
 class GlobalSettingsAdmin(admin.ModelAdmin):
-    list_display = ('personal_form_enabled', 'personal_form_all_companies', 'team_form_enabled', 'team_form_all_companies', 'language_switcher_enabled')
-    filter_horizontal = ('personal_form_companies', 'team_form_companies')
+    list_display = ('personal_form_enabled', 'personal_form_all_companies', 'team_form_enabled', 'team_form_all_companies', 'risk_radar_enabled', 'risk_radar_all_companies', 'language_switcher_enabled')
+    filter_horizontal = ('personal_form_companies', 'team_form_companies', 'risk_radar_companies')
 
 @admin.register(PageDescription)
 class PageDescriptionAdmin(admin.ModelAdmin):

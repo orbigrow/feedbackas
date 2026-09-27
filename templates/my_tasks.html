@@ -19,8 +19,12 @@
             <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Tvarkykite savo atsiliepimų prašymus ir atsakymus." %}</p>
         </div>
 
-        <!-- Filtravimas -->
-        <div class="flex space-x-2 w-full sm:w-auto">
+        <!-- Veiksmai ir Filtravimas -->
+        <div class="flex flex-wrap items-center space-x-2 sm:space-x-3 w-full sm:w-auto">
+            <a href="{% url 'team_members_list' %}" class="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm shadow-sm transition-all flex items-center justify-center gap-2">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                <span>{% trans "Suteikti vertinimą kolegai" %}</span>
+            </a>
             <select class="w-full sm:w-auto bg-white border border-slate-200 text-slate-700 py-2.5 px-4 rounded-xl text-sm font-semibold shadow-sm outline-none transition-all focus:border-slate-300 focus:ring-4 focus:ring-slate-100 cursor-pointer hover:bg-slate-50">
                 <option>{% trans "Naujausi viršuje" %}</option>
                 <option>{% trans "Pagal terminą" %}</option>
@@ -36,8 +40,9 @@
             <nav class="flex space-x-6 sm:space-x-8 text-sm font-semibold min-w-max" aria-label="Tabs">
                 <button id="btn-tab-assigned"
                     class="flex items-center gap-2 border-b-2 border-slate-900 text-slate-900 pb-3 px-1 transition-colors">
-                    {% trans "Užduotys man" %}
-                    <span class="bg-slate-100 text-slate-800 py-0.5 px-2.5 rounded-full text-[11px] font-bold">{{ assigned_requests.count }}</span>
+                    <span>{% trans "Užduotys man" %}</span>
+                    <span class="text-xs text-slate-400 font-normal">({% trans "Pildymas" %})</span>
+                    <span class="bg-teal-50 text-teal-700 border border-teal-200/60 py-0.5 px-2.5 rounded-full text-[11px] font-bold">{{ assigned_requests.count }}</span>
                 </button>
                 <button id="btn-tab-made"
                     class="flex items-center gap-2 border-b-2 border-transparent text-slate-400 pb-3 px-1 hover:text-slate-700 transition-colors">
@@ -186,8 +191,14 @@
                     <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                         <i data-lucide="inbox" class="w-8 h-8 text-slate-300"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-800 mb-1">{% trans "Jokių užduočių" %}</h3>
-                    <p class="text-slate-500 text-sm">{% trans "Šiuo metu neturite jums priskirtų atsiliepimų prašymų." %}</p>
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">{% trans "Jokių laukiančių užduočių" %}</h3>
+                    <p class="text-slate-500 text-sm max-w-md">{% trans "Šiuo metu neturite jums priskirtų atsiliepimų prašymų. Taip pat galite patys proaktyviai įvertinti kolegą!" %}</p>
+                    <div class="mt-5">
+                        <a href="{% url 'team_members_list' %}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:opacity-95 shadow-md shadow-primary/20 transition-all">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            {% trans "Suteikti vertinimą kolegai" %}
+                        </a>
+                    </div>
                 </div>
                 {% endfor %}
             </div>

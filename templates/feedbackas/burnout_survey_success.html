@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Ačiū už atsakymus" %} | OrbiGrow{% endblock %}
+
+{% block content %}
+<main class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900 flex items-center justify-center min-h-[calc(100vh-80px)]">
+    <div class="max-w-md w-full bg-white rounded-2xl p-7 sm:p-8 border border-slate-200 shadow-lg text-center space-y-5">
+
+        <!-- Piktograma -->
+        <div class="w-16 h-16 rounded-2xl bg-accent/15 text-green-700 mx-auto flex items-center justify-center">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+
+        <!-- Tekstas -->
+        <div class="space-y-2">
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-800">
+                {% trans "Ačiū! Anketa išsaugota" %}
+            </h1>
+            <p class="text-sm text-slate-500 leading-relaxed">
+                {% trans "Jūsų konfidencialūs atsakymai padeda komandai ir vadovams laiku atpažinti nuovargio rizikas ir kurti tvarią darbo aplinką." %}
+            </p>
+        </div>
+
+        <!-- Patarimas -->
+        <div class="bg-primary/5 border border-primary/10 rounded-xl p-3.5 text-xs text-slate-700 text-left flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                </svg>
+            </div>
+            <div>
+                <p class="font-bold text-slate-700">{% trans "Nepamirškite pasirūpinti savimi" %}</p>
+                <p class="text-slate-500 mt-0.5 leading-relaxed">
+                    {% trans "Reguliarios pertraukos ir atviras pokalbis su vadovu – geriausias būdas išvengti perdegimo." %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Mygtukai -->
+        <div class="flex flex-col gap-2.5 pt-1">
+            <a href="{% url 'wellbeing_history' %}"
+               class="w-full px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-sm transition text-sm flex items-center justify-center gap-2">
+                <span>{% trans "Mano savijautos istorija" %}</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </a>
+
+            <a href="{% url 'home' %}"
+               class="w-full px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold rounded-xl transition text-sm text-center">
+                {% trans "Grįžti į pradžią" %}
+            </a>
+
+            {% if user.is_superuser or user.profile.is_company_admin or user.managed_departments.exists %}
+            <a href="{% url 'team_risk_radar' %}"
+               class="w-full px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold rounded-xl transition text-sm text-center">
+                {% trans "Rizikos radaras" %}
+            </a>
+            {% endif %}
+        </div>
+
+    </div>
+</main>
+{% endblock %}

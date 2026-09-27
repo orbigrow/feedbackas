@@ -42,3 +42,12 @@ def has_avatar(user_or_profile):
     if profile and profile.image and profile.image.name and profile.image.name != 'default.jpg':
         return True
     return False
+
+@register.filter
+def get_item(dictionary, key):
+    """
+    Suteikia galimybę saugiai gauti žodyno reikšmę pagal raktą šablonuose.
+    """
+    if isinstance(dictionary, dict):
+        return dictionary.get(key)
+    return None

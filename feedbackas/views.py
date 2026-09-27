@@ -1066,15 +1066,14 @@ def send_feedback(request, user_id):
     requester = get_object_or_404(User, id=user_id)
     requested_to = request.user
     
-    # Patikrinti, ar jau yra neužpildytas prašymas nuo šio žmogaus
+    # Patikrinti, ar jau yra neužpildytas prašymas šiam žmogui – jei taip, nukreipti tiesiai į pildymą
     existing_pending = FeedbackRequest.objects.filter(
         requester=requester,
         requested_to=requested_to,
         status='pending'
-    ).exists()
+    ).first()
     if existing_pending:
-        messages.warning(request, f'Jūs jau turite neužpildytą atsiliepimo užklausą nuo {requester.get_full_name() or requester.username}. Pirmiau užpildykite esamą.')
-        return redirect('home')
+        return redirect('fill_feedback', request_id=existing_pending.id)
     
     feedback_request = FeedbackRequest.objects.create(
         requester=requester,
@@ -1243,13 +1242,13 @@ def team_members_list(request):
                 requester__in=all_members, status='pending'
             ).count()
             
-            # ID sąrašas narių, kuriems jau išsiųsta laukianti užklausa
-            pending_from_me_ids = set(
-                FeedbackRequest.objects.filter(
-                    requested_to=user,
-                    status='pending'
-                ).values_list('requester_id', flat=True)
+            # Žodynas narių, kuriems vartotojas turi užpildyti laukiantį atsiliepimą (requester_id -> request_id)
+            pending_requests_qs = FeedbackRequest.objects.filter(
+                requested_to=user,
+                status='pending'
             )
+            pending_requests_map = {fr.requester_id: fr.id for fr in pending_requests_qs}
+            pending_from_me_ids = set(pending_requests_map.keys())
             
             context = {
                 'has_sub_departments': True,
@@ -1259,6 +1258,7 @@ def team_members_list(request):
                 'overall_avg_rating': overall_avg_rating,
                 'pending_feedback_count': pending_feedback_count,
                 'pending_from_me_ids': pending_from_me_ids,
+                'pending_requests_map': pending_requests_map,
             }
             return render(request, 'feedbackas/team_members_list.html', context)
         
@@ -1289,13 +1289,13 @@ def team_members_list(request):
     overall_avg_rating = Feedback.objects.filter(feedback_request__requester__in=team_members_qs).aggregate(Avg('rating'))['rating__avg']
     pending_feedback_count = FeedbackRequest.objects.filter(requester__in=team_members_qs, status='pending').count()
 
-    # ID sąrašas narių, kuriems jau išsiųsta laukianti užklausa
-    pending_from_me_ids = set(
-        FeedbackRequest.objects.filter(
-            requested_to=user,
-            status='pending'
-        ).values_list('requester_id', flat=True)
+    # Žodynas narių, kuriems vartotojas turi užpildyti laukiantį atsiliepimą
+    pending_requests_qs = FeedbackRequest.objects.filter(
+        requested_to=user,
+        status='pending'
     )
+    pending_requests_map = {fr.requester_id: fr.id for fr in pending_requests_qs}
+    pending_from_me_ids = set(pending_requests_map.keys())
     
     context = {
         'has_sub_departments': False,
@@ -1304,6 +1304,7 @@ def team_members_list(request):
         'overall_avg_rating': overall_avg_rating,
         'pending_feedback_count': pending_feedback_count,
         'pending_from_me_ids': pending_from_me_ids,
+        'pending_requests_map': pending_requests_map,
     }
     
     return render(request, 'feedbackas/team_members_list.html', context)
@@ -1313,8 +1314,8 @@ def my_tasks_list(request):
     # Feedback requests made by the current user (excluding self-initiated evaluations from others)
     made_requests = FeedbackRequest.objects.filter(requester=request.user, is_self_initiated=False).select_related('requested_to', 'feedback').order_by('-due_date')
 
-    # Feedback requests assigned to the current user (tasks to do) – only from others
-    assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user, is_self_initiated=False).select_related('requester', 'feedback').order_by('-due_date')
+    # Feedback requests assigned to the current user (tasks to do) – visi laukiantys arba užbaigti vartotojo pildymai
+    assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user).select_related('requester', 'feedback').order_by('-due_date')
 
     # All completed feedbacks received by the current user (from colleagues)
     received_feedbacks = Feedback.objects.filter(
@@ -1838,6 +1839,304 @@ def team_statistics(request):
     }
     return render(request, 'team_statistics.html', context)
 
+
+@login_required
+def team_risk_radar(request):
+    """
+    Išėjimo rizikos ir perdegimo indikatorius (Flight & Burnout Risk Radar).
+    Prieinamas įmonių vadovams (managers), HR specialistams (is_company_admin) ir Superadmin.
+    """
+    import json
+    from django.http import HttpResponseForbidden
+    from django.utils.translation import gettext as _
+    from .models import GlobalSettings, WellbeingCheckin
+    from users.models import Company, Department
+    from .services import RiskAnalysisService
+
+    user = request.user
+    company = getattr(user.profile, 'company_link', None) if hasattr(user, 'profile') else None
+
+    # Superuser gali pasirinkti bet kurią įmonę
+    if user.is_superuser:
+        company_id = request.GET.get('company_id')
+        if company_id:
+            picked_company = Company.objects.filter(id=company_id).first()
+            if picked_company:
+                company = picked_company
+        if not company:
+            company = Company.objects.first()
+
+    # 1. Funkcionalumo aktyvacijos patikrinimas (Admin / Superadmin nustatymai)
+    settings = GlobalSettings.load()
+    if not user.is_superuser:
+        if not settings.is_risk_radar_enabled_for_company(company):
+            from django.contrib import messages
+            messages.warning(request, _('Funkcionalumas „Rizikos radaras“ Jūsų įmonei šiuo metu nėra aktyvuotas.'))
+            return redirect('home')
+
+    # 2. Prieigos kontrolė: tik vadovams pagal hierarchiją arba įmonės administratoriams
+    is_admin = user.is_superuser or (hasattr(user, 'profile') and user.profile.is_company_admin)
+    is_manager = False
+    if hasattr(user, 'managed_departments'):
+        is_manager = user.managed_departments.filter(company=company).exists() if company else user.managed_departments.exists()
+
+    if not (is_admin or is_manager):
+        from django.contrib import messages
+        messages.error(request, _('Prieiga apribota: Rizikos radaras skirtas tik vadovams ir rodo tik Jums pavaldžių skyrių informaciją.'))
+        return redirect('home')
+
+    # 3. Nustatome analizuojamus skyrius pagal vadovo hierarchiją
+    if is_admin:
+        managed_departments = Department.objects.filter(company=company).order_by('name')
+    else:
+        # Rekursyviai surenkame tiesiogiai vadovaujamus skyrius ir visus jų poskyrius hierarchijoje
+        direct_depts = list(Department.objects.filter(manager=user, company=company))
+        seen_ids = set()
+        to_check = list(direct_depts)
+        for d in direct_depts:
+            seen_ids.add(d.id)
+
+        while to_check:
+            curr = to_check.pop(0)
+            children = list(Department.objects.filter(parent=curr, company=company))
+            for child in children:
+                if child.id not in seen_ids:
+                    seen_ids.add(child.id)
+                    to_check.append(child)
+
+        managed_departments = Department.objects.filter(id__in=seen_ids, company=company).order_by('name')
+
+    if not managed_departments.exists():
+        from django.contrib import messages
+        messages.error(request, _('Jūs neturite priskirtų pavaldžių skyrių rizikos radaro peržiūrai.'))
+        return redirect('home')
+
+    # Filtravimas pagal konkretų pasirinktą skyrių (tik iš leistinų vadovui)
+    dept_id = request.GET.get('department_id')
+    user_departments_to_analyze = managed_departments
+    selected_department = None
+    if dept_id:
+        try:
+            selected_department = managed_departments.get(id=dept_id)
+            user_departments_to_analyze = [selected_department]
+        except (Department.DoesNotExist, ValueError):
+            selected_department = None
+            user_departments_to_analyze = managed_departments
+
+    # 4. Periodo filtras (7d, 14d, 30d, 90d)
+    period_str = request.GET.get('period', '14d')
+    period_map = {'7d': 7, '14d': 14, '30d': 30, '90d': 90}
+    period_days = period_map.get(period_str, 14)
+
+    # 5. Analizė per RiskAnalysisService
+    analysis = RiskAnalysisService.analyze_company_risk(
+        company=company,
+        period_days=period_days,
+        user_departments=user_departments_to_analyze
+    )
+
+    # 6. Vadovui skirtos anketos (visibility='manager')
+    # Vadovas jas turi matyti bet kuriuo atveju (be kvorumo apribojimų)
+    from datetime import timedelta
+    cutoff_manager = timezone.now() - timedelta(days=period_days)
+    
+    manager_surveys_qs = WellbeingCheckin.objects.filter(
+        company=company,
+        visibility='manager',
+        created_at__gte=cutoff_manager
+    ).select_related('user', 'user__profile', 'department').order_by('-created_at')
+
+    if not is_admin:
+        manager_surveys_qs = manager_surveys_qs.filter(
+            Q(department__in=managed_departments) |
+            Q(user__profile__department__in=managed_departments) |
+            Q(user__profile__manager=user)
+        )
+    if selected_department:
+        manager_surveys_qs = manager_surveys_qs.filter(
+            Q(department=selected_department) |
+            Q(user__profile__department=selected_department)
+        )
+
+    manager_surveys = list(manager_surveys_qs)
+
+    all_companies = Company.objects.all().order_by('name') if user.is_superuser else []
+
+    context = {
+        'company': company,
+        'all_companies': all_companies,
+        'managed_departments': managed_departments,
+        'selected_department': selected_department,
+        'selected_dept_id': dept_id,
+        'period': period_str,
+        'period_days': period_days,
+        # Vadovui skirtos anketos (1-on-1)
+        'manager_surveys': manager_surveys,
+        'manager_surveys_count': len(manager_surveys),
+        'has_manager_surveys': analysis.get('has_manager_surveys', False) or (len(manager_surveys) > 0),
+        # Bendri rodikliai
+        'overall_quorum': analysis['overall_quorum'],
+        'min_quorum': analysis['min_quorum'],
+        'total_feedback_count': analysis['total_feedback_count'],
+        'overall_burnout_index': analysis['overall_burnout_index'],
+        'overall_burnout_level': analysis['overall_burnout_level'],
+        'overall_burnout_trend': analysis['overall_burnout_trend'],
+        'overall_burnout_diff': analysis['overall_burnout_diff'],
+        'overall_flight_index': analysis['overall_flight_index'],
+        'overall_flight_level': analysis['overall_flight_level'],
+        'overall_flight_trend': analysis['overall_flight_trend'],
+        'overall_flight_diff': analysis['overall_flight_diff'],
+        'overall_recognition_score': analysis['overall_recognition_score'],
+        'overall_recognition_trend': analysis['overall_recognition_trend'],
+        'overall_recognition_diff': analysis['overall_recognition_diff'],
+        'total_workload_peaks': analysis['total_workload_peaks'],
+        # Skyriai ir įspėjimai
+        'department_risks': analysis['department_risks'],
+        'early_alerts': analysis['early_alerts'],
+        'chart_data': analysis['chart_data'],
+        'chart_data_json': json.dumps(analysis['chart_data']),
+        'action_plans': analysis['action_plans'],
+        'action_plans_json': json.dumps(analysis['action_plans']),
+    }
+    return render(request, 'feedbackas/risk_radar.html', context)
+
+
+@login_required
+def burnout_survey(request):
+    """
+    Savijautos ir perdegimo pulso anketa (Well-being & Burnout Pulse Survey).
+    Prieinama visiems prisijungusiems darbuotojams, jei įmonei įjungtas rizikos radaras.
+    """
+    from django.utils.translation import gettext as _
+    from django.contrib import messages
+    from django.utils import timezone
+    from .models import GlobalSettings, WellbeingCheckin
+
+    user = request.user
+    company = getattr(user.profile, 'company_link', None) if hasattr(user, 'profile') else None
+    department = getattr(user.profile, 'department', None) if hasattr(user, 'profile') else None
+
+    # Tikriname ar įjungtas rizikos radaras / savijautos anketa
+    settings = GlobalSettings.load()
+    if not user.is_superuser:
+        if not settings.is_risk_radar_enabled_for_company(company):
+            messages.warning(request, _('Funkcionalumas „Perdegimo ir savijautos anketa" Jūsų įmonei šiuo metu nėra aktyvuotas.'))
+            return redirect('home')
+
+    latest_response = WellbeingCheckin.objects.filter(user=user).order_by('-created_at').first()
+
+    if request.method == 'POST':
+        try:
+            mood_score = int(request.POST.get('mood_score', 3))
+            energy_level = int(request.POST.get('energy_level', 5))
+            stress_level = int(request.POST.get('stress_level', 5))
+            workload_level = int(request.POST.get('workload_level', 3))
+        except (ValueError, TypeError):
+            mood_score = 3
+            energy_level = 5
+            stress_level = 5
+            workload_level = 3
+
+        mood_score = max(1, min(5, mood_score))
+        energy_level = max(1, min(10, energy_level))
+        stress_level = max(1, min(10, stress_level))
+        workload_level = max(1, min(5, workload_level))
+
+        comment = request.POST.get('comment', '').strip()
+        factors = request.POST.getlist('contributing_factors')
+        contributing_factors = ','.join(factors) if factors else request.POST.get('contributing_factors', '').strip()
+        visibility = request.POST.get('visibility', 'anonymous')
+        if visibility not in ('private', 'manager', 'anonymous'):
+            visibility = 'anonymous'
+
+        WellbeingCheckin.objects.create(
+            user=user,
+            company=company,
+            department=department,
+            mood_score=mood_score,
+            energy_level=energy_level,
+            stress_level=stress_level,
+            workload_level=workload_level,
+            contributing_factors=contributing_factors,
+            visibility=visibility,
+            comment=comment,
+            created_at=timezone.now(),
+        )
+
+        messages.success(request, _('Ačiū! Jūsų savijautos anketa sėkmingai išsaugota.'))
+        return redirect('burnout_survey_success')
+
+    context = {
+        'company': company,
+        'department': department,
+        'latest_response': latest_response,
+    }
+    return render(request, 'feedbackas/burnout_survey.html', context)
+
+
+@login_required
+def burnout_survey_success(request):
+    """Padėkos langas po savijautos ir perdegimo anketos užpildymo."""
+    from .models import WellbeingCheckin
+    latest_response = WellbeingCheckin.objects.filter(user=request.user).order_by('-created_at').first()
+    return render(request, 'feedbackas/burnout_survey_success.html', {'latest_response': latest_response})
+
+
+@login_required
+def wellbeing_history(request):
+    """
+    Darbuotojo asmeninė savijautos ir perdegimo istorija bei dinamikos grafikas.
+    """
+    import json
+    from django.db.models import Avg
+    from .models import WellbeingCheckin
+
+    user = request.user
+    checkins_qs = WellbeingCheckin.objects.filter(user=user).order_by('created_at')
+
+    total_count = checkins_qs.count()
+    aggregates = checkins_qs.aggregate(
+        avg_mood=Avg('mood_score'),
+        avg_energy=Avg('energy_level'),
+        avg_stress=Avg('stress_level'),
+        avg_workload=Avg('workload_level'),
+    ) if total_count > 0 else {}
+
+    dates = []
+    moods = []
+    energies = []
+    stresses = []
+    workloads = []
+
+    for c in checkins_qs:
+        dates.append(c.created_at.strftime('%Y-%m-%d %H:%M'))
+        moods.append(c.mood_score)
+        energies.append(c.energy_level)
+        stresses.append(c.stress_level)
+        workloads.append(c.workload_level)
+
+    chart_data = {
+        'labels': dates,
+        'moods': moods,
+        'energies': energies,
+        'stresses': stresses,
+        'workloads': workloads,
+    }
+
+    # Naujausi įrašai viršuje sąrašo atvaizdavimui
+    history_list = list(checkins_qs.reverse())
+
+    context = {
+        'total_count': total_count,
+        'aggregates': aggregates,
+        'history_list': history_list,
+        'chart_data_json': json.dumps(chart_data),
+    }
+    return render(request, 'feedbackas/wellbeing_history.html', context)
+
+
+
+
 @login_required
 def team_member_detail(request, user_id):
     member = get_object_or_404(User, id=user_id)
@@ -1882,6 +2181,13 @@ def team_member_detail(request, user_id):
         avg_rating=Avg('rating')
     ).order_by('-avg_rating')
     
+    # Wellbeing checkins designated for manager (visibility='manager')
+    from .models import WellbeingCheckin
+    wellbeing_checkins = WellbeingCheckin.objects.filter(
+        user=member,
+        visibility='manager'
+    ).order_by('-created_at')
+
     context = {
         'member': member,
         'department': member_dept,
@@ -1891,6 +2197,7 @@ def team_member_detail(request, user_id):
         'competencies': stats['competencies'],
         'all_keywords': list(stats['keywords'])[:15],
         'trait_ratings': trait_ratings,
+        'wellbeing_checkins': wellbeing_checkins,
     }
     return render(request, 'team_member_detail.html', context)
 
@@ -3696,7 +4003,23 @@ def superadmin_features(request):
             settings.team_form_all_companies = False
             settings.team_form_companies.clear()
 
-        # 3. Kalbų pasirinkimas (globalus)
+        # 3. Rizikos radaras (Flight & Burnout)
+        rr_mode = request.POST.get('risk_radar_mode', 'all')
+        if rr_mode == 'all':
+            settings.risk_radar_enabled = True
+            settings.risk_radar_all_companies = True
+            settings.risk_radar_companies.clear()
+        elif rr_mode == 'specific':
+            settings.risk_radar_enabled = True
+            settings.risk_radar_all_companies = False
+            rr_company_ids = request.POST.getlist('risk_radar_companies')
+            settings.risk_radar_companies.set(rr_company_ids)
+        else:  # disabled
+            settings.risk_radar_enabled = False
+            settings.risk_radar_all_companies = False
+            settings.risk_radar_companies.clear()
+
+        # 4. Kalbų pasirinkimas (globalus)
         settings.language_switcher_enabled = request.POST.get('language_switcher_enabled') == 'on'
         settings.save()
         messages.success(request, 'Funkcionalumų nustatymai sėkmingai atnaujinti.')
@@ -3704,12 +4027,14 @@ def superadmin_features(request):
 
     pf_selected_ids = set(settings.personal_form_companies.values_list('id', flat=True))
     tf_selected_ids = set(settings.team_form_companies.values_list('id', flat=True))
+    rr_selected_ids = set(settings.risk_radar_companies.values_list('id', flat=True))
         
     return render(request, 'superadmin/features.html', {
         'settings': settings,
         'companies': companies,
         'pf_selected_ids': pf_selected_ids,
         'tf_selected_ids': tf_selected_ids,
+        'rr_selected_ids': rr_selected_ids,
     })
 
 

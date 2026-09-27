@@ -1,0 +1,1338 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Išėjimo rizikos ir perdegimo indikatorius" %} - OrbiGrow{% endblock %}
+
+{% block content %}
+<script src="https://unpkg.com/lucide@0.460.0" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous"></script>
+
+<main class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto bg-slate-50/50 font-sans text-slate-900 pb-20">
+    <div class="max-w-7xl mx-auto space-y-8">
+
+        <!-- 1. Antraštė ir navigacija -->
+        <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-xs font-semibold text-violet-600 uppercase tracking-wider mb-1">
+                    <span>{% trans "Valdymas" %}</span>
+                    <span>/</span>
+                    <span>{% trans "Analitika ir Prevencija" %}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-violet-200 shrink-0">
+                        <i data-lucide="activity" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                            {% trans "Išėjimo rizikos ir perdegimo indikatorius" %}
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                            {% trans "Proaktyvi komandos nuovargio, išėjimo rizikos ir tarpusavio pripažinimo stebėsena realiu laiku." %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtrai ir Kvorumo būsena -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Superadmin įmonės pasirinkimas -->
+                {% if all_companies %}
+                <form method="GET" class="inline-flex items-center">
+                    <input type="hidden" name="period" value="{{ period }}">
+                    {% if selected_dept_id %}<input type="hidden" name="department_id" value="{{ selected_dept_id }}">{% endif %}
+                    <select name="company_id" onchange="this.form.submit()"
+                            class="bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 shadow-xs focus:ring-2 focus:ring-violet-500 outline-none cursor-pointer">
+                        {% for c in all_companies %}
+                        <option value="{{ c.id }}" {% if c.id == company.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% endif %}
+
+                <!-- Skyriaus filtras -->
+                {% if managed_departments.count > 1 or managed_departments|length > 1 %}
+                <form method="GET" class="inline-flex items-center">
+                    <input type="hidden" name="period" value="{{ period }}">
+                    {% if request.GET.company_id %}<input type="hidden" name="company_id" value="{{ request.GET.company_id }}">{% endif %}
+                    <select name="department_id" onchange="this.form.submit()"
+                            class="bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3.5 py-2 shadow-xs focus:ring-2 focus:ring-violet-500 outline-none cursor-pointer">
+                        <option value="">{% trans "Visi skyriai" %}</option>
+                        {% for d in managed_departments %}
+                        <option value="{{ d.id }}" {% if selected_dept_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% endif %}
+
+                <!-- Periodo mygtukai (7d, 14d, 30d, 90d) -->
+                <div class="inline-flex p-1 bg-white border border-slate-200 rounded-2xl shadow-xs text-xs font-bold text-slate-600">
+                    <a href="?period=7d{% if selected_dept_id %}&department_id={{ selected_dept_id }}{% endif %}{% if request.GET.company_id %}&company_id={{ request.GET.company_id }}{% endif %}"
+                       class="px-3 py-1.5 rounded-xl transition {% if period == '7d' %}bg-violet-600 text-white shadow-xs{% else %}hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                        7 d.
+                    </a>
+                    <a href="?period=14d{% if selected_dept_id %}&department_id={{ selected_dept_id }}{% endif %}{% if request.GET.company_id %}&company_id={{ request.GET.company_id }}{% endif %}"
+                       class="px-3 py-1.5 rounded-xl transition {% if period == '14d' %}bg-violet-600 text-white shadow-xs{% else %}hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                        14 d.
+                    </a>
+                    <a href="?period=30d{% if selected_dept_id %}&department_id={{ selected_dept_id }}{% endif %}{% if request.GET.company_id %}&company_id={{ request.GET.company_id }}{% endif %}"
+                       class="px-3 py-1.5 rounded-xl transition {% if period == '30d' %}bg-violet-600 text-white shadow-xs{% else %}hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                        30 d.
+                    </a>
+                    <a href="?period=90d{% if selected_dept_id %}&department_id={{ selected_dept_id }}{% endif %}{% if request.GET.company_id %}&company_id={{ request.GET.company_id }}{% endif %}"
+                       class="px-3 py-1.5 rounded-xl transition {% if period == '90d' %}bg-violet-600 text-white shadow-xs{% else %}hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                        90 d.
+                    </a>
+                </div>
+
+                <!-- Kvorumo statusas -->
+                {% if total_feedback_count >= min_quorum %}
+                <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold" title="{% trans 'Pateikta pakankamai atsakymų anonimiškumui garantuoti' %}">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                    <span>{% trans "Kvorumas užtikrintas" %}</span>
+                </div>
+                {% elif has_manager_surveys %}
+                <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl text-xs font-semibold" title="{% trans 'Pateikta tiesioginių anketų vadovui' %}">
+                    <i data-lucide="user-check" class="w-4 h-4 text-indigo-600"></i>
+                    <span>{% trans "Yra anketų vadovui" %} ({{ manager_surveys|length }})</span>
+                </div>
+                {% else %}
+                <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-semibold" title="{% trans 'Reikalingi bent 4 atsakymai apibendrintam rodymui' %}">
+                    <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600"></i>
+                    <span>{% trans "Trūksta duomenų kvorumui" %} (min. {{ min_quorum }})</span>
+                </div>
+                {% endif %}
+
+                <a href="{% url 'burnout_survey' %}" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition shadow-xs">
+                    <i data-lucide="heart-pulse" class="w-4 h-4 text-white"></i>
+                    <span>{% trans "Pildyti anketą" %}</span>
+                </a>
+            </div>
+        </header>
+
+        {% if not overall_quorum %}
+        <!-- Pranešimas apie kvorumą ir privatumą (kai nėra nei 4 vertinimų, nei anketų vadovui) -->
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-3xl p-5 sm:p-6 text-amber-900 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <i data-lucide="lock" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm sm:text-base font-bold text-amber-900">
+                        {% trans "Anonimiškumo apsauga: per mažas atsakymų skaičius" %}
+                    </h2>
+                    <p class="text-xs sm:text-sm text-amber-800/90 mt-0.5 max-w-3xl leading-relaxed">
+                        {% trans "Siekiant apsaugoti darbuotojų tapatybę ir užtikrinti atvirą kultūrą, rodikliai pateikiami tik tada, kai analizuojamame periode sukaupti bent 4 vertinimai. Šiuo metu turime" %}
+                        <strong>{{ total_feedback_count }}</strong> {% trans "vertinimus." %}
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{% url 'burnout_survey' %}"
+                   class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap">
+                    {% trans "Pildyti anketą" %} →
+                </a>
+                <a href="{% url 'questionnaires_list' %}"
+                   class="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap">
+                    {% trans "Inicijuoti klausimyną" %} →
+                </a>
+            </div>
+        </div>
+        {% elif total_feedback_count < min_quorum and has_manager_surveys %}
+        <!-- Pranešimas, kad duomenys rodomi vadovui be kvorumo apribojimų -->
+        <div class="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200/80 rounded-3xl p-5 sm:p-6 text-indigo-950 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <i data-lucide="user-check" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm sm:text-base font-bold text-indigo-900">
+                        {% trans "Darbuotojų savijautos anketos vadovui (1-on-1)" %}
+                    </h2>
+                    <p class="text-xs sm:text-sm text-indigo-800/90 mt-0.5 max-w-3xl leading-relaxed">
+                        {% trans "Darbuotojas(-ai) pildydami nurodė matomumą „Vadovui“ – šios anketos pateikiamos Jums tiesiogiai žemiau, be kvorumo apribojimų (sukaupta" %} <strong>{{ total_feedback_count }}</strong> {% trans "vertinimas(-ai))." %}
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="px-3.5 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-xs whitespace-nowrap">
+                    {{ manager_surveys|length }} {% trans "anketa(-os) vadovui" %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if manager_surveys %}
+        <!-- Vadovui skirtos savijautos anketos (1-on-1 pokalbiams) -->
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-indigo-100 shadow-xs space-y-5 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none group/hdr"
+                 onclick="toggleManagerSurveys()"
+                 id="managerSurveysHeader">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs group-hover/hdr:bg-indigo-100 transition">
+                        <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <h2 class="text-lg font-bold text-slate-900 group-hover/hdr:text-indigo-600 transition">{% trans "Vadovui skirtos savijautos anketos" %}</h2>
+                            <span class="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-0.5 rounded-full font-extrabold">{{ manager_surveys|length }}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            {% trans "Anketos, kuriose darbuotojai nurodė matomumą „Vadovui“ – skirtos atviriems 1-on-1 pokalbiams ir rodomos nepriklausomai nuo bendro kvorumo." %}
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-xl text-xs font-semibold">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+                        {% trans "Matoma be kvorumo" %}
+                    </span>
+                    <button type="button" 
+                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 hover:border-indigo-200 text-xs font-bold transition cursor-pointer"
+                            onclick="event.stopPropagation(); toggleManagerSurveys()"
+                            id="managerSurveysToggleBtn"
+                            aria-expanded="true">
+                        <span id="managerSurveysToggleText">{% trans "Suskleisti" %}</span>
+                        <i data-lucide="chevron-up" id="managerSurveysChevron" class="w-4 h-4 transition-transform duration-200"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="managerSurveysContent" class="space-y-4 pt-4 border-t border-slate-100">
+                <div class="flex items-center justify-between pb-1 text-xs">
+                    <span class="text-slate-500 font-medium">{% trans "Spustelėkite anketą, kad ją suskleistumėte arba išskleistumėte" %}</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="toggleAllSurveys(false)" class="font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer">
+                            {% trans "Suskleisti visas" %}
+                        </button>
+                        <span class="text-slate-300">•</span>
+                        <button type="button" onclick="toggleAllSurveys(true)" class="font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer">
+                            {% trans "Išskleisti visas" %}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {% for survey in manager_surveys %}
+                <div class="bg-slate-50/70 hover:bg-slate-50/90 border border-slate-200/80 rounded-2xl p-4 sm:p-5 transition shadow-2xs space-y-4">
+                    <!-- Viršus: Darbuotojas, trumpa santrauka ir suskleidimo valdymas -->
+                    <div class="flex items-center justify-between gap-3 cursor-pointer select-none group/surveycard"
+                         onclick="toggleSingleSurvey('{{ survey.id }}')">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary font-black text-sm flex items-center justify-center shrink-0 overflow-hidden border border-primary/20">
+                                {% if survey.user.profile.image and survey.user.profile.image.name != 'default.jpg' %}
+                                <img src="{{ survey.user.profile.image.url }}" alt="{{ survey.user.get_full_name }}" class="w-full h-full object-cover">
+                                {% else %}
+                                {{ survey.user.first_name|first|default:survey.user.username|first|upper }}
+                                {% endif %}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h3 class="font-bold text-slate-900 text-sm truncate group-hover/surveycard:text-indigo-600 transition">
+                                        {{ survey.user.get_full_name|default:survey.user.username }}
+                                    </h3>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 shrink-0">
+                                        <i data-lucide="user-check" class="w-3 h-3"></i>
+                                        {% trans "1-on-1" %}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 truncate">
+                                    {% if survey.department %}<span class="font-medium text-slate-700">{{ survey.department.name }}</span> • {% endif %}{{ survey.created_at|date:"Y-m-d H:i" }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 shrink-0">
+                            <!-- Greitos santraukos ženkliukai antraštėje -->
+                            <div class="flex items-center gap-1.5 text-xs">
+                                {% if survey.mood_score == 5 %}<span title="{% trans 'Nuotaika: Puikiai' %}">🤩</span>
+                                {% elif survey.mood_score == 4 %}<span title="{% trans 'Nuotaika: Gerai' %}">🙂</span>
+                                {% elif survey.mood_score == 3 %}<span title="{% trans 'Nuotaika: Normaliai' %}">😐</span>
+                                {% elif survey.mood_score == 2 %}<span title="{% trans 'Nuotaika: Prastai' %}">😕</span>
+                                {% else %}<span title="{% trans 'Nuotaika: Labai blogai' %}">😫</span>{% endif %}
+
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[11px] {% if survey.stress_level >= 7 %}bg-rose-50 text-rose-700 border border-rose-200{% elif survey.stress_level >= 4 %}bg-amber-50 text-amber-700 border border-amber-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}" title="{% trans 'Stresas' %}">
+                                    <span>🔥</span> {{ survey.stress_level }}/10
+                                </span>
+                            </div>
+
+                            <button type="button" 
+                                    class="w-7 h-7 flex items-center justify-center rounded-lg bg-white group-hover/surveycard:bg-indigo-50 border border-slate-200 group-hover/surveycard:border-indigo-200 text-slate-500 group-hover/surveycard:text-indigo-600 transition"
+                                    onclick="event.stopPropagation(); toggleSingleSurvey('{{ survey.id }}')"
+                                    title="{% trans 'Suskleisti / Išskleisti' %}">
+                                <i data-lucide="chevron-up" id="surveyChevron-{{ survey.id }}" class="w-4 h-4 transition-transform duration-200"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Išsamus anketos turinys (suskleidžiamas) -->
+                    <div id="surveyBody-{{ survey.id }}" class="space-y-4 pt-3 border-t border-slate-200/60">
+                        <!-- Rodiklių tinklelis -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-white rounded-xl p-3 border border-slate-200/60 text-center">
+                            <!-- Nuotaika -->
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Nuotaika" %}</span>
+                                <div class="text-sm font-bold flex items-center justify-center gap-1">
+                                    {% if survey.mood_score == 5 %}<span>🤩</span> <span class="text-xs text-emerald-700">{% trans "Puikiai" %}</span>
+                                    {% elif survey.mood_score == 4 %}<span>🙂</span> <span class="text-xs text-teal-700">{% trans "Gerai" %}</span>
+                                    {% elif survey.mood_score == 3 %}<span>😐</span> <span class="text-xs text-amber-700">{% trans "Normaliai" %}</span>
+                                    {% elif survey.mood_score == 2 %}<span>😕</span> <span class="text-xs text-orange-700">{% trans "Prastai" %}</span>
+                                    {% else %}<span>😫</span> <span class="text-xs text-rose-700">{% trans "Labai blogai" %}</span>{% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Energija -->
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Energija" %}</span>
+                                <div class="text-xs font-bold text-slate-800 flex items-center justify-center gap-1">
+                                    <span class="text-amber-500">⚡</span>
+                                    <span>{{ survey.energy_level }}/10</span>
+                                </div>
+                            </div>
+
+                            <!-- Stresas -->
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Stresas" %}</span>
+                                <div class="text-xs font-bold {% if survey.stress_level >= 7 %}text-rose-600{% elif survey.stress_level >= 4 %}text-amber-600{% else %}text-emerald-600{% endif %} flex items-center justify-center gap-1">
+                                    <span>🔥</span>
+                                    <span>{{ survey.stress_level }}/10</span>
+                                </div>
+                            </div>
+
+                            <!-- Krūvis -->
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Krūvis" %}</span>
+                                <div class="text-xs font-bold text-slate-800 flex items-center justify-center gap-1">
+                                    <span>💼</span>
+                                    <span>{{ survey.workload_level }}/5</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Prisidedantys veiksniai -->
+                        {% if survey.factors_list %}
+                        <div class="space-y-1.5">
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{% trans "Prisidedantys veiksniai:" %}</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                {% for factor in survey.factors_list %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-medium">
+                                    {{ factor }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Darbuotojo komentaras vadovui -->
+                        {% if survey.comment %}
+                        <div class="bg-white rounded-xl p-3.5 border border-slate-200/80 text-xs text-slate-700 leading-relaxed">
+                            <div class="flex items-center gap-1.5 font-bold text-slate-800 mb-1 text-[11px] uppercase tracking-wider">
+                                <i data-lucide="message-square" class="w-3.5 h-3.5 text-indigo-600"></i>
+                                <span>{% trans "Darbuotojo komentaras vadovui:" %}</span>
+                            </div>
+                            <p class="italic text-slate-700 whitespace-pre-line">{{ survey.comment }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Veiksmai -->
+                        <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-200/60">
+                            <button type="button" onclick="openActionPlanModal('{% if survey.stress_level >= 7 or survey.workload_level >= 4 %}action_burnout{% else %}action_flight{% endif %}', '{{ survey.user.get_full_name|default:survey.user.username }}')"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition cursor-pointer">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                <span>{% trans "1-on-1 Pokalbio gairės" %}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 2. Pagrindinės 4 KPI kortelės su paaiškinimais -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+
+            <!-- KPI 1: Komandos perdegimo indeksas -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs relative flex flex-col justify-between">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{% trans "Perdegimo indeksas" %}</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span class="text-3xl sm:text-4xl font-extrabold text-slate-900">
+                                {% if overall_quorum %}{{ overall_burnout_index }}{% else %}—{% endif %}
+                            </span>
+                            <span class="text-xs text-slate-400 font-bold">/ 100</span>
+                        </div>
+                    </div>
+
+                    <!-- Ikonėlė su hover paaiškinimu -->
+                    <div class="relative group/kpi">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 cursor-help transition-all duration-200 group-hover/kpi:scale-105 group-hover/kpi:shadow-md
+                            {% if overall_burnout_level == 'critical' %}bg-rose-50 text-rose-600 border border-rose-100
+                            {% elif overall_burnout_level == 'high' %}bg-orange-50 text-orange-600 border border-orange-100
+                            {% elif overall_burnout_level == 'medium' %}bg-amber-50 text-amber-600 border border-amber-100
+                            {% else %}bg-emerald-50 text-emerald-600 border border-emerald-100{% endif %}"
+                            tabindex="0" role="button" aria-label="{% trans 'Perdegimo indekso paaiškinimas' %}">
+                            <i data-lucide="flame" class="w-6 h-6"></i>
+                        </div>
+
+                        <!-- Paaiškinimo tooltip -->
+                        <div class="absolute right-0 top-full mt-2.5 w-72 sm:w-80 bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-slate-800 pointer-events-none group-hover/kpi:pointer-events-auto opacity-0 group-hover/kpi:opacity-100 invisible group-hover/kpi:visible transition-all duration-200 z-50 transform translate-y-1 group-hover/kpi:translate-y-0">
+                            <div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-slate-800">
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">{% trans "Perdegimo indeksas (0–100)" %}</span>
+                            </div>
+                            <div class="space-y-2.5 text-left">
+                                <div>
+                                    <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                                        {% trans "Kas tai yra?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Apibendrintas komandos nuovargio, streso ir išsekimo lygis. Kuo balas aukštesnis, tuo didesnė perdegimo ir komandos produktyvumo kritimo rizika." %}
+                                    </p>
+                                </div>
+                                <div class="pt-2 border-t border-slate-800/80">
+                                    <div class="text-[11px] font-bold text-teal-400 uppercase tracking-wider">
+                                        {% trans "Kaip apskaičiuojama?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Derinami savijautos anketų duomenys (stresas – 40%, darbo krūvis – 35%, energijos deficitas – 25%) ir atsiliepimų signalai (vertinimų nuovargis, krūvio pikai bei raktiniai žodžiai)." %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs mt-4">
+                    <span class="font-bold px-2.5 py-0.5 rounded-full
+                        {% if overall_burnout_level == 'critical' %}bg-rose-100 text-rose-700
+                        {% elif overall_burnout_level == 'high' %}bg-orange-100 text-orange-700
+                        {% elif overall_burnout_level == 'medium' %}bg-amber-100 text-amber-700
+                        {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                        {% if overall_quorum %}
+                            {% if overall_burnout_level == 'critical' %}{% trans "Kritinis" %}
+                            {% elif overall_burnout_level == 'high' %}{% trans "Aukštas" %}
+                            {% elif overall_burnout_level == 'medium' %}{% trans "Vidutinis" %}
+                            {% else %}{% trans "Žemas (Optimalus)" %}{% endif %}
+                        {% else %}
+                            {% trans "Laukiama duomenų" %}
+                        {% endif %}
+                    </span>
+                    {% if overall_quorum %}
+                    <span class="flex items-center gap-1 font-semibold {% if overall_burnout_trend == 'up' %}text-rose-600{% elif overall_burnout_trend == 'down' %}text-emerald-600{% else %}text-slate-500{% endif %}">
+                        {% if overall_burnout_trend == 'up' %}
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        {% elif overall_burnout_trend == 'down' %}
+                        <i data-lucide="trending-down" class="w-3.5 h-3.5"></i>
+                        {% else %}
+                        <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                        {% endif %}
+                        {{ overall_burnout_diff }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- KPI 2: Išėjimo rizika -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs relative flex flex-col justify-between">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{% trans "Išėjimo rizika (Flight Risk)" %}</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span class="text-3xl sm:text-4xl font-extrabold text-slate-900">
+                                {% if overall_quorum %}{{ overall_flight_index }}{% else %}—{% endif %}
+                            </span>
+                            <span class="text-xs text-slate-400 font-bold">/ 100</span>
+                        </div>
+                    </div>
+
+                    <!-- Ikonėlė su hover paaiškinimu -->
+                    <div class="relative group/kpi">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 cursor-help transition-all duration-200 group-hover/kpi:scale-105 group-hover/kpi:shadow-md
+                            {% if overall_flight_level == 'critical' %}bg-rose-50 text-rose-600 border border-rose-100
+                            {% elif overall_flight_level == 'high' %}bg-orange-50 text-orange-600 border border-orange-100
+                            {% elif overall_flight_level == 'medium' %}bg-amber-50 text-amber-600 border border-amber-100
+                            {% else %}bg-blue-50 text-blue-600 border border-blue-100{% endif %}"
+                            tabindex="0" role="button" aria-label="{% trans 'Išėjimo rizikos paaiškinimas' %}">
+                            <i data-lucide="user-minus" class="w-6 h-6"></i>
+                        </div>
+
+                        <!-- Paaiškinimo tooltip -->
+                        <div class="absolute right-0 top-full mt-2.5 w-72 sm:w-80 bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-slate-800 pointer-events-none group-hover/kpi:pointer-events-auto opacity-0 group-hover/kpi:opacity-100 invisible group-hover/kpi:visible transition-all duration-200 z-50 transform translate-y-1 group-hover/kpi:translate-y-0">
+                            <div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-slate-800">
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">{% trans "Išėjimo rizika (0–100)" %}</span>
+                            </div>
+                            <div class="space-y-2.5 text-left">
+                                <div>
+                                    <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                                        {% trans "Kas tai yra?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Tikimybė, kad darbuotojas ar komanda patiria demotyvaciją, atsiriboja nuo bendrų tikslų ir svarsto galimybę keisti darbovietę." %}
+                                    </p>
+                                </div>
+                                <div class="pt-2 border-t border-slate-800/80">
+                                    <div class="text-[11px] font-bold text-teal-400 uppercase tracking-wider">
+                                        {% trans "Kaip apskaičiuojama?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Apskaičiuojama pagal bendrą nuotaikos deficitą (45%) bei perdegimo lygį (55%), papildomai įtraukiant kolegų bendradarbiavimo įvertinimus, pripažinimo trūkumą ir demotyvacijos signalus komentaruose." %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs mt-4">
+                    <span class="font-bold px-2.5 py-0.5 rounded-full
+                        {% if overall_flight_level == 'critical' %}bg-rose-100 text-rose-700
+                        {% elif overall_flight_level == 'high' %}bg-orange-100 text-orange-700
+                        {% elif overall_flight_level == 'medium' %}bg-amber-100 text-amber-700
+                        {% else %}bg-blue-100 text-blue-700{% endif %}">
+                        {% if overall_quorum %}
+                            {% if overall_flight_level == 'critical' %}{% trans "Kritinė" %}
+                            {% elif overall_flight_level == 'high' %}{% trans "Padidėjusi" %}
+                            {% elif overall_flight_level == 'medium' %}{% trans "Stebima" %}
+                            {% else %}{% trans "Žema (Lojalumas)" %}{% endif %}
+                        {% else %}
+                            {% trans "Laukiama duomenų" %}
+                        {% endif %}
+                    </span>
+                    {% if overall_quorum %}
+                    <span class="flex items-center gap-1 font-semibold {% if overall_flight_trend == 'up' %}text-rose-600{% elif overall_flight_trend == 'down' %}text-emerald-600{% else %}text-slate-500{% endif %}">
+                        {% if overall_flight_trend == 'up' %}
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        {% elif overall_flight_trend == 'down' %}
+                        <i data-lucide="trending-down" class="w-3.5 h-3.5"></i>
+                        {% else %}
+                        <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                        {% endif %}
+                        {{ overall_flight_diff }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- KPI 3: Tarpusavio pripažinimas -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs relative flex flex-col justify-between">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{% trans "Pripažinimo klimatas" %}</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span class="text-3xl sm:text-4xl font-extrabold text-slate-900">
+                                {% if overall_quorum %}{{ overall_recognition_score }}%{% else %}—{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Ikonėlė su hover paaiškinimu -->
+                    <div class="relative group/kpi">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0 cursor-help transition-all duration-200 group-hover/kpi:scale-105 group-hover/kpi:shadow-md"
+                            tabindex="0" role="button" aria-label="{% trans 'Pripažinimo klimato paaiškinimas' %}">
+                            <i data-lucide="heart-handshake" class="w-6 h-6"></i>
+                        </div>
+
+                        <!-- Paaiškinimo tooltip -->
+                        <div class="absolute right-0 top-full mt-2.5 w-72 sm:w-80 bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-slate-800 pointer-events-none group-hover/kpi:pointer-events-auto opacity-0 group-hover/kpi:opacity-100 invisible group-hover/kpi:visible transition-all duration-200 z-50 transform translate-y-1 group-hover/kpi:translate-y-0">
+                            <div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-slate-800">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">{% trans "Pripažinimo klimatas (0–100%)" %}</span>
+                            </div>
+                            <div class="space-y-2.5 text-left">
+                                <div>
+                                    <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                                        {% trans "Kas tai yra?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Atviro grįžtamojo ryšio, pastangų vertinimo ir tarpusavio palaikymo stiprumas. Rodo, ar darbuotojai jaučiasi vertinami kolegų ir vadovų." %}
+                                    </p>
+                                </div>
+                                <div class="pt-2 border-t border-slate-800/80">
+                                    <div class="text-[11px] font-bold text-teal-400 uppercase tracking-wider">
+                                        {% trans "Kaip apskaičiuojama?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Apskaičiuojamas remiantis komandiškumo (45%), komunikacijos (30%) balų vidurkiais bei teigiamų atsiliepimų ir padėkų santykiu (25%), taip pat bendra darbuotojų nuotaika." %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs mt-4">
+                    <span class="font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                        {% if overall_quorum %}
+                            {% if overall_recognition_score >= 75 %}{% trans "Stipri kultūra" %}
+                            {% elif overall_recognition_score >= 50 %}{% trans "Vidutinis" %}
+                            {% else %}{% trans "Pripažinimo stoka" %}{% endif %}
+                        {% else %}
+                            {% trans "Laukiama duomenų" %}
+                        {% endif %}
+                    </span>
+                    {% if overall_quorum %}
+                    <span class="flex items-center gap-1 font-semibold {% if overall_recognition_trend == 'up' %}text-emerald-600{% elif overall_recognition_trend == 'down' %}text-rose-600{% else %}text-slate-500{% endif %}">
+                        {% if overall_recognition_trend == 'up' %}
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        {% elif overall_recognition_trend == 'down' %}
+                        <i data-lucide="trending-down" class="w-3.5 h-3.5"></i>
+                        {% else %}
+                        <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                        {% endif %}
+                        {{ overall_recognition_diff }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- KPI 4: Krūvio perkrovos pikai -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs relative flex flex-col justify-between">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{% trans "Krūvio anomalijos / Pikai" %}</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span class="text-3xl sm:text-4xl font-extrabold text-slate-900">
+                                {{ total_workload_peaks }}
+                            </span>
+                            <span class="text-xs text-slate-400 font-bold">{% trans "įvykiai" %}</span>
+                        </div>
+                    </div>
+
+                    <!-- Ikonėlė su hover paaiškinimu -->
+                    <div class="relative group/kpi">
+                        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0 cursor-help transition-all duration-200 group-hover/kpi:scale-105 group-hover/kpi:shadow-md"
+                            tabindex="0" role="button" aria-label="{% trans 'Krūvio anomalijų paaiškinimas' %}">
+                            <i data-lucide="zap" class="w-6 h-6"></i>
+                        </div>
+
+                        <!-- Paaiškinimo tooltip -->
+                        <div class="absolute right-0 top-full mt-2.5 w-72 sm:w-80 bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-slate-800 pointer-events-none group-hover/kpi:pointer-events-auto opacity-0 group-hover/kpi:opacity-100 invisible group-hover/kpi:visible transition-all duration-200 z-50 transform translate-y-1 group-hover/kpi:translate-y-0">
+                            <div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-slate-800">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">{% trans "Krūvio anomalijos / Pikai" %}</span>
+                            </div>
+                            <div class="space-y-2.5 text-left">
+                                <div>
+                                    <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                                        {% trans "Kas tai yra?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Komandos darbo perkrovos, viršvalandžių ir skubių terminų spaudimo epizodų skaičius pasirinktu analizės laikotarpiu." %}
+                                    </p>
+                                </div>
+                                <div class="pt-2 border-t border-slate-800/80">
+                                    <div class="text-[11px] font-bold text-teal-400 uppercase tracking-wider">
+                                        {% trans "Kaip apskaičiuojama?" %}
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-0.5 leading-relaxed font-normal">
+                                        {% trans "Fiksuojama, kai darbuotojų anketose pažymimas kritinis krūvis (≥ 4 iš 5) arba aukštas stresas (≥ 8 iš 10), taip pat kai atsiliepimuose aptinkami viršvalandžių ir perkrovos paminėjimai." %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs mt-4">
+                    <span class="font-bold px-2.5 py-0.5 rounded-full {% if total_workload_peaks >= 3 %}bg-rose-100 text-rose-700{% elif total_workload_peaks >= 1 %}bg-amber-100 text-amber-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                        {% if total_workload_peaks >= 3 %}{% trans "Reikalingas dėmesys" %}
+                        {% elif total_workload_peaks >= 1 %}{% trans "Pavieniai pikai" %}
+                        {% else %}{% trans "Nėra perkrovų" %}{% endif %}
+                    </span>
+                    <span class="text-slate-400 font-medium">{% trans "per" %} {{ period_days }} {% trans "d." %}</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 3. Ankstyvųjų įspėjimų skydelis (Early Warning Center) -->
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                        <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">{% trans "Ankstyvųjų įspėjimų centras" %}</h2>
+                        <p class="text-xs text-slate-500">{% trans "Algoritmo aptiktos rizikos anomalijos ir rekomenduojamos intervencijos." %}</p>
+                    </div>
+                </div>
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+                    {{ early_alerts|length }} {% trans "įspėjimai" %}
+                </span>
+            </div>
+
+            {% if early_alerts %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {% for alert in early_alerts %}
+                <div class="rounded-2xl border p-4.5 flex flex-col justify-between space-y-3 transition-all
+                    {% if alert.level == 'critical' %}bg-rose-50/30 border-rose-200 hover:border-rose-300
+                    {% elif alert.level == 'warning' %}bg-amber-50/30 border-amber-200 hover:border-amber-300
+                    {% else %}bg-slate-50/60 border-slate-200 hover:border-slate-300{% endif %}">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold
+                                {% if alert.level == 'critical' %}text-rose-700{% elif alert.level == 'warning' %}text-amber-800{% else %}text-slate-700{% endif %}">
+                                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                                {{ alert.title }}
+                            </span>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                                {{ alert.department_name }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">{{ alert.message }}</p>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-200/60 flex items-center justify-between gap-2">
+                        <span class="text-[11px] text-slate-500 truncate" title="{{ alert.recommended_action }}">
+                            💡 {{ alert.recommended_action }}
+                        </span>
+                        <button type="button" onclick="openActionPlanModal('{{ alert.action_plan_id }}', '{{ alert.department_name }}')"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition shadow-2xs shrink-0 cursor-pointer">
+                            <span>{% trans "1-on-1 Gairės" %}</span>
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-8 text-center rounded-2xl bg-emerald-50/40 border border-emerald-100 flex flex-col items-center justify-center space-y-2">
+                <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                    <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                </div>
+                <h3 class="text-sm font-bold text-emerald-900">{% trans "Aktyvių rizikos signalų neaptikta" %}</h3>
+                <p class="text-xs text-emerald-700 max-w-md">
+                    {% trans "Visi rodikliai yra normos ribose. Komandos darbo krūvis ir tarpusavio bendradarbiavimas išlieka stabilūs." %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 4. Laiko ašies grafikas (Chart.js) -->
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">{% trans "Rizikos ir Klimato Dinamika Laike" %}</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        {% trans "Koreliacija tarp perdegimo rizikos, nuotaikos lygio ir tarpusavio pripažinimo." %}
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-4 text-xs font-semibold">
+                    <span class="inline-flex items-center gap-1.5 text-rose-600">
+                        <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                        {% trans "Perdegimo rizika" %}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 text-emerald-600">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                        {% trans "Nuotaika & Energija" %}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 text-indigo-600">
+                        <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
+                        {% trans "Pripažinimas" %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="h-72 w-full relative">
+                <canvas id="riskRadarTimelineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 5. Skyrių rizikos matrica (Heatmap / Lentelė) -->
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">{% trans "Skyrių Rizikos Matrica" %}</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        {% trans "Apibendrinta padalinių apžvalga, identifikuojanti prioritetines sritis vadovo pokalbiams." %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="pb-3 px-3">{% trans "Skyrius" %}</th>
+                            <th class="pb-3 px-3">{% trans "Darbuotojai / Atsakymai" %}</th>
+                            <th class="pb-3 px-3">{% trans "Perdegimo lygis" %}</th>
+                            <th class="pb-3 px-3">{% trans "Išėjimo rizika" %}</th>
+                            <th class="pb-3 px-3">{% trans "Pripažinimas" %}</th>
+                            <th class="pb-3 px-3">{% trans "Dominuojantis trigeris" %}</th>
+                            <th class="pb-3 px-3 text-right">{% trans "Veiksmas" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for dept in department_risks %}
+                        <tr class="hover:bg-slate-50/80 transition cursor-pointer select-none group/dept"
+                            onclick="toggleDeptAccordion('{{ dept.department_id }}')">
+                            <td class="py-4 px-3">
+                                <div class="flex items-center gap-2.5">
+                                    <button type="button" 
+                                            class="w-6 h-6 rounded-lg bg-slate-100 group-hover/dept:bg-indigo-50 text-slate-400 group-hover/dept:text-indigo-600 flex items-center justify-center transition shrink-0 cursor-pointer"
+                                            onclick="event.stopPropagation(); toggleDeptAccordion('{{ dept.department_id }}')"
+                                            id="dept-btn-{{ dept.department_id }}"
+                                            aria-expanded="false"
+                                            title="{% trans 'Išskleisti / suskleisti darbuotojus' %}">
+                                        <i data-lucide="chevron-right" id="dept-chevron-{{ dept.department_id }}" class="w-3.5 h-3.5 transition-transform duration-200"></i>
+                                    </button>
+                                    <div>
+                                        <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                                            <span>{{ dept.department_name }}</span>
+                                            <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 group-hover/dept:bg-indigo-100 group-hover/dept:text-indigo-700 px-1.5 py-0.5 rounded-full transition">
+                                                {{ dept.employees|length }} {% trans "darb." %}
+                                            </span>
+                                        </div>
+                                        {% if dept.has_manager_surveys %}
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md mt-0.5">
+                                            <i data-lucide="user-check" class="w-3 h-3"></i>
+                                            {{ dept.manager_surveys_count }} {% trans "anketa vadovui" %}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-3 text-xs text-slate-500">
+                                <div><strong class="text-slate-800">{{ dept.employee_count }}</strong> {% trans "darb." %}</div>
+                                <div class="text-[11px] text-slate-400">{{ dept.feedback_count }} {% trans "atsak." %}</div>
+                            </td>
+                            <td class="py-4 px-3">
+                                {% if dept.has_quorum %}
+                                <div class="flex items-center gap-2">
+                                    <div class="w-16 bg-slate-100 rounded-full h-2 overflow-hidden">
+                                        <div class="h-2 rounded-full {% if dept.burnout_level == 'critical' %}bg-rose-500{% elif dept.burnout_level == 'high' %}bg-orange-500{% elif dept.burnout_level == 'medium' %}bg-amber-400{% else %}bg-emerald-500{% endif %}"
+                                             style="width: {{ dept.burnout_score }}%;"></div>
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-800">{{ dept.burnout_score }}</span>
+                                </div>
+                                {% else %}
+                                <span class="text-xs text-slate-400 italic">{% trans "Trūksta kvorumo" %}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-3">
+                                {% if dept.has_quorum %}
+                                <div class="flex items-center gap-2">
+                                    <div class="w-16 bg-slate-100 rounded-full h-2 overflow-hidden">
+                                        <div class="h-2 rounded-full {% if dept.flight_level == 'critical' %}bg-rose-500{% elif dept.flight_level == 'high' %}bg-orange-500{% elif dept.flight_level == 'medium' %}bg-amber-400{% else %}bg-blue-500{% endif %}"
+                                             style="width: {{ dept.flight_score }}%;"></div>
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-800">{{ dept.flight_score }}</span>
+                                </div>
+                                {% else %}
+                                <span class="text-xs text-slate-400 italic">{% trans "Trūksta kvorumo" %}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-3 text-xs font-semibold text-slate-700">
+                                {% if dept.has_quorum %}{{ dept.recognition_score }}%{% else %}—{% endif %}
+                            </td>
+                            <td class="py-4 px-3 text-xs text-slate-600 max-w-xs">
+                                <span class="line-clamp-2">{{ dept.dominant_trigger }}</span>
+                            </td>
+                            <td class="py-4 px-3 text-right">
+                                <div class="inline-flex items-center gap-1.5" onclick="event.stopPropagation();">
+                                    <button type="button" onclick="openActionPlanModal('{{ dept.action_plan_id }}', '{{ dept.department_name }}')"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-xl text-xs font-bold transition cursor-pointer">
+                                        <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                                        <span>{% trans "1-on-1 Temos" %}</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Išskleidžiama darbuotojų eilutė -->
+                        <tr id="dept-row-{{ dept.department_id }}" class="hidden bg-slate-50/70 border-b border-slate-100">
+                            <td colspan="7" class="p-0 border-t-0">
+                                <div class="py-3.5 px-4 sm:px-6 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                                {% trans "Darbuotojai ir jų individualūs rodikliai" %} ({{ dept.employees|length }})
+                                            </span>
+                                        </div>
+                                        <div class="text-[11px] text-slate-400">
+                                            {% trans "Pasirinkite darbuotoją išsamiai atsiliepimų ir savijautos analizei" %}
+                                        </div>
+                                    </div>
+
+                                    {% if dept.employees %}
+                                    <div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-left text-xs">
+                                                <thead class="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    <tr>
+                                                        <th class="py-2.5 px-3.5">{% trans "Darbuotojas" %}</th>
+                                                        <th class="py-2.5 px-3">{% trans "Atsiliepimai / Savijauta" %}</th>
+                                                        <th class="py-2.5 px-3">{% trans "Perdegimo lygis" %}</th>
+                                                        <th class="py-2.5 px-3">{% trans "Išėjimo rizika" %}</th>
+                                                        <th class="py-2.5 px-3">{% trans "Pripažinimas" %}</th>
+                                                        <th class="py-2.5 px-3">{% trans "Būsena & Trigeris" %}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-100">
+                                                    {% for emp in dept.employees %}
+                                                    <tr class="hover:bg-slate-50/60 transition">
+                                                        <!-- Darbuotojas -->
+                                                        <td class="py-2.5 px-3.5">
+                                                            <a href="{% url 'team_member_detail' emp.user_id %}" class="flex items-center gap-2.5 group/emp">
+                                                                {% if emp.avatar_url %}
+                                                                <img src="{{ emp.avatar_url }}" alt="{{ emp.full_name }}" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 group-hover/emp:border-indigo-400 transition">
+                                                                {% else %}
+                                                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                                                    {{ emp.initials }}
+                                                                </div>
+                                                                {% endif %}
+                                                                <div class="min-w-0">
+                                                                    <div class="font-bold text-slate-800 group-hover/emp:text-indigo-600 flex items-center gap-1.5 transition">
+                                                                        <span class="truncate">{{ emp.full_name }}</span>
+                                                                        {% if emp.has_manager_survey %}
+                                                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0" title="{% trans 'Pateikta savijautos anketa vadovui 1-on-1' %}">
+                                                                            <i data-lucide="user-check" class="w-2.5 h-2.5"></i>
+                                                                            1-on-1
+                                                                        </span>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    <div class="text-[11px] text-slate-400 truncate">{{ emp.email|default:emp.username }}</div>
+                                                                </div>
+                                                            </a>
+                                                        </td>
+
+                                                        <!-- Atsiliepimai / Savijauta -->
+                                                        <td class="py-2.5 px-3 text-slate-600">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="inline-flex items-center gap-1 font-semibold text-slate-700" title="{% trans 'Gauti atsiliepimai' %}">
+                                                                    <i data-lucide="message-square" class="w-3 h-3 text-slate-400"></i>
+                                                                    {{ emp.feedback_count }}
+                                                                </span>
+                                                                <span class="text-slate-300">•</span>
+                                                                <span class="inline-flex items-center gap-1 font-semibold text-slate-700" title="{% trans 'Savijautos anketos' %}">
+                                                                    <i data-lucide="heart-pulse" class="w-3 h-3 text-slate-400"></i>
+                                                                    {{ emp.survey_count }}
+                                                                </span>
+                                                            </div>
+                                                            {% if emp.latest_mood %}
+                                                            <div class="text-[10px] text-slate-400 mt-0.5">
+                                                                {% trans "Nuotaika:" %} <span class="font-bold text-slate-700">{{ emp.latest_mood }}/5</span>
+                                                                {% if emp.latest_stress %}, {% trans "Stresas:" %} <span class="font-bold text-slate-700">{{ emp.latest_stress }}/10</span>{% endif %}
+                                                            </div>
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <!-- Perdegimo lygis -->
+                                                        <td class="py-2.5 px-3">
+                                                            {% if emp.has_data and emp.burnout_score is not None %}
+                                                            <div class="flex items-center gap-2">
+                                                                <div class="w-14 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                                    <div class="h-1.5 rounded-full 
+                                                                        {% if emp.burnout_level == 'critical' %}bg-rose-500
+                                                                        {% elif emp.burnout_level == 'high' %}bg-orange-500
+                                                                        {% elif emp.burnout_level == 'medium' %}bg-amber-400
+                                                                        {% else %}bg-emerald-500{% endif %}"
+                                                                         style="width: {{ emp.burnout_score }}%;"></div>
+                                                                </div>
+                                                                <span class="font-bold 
+                                                                    {% if emp.burnout_level == 'critical' %}text-rose-700
+                                                                    {% elif emp.burnout_level == 'high' %}text-orange-700
+                                                                    {% elif emp.burnout_level == 'medium' %}text-amber-700
+                                                                    {% else %}text-emerald-700{% endif %}">
+                                                                    {{ emp.burnout_score }}
+                                                                </span>
+                                                            </div>
+                                                            {% else %}
+                                                            <span class="text-slate-400 italic">{% trans "Laukiama" %}</span>
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <!-- Išėjimo rizika -->
+                                                        <td class="py-2.5 px-3">
+                                                            {% if emp.has_data and emp.flight_score is not None %}
+                                                            <div class="flex items-center gap-2">
+                                                                <div class="w-14 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                                    <div class="h-1.5 rounded-full 
+                                                                        {% if emp.flight_level == 'critical' %}bg-rose-500
+                                                                        {% elif emp.flight_level == 'high' %}bg-orange-500
+                                                                        {% elif emp.flight_level == 'medium' %}bg-amber-400
+                                                                        {% else %}bg-blue-500{% endif %}"
+                                                                         style="width: {{ emp.flight_score }}%;"></div>
+                                                                </div>
+                                                                <span class="font-bold 
+                                                                    {% if emp.flight_level == 'critical' %}text-rose-700
+                                                                    {% elif emp.flight_level == 'high' %}text-orange-700
+                                                                    {% elif emp.flight_level == 'medium' %}text-amber-700
+                                                                    {% else %}text-blue-700{% endif %}">
+                                                                    {{ emp.flight_score }}
+                                                                </span>
+                                                            </div>
+                                                            {% else %}
+                                                            <span class="text-slate-400 italic">{% trans "Laukiama" %}</span>
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <!-- Pripažinimas -->
+                                                        <td class="py-2.5 px-3 font-semibold text-slate-700">
+                                                            {% if emp.has_data and emp.recognition_score is not None %}
+                                                                {{ emp.recognition_score }}%
+                                                            {% else %}
+                                                                —
+                                                            {% endif %}
+                                                        </td>
+
+                                                        <!-- Būsena & Trigeris -->
+                                                        <td class="py-2.5 px-3 text-slate-600 max-w-xs">
+                                                            <div class="truncate text-[11px] font-medium" title="{{ emp.dominant_trigger }}">
+                                                                {{ emp.dominant_trigger }}
+                                                            </div>
+                                                            {% if emp.is_past_data %}
+                                                            <div class="text-[10px] text-slate-400">({% trans "ankstesni įrašai" %})</div>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <div class="bg-white rounded-2xl p-6 border border-slate-200/80 text-center text-xs text-slate-400">
+                                        {% trans "Šiame skyriuje darbuotojų dar nėra priskirta." %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="py-8 text-center text-xs text-slate-400">
+                                {% trans "Skyrių duomenų nerasta." %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- 6. 1-on-1 Action Plan Modalas -->
+<div id="actionPlanModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6 relative animate-in fade-in zoom-in-95 duration-200">
+
+        <!-- Modalo Antraštė -->
+        <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span id="modalPlanBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-700"></span>
+                    <span id="modalDeptName" class="text-xs font-semibold text-slate-400"></span>
+                </div>
+                <h3 id="modalPlanTitle" class="text-xl font-extrabold text-slate-900"></h3>
+                <p id="modalPlanSubtitle" class="text-xs text-slate-500"></p>
+            </div>
+            <button type="button" onclick="closeActionPlanModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <!-- 1 Dalis: Klausimai 1-on-1 pokalbiui -->
+        <div class="space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <i data-lucide="help-circle" class="w-4 h-4 text-violet-600"></i>
+                <span>{% trans "Rekomenduojami klausimai 1-on-1 pokalbiui" %}</span>
+            </h4>
+            <div id="modalQuestionsList" class="space-y-2"></div>
+        </div>
+
+        <!-- 2 Dalis: Rekomenduojami veiksmai vadovui -->
+        <div class="space-y-3 pt-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+                <span>{% trans "Konkretūs žingsniai situacijos gerinimui" %}</span>
+            </h4>
+            <div id="modalStepsList" class="space-y-2"></div>
+        </div>
+
+        <!-- Modalo Apatinė juosta -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <button type="button" onclick="copyQuestionsToClipboard()" id="copyBtn"
+                    class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition cursor-pointer">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                <span>{% trans "Kopijuoti klausimus" %}</span>
+            </button>
+            <button type="button" onclick="closeActionPlanModal()"
+                    class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer">
+                {% trans "Uždaryti" %}
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+        initTimelineChart();
+    });
+
+    // Chart.js grafiko inicializavimas
+    const chartData = {{ chart_data_json|safe }};
+    const actionPlans = {{ action_plans_json|safe }};
+
+    function initTimelineChart() {
+        const ctx = document.getElementById('riskRadarTimelineChart');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels || [],
+                datasets: [
+                    {
+                        label: '{% trans "Perdegimo rizika" %}',
+                        data: chartData.burnout_series || [],
+                        borderColor: '#f43f5e',
+                        backgroundColor: 'rgba(244, 63, 94, 0.08)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2.5,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                    },
+                    {
+                        label: '{% trans "Nuotaika & Energija" %}',
+                        data: chartData.mood_series || [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2.5,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                    },
+                    {
+                        label: '{% trans "Pripažinimas" %}',
+                        data: chartData.recognition_series || [],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2.5,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                        grid: { color: 'rgba(226, 232, 240, 0.5)' },
+                        ticks: {
+                            callback: value => value + '%',
+                            font: { family: 'inherit', size: 11 }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'inherit', size: 11 } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        padding: 10,
+                        cornerRadius: 12,
+                        titleFont: { size: 12, weight: 'bold' },
+                        bodyFont: { size: 12 }
+                    }
+                }
+            }
+        });
+    }
+
+    // 1-on-1 Modalo logika
+    let currentQuestions = [];
+
+    function openActionPlanModal(planId, deptName) {
+        const plan = actionPlans[planId] || actionPlans['action_general'];
+        if (!plan) return;
+
+        document.getElementById('modalPlanTitle').textContent = plan.title;
+        document.getElementById('modalPlanSubtitle').textContent = plan.subtitle;
+        document.getElementById('modalPlanBadge').textContent = plan.badge;
+        document.getElementById('modalDeptName').textContent = deptName ? `• ${deptName}` : '';
+
+        currentQuestions = plan.questions || [];
+
+        // Klausimai
+        const qContainer = document.getElementById('modalQuestionsList');
+        qContainer.innerHTML = '';
+        currentQuestions.forEach((q, idx) => {
+            const item = document.createElement('div');
+            item.className = 'flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed';
+            item.innerHTML = `<span class="w-5 h-5 rounded-md bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">${idx + 1}</span><span>${q}</span>`;
+            qContainer.appendChild(item);
+        });
+
+        // Žingsniai
+        const sContainer = document.getElementById('modalStepsList');
+        sContainer.innerHTML = '';
+        (plan.action_steps || []).forEach(step => {
+            const item = document.createElement('div');
+            item.className = 'flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50/50 border border-emerald-100 text-xs text-emerald-900 leading-relaxed';
+            item.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"></i><span>${step}</span>`;
+            sContainer.appendChild(item);
+        });
+
+        const modal = document.getElementById('actionPlanModal');
+        modal.classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function closeActionPlanModal() {
+        const modal = document.getElementById('actionPlanModal');
+        modal.classList.add('hidden');
+    }
+
+    function copyQuestionsToClipboard() {
+        if (!currentQuestions.length) return;
+        const text = currentQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('copyBtn');
+            const original = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i><span class="text-emerald-700">{% trans "Nukopijuota!" %}</span>`;
+            if (window.lucide) lucide.createIcons();
+            setTimeout(() => {
+                btn.innerHTML = original;
+                if (window.lucide) lucide.createIcons();
+            }, 2000);
+        });
+    }
+
+    function toggleDeptAccordion(deptId) {
+        const row = document.getElementById('dept-row-' + deptId);
+        const chevron = document.getElementById('dept-chevron-' + deptId);
+        const btn = document.getElementById('dept-btn-' + deptId);
+        if (!row) return;
+
+        const isHidden = row.classList.contains('hidden');
+        if (isHidden) {
+            row.classList.remove('hidden');
+            if (chevron) {
+                chevron.classList.add('rotate-90');
+            }
+            if (btn) btn.setAttribute('aria-expanded', 'true');
+        } else {
+            row.classList.add('hidden');
+            if (chevron) {
+                chevron.classList.remove('rotate-90');
+            }
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleManagerSurveys() {
+        const content = document.getElementById('managerSurveysContent');
+        const chevron = document.getElementById('managerSurveysChevron');
+        const text = document.getElementById('managerSurveysToggleText');
+        const btn = document.getElementById('managerSurveysToggleBtn');
+        if (!content) return;
+
+        const isHidden = content.classList.contains('hidden');
+        if (isHidden) {
+            content.classList.remove('hidden');
+            if (chevron) chevron.classList.remove('rotate-180');
+            if (text) text.textContent = '{% trans "Suskleisti" %}';
+            if (btn) btn.setAttribute('aria-expanded', 'true');
+            localStorage.setItem('manager_surveys_collapsed', 'false');
+        } else {
+            content.classList.add('hidden');
+            if (chevron) chevron.classList.add('rotate-180');
+            if (text) text.textContent = '{% trans "Išskleisti" %}';
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+            localStorage.setItem('manager_surveys_collapsed', 'true');
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleSingleSurvey(surveyId) {
+        const body = document.getElementById('surveyBody-' + surveyId);
+        const chevron = document.getElementById('surveyChevron-' + surveyId);
+        if (!body) return;
+
+        const isHidden = body.classList.contains('hidden');
+        if (isHidden) {
+            body.classList.remove('hidden');
+            if (chevron) chevron.classList.remove('rotate-180');
+        } else {
+            body.classList.add('hidden');
+            if (chevron) chevron.classList.add('rotate-180');
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleAllSurveys(expand) {
+        const bodies = document.querySelectorAll('[id^="surveyBody-"]');
+        bodies.forEach(body => {
+            const id = body.id.replace('surveyBody-', '');
+            const chevron = document.getElementById('surveyChevron-' + id);
+            if (expand) {
+                body.classList.remove('hidden');
+                if (chevron) chevron.classList.remove('rotate-180');
+            } else {
+                body.classList.add('hidden');
+                if (chevron) chevron.classList.add('rotate-180');
+            }
+        });
+        if (window.lucide) lucide.createIcons();
+    }
+
+    // Inicializuojame būseną pagal vartotojo išsaugotą pasirinkimą
+    document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('manager_surveys_collapsed') === 'true') {
+            const content = document.getElementById('managerSurveysContent');
+            const chevron = document.getElementById('managerSurveysChevron');
+            const text = document.getElementById('managerSurveysToggleText');
+            const btn = document.getElementById('managerSurveysToggleBtn');
+            if (content) {
+                content.classList.add('hidden');
+                if (chevron) chevron.classList.add('rotate-180');
+                if (text) text.textContent = '{% trans "Išskleisti" %}';
+                if (btn) btn.setAttribute('aria-expanded', 'false');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+    });
+
+    // Uždarymas spaudžiant ESC arba fone
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeActionPlanModal();
+    });
+    document.getElementById('actionPlanModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'actionPlanModal') closeActionPlanModal();
+    });
+</script>
+{% endblock %}
