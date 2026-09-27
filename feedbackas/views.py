@@ -3147,8 +3147,14 @@ def stop_impersonation(request):
 
 @login_required
 def questionnaires_list(request):
-    from .models import Questionnaire, Trait
+    from .models import Questionnaire, Trait, GlobalSettings
     from users.models import Department
+
+    user_company = getattr(getattr(request.user, 'profile', None), 'company_link', None)
+    settings = GlobalSettings.load()
+    if not request.user.is_superuser and not settings.is_personal_form_enabled_for_company(user_company):
+        messages.error(request, 'Individualių formų funkcija jūsų įmonei nėra įjungta.')
+        return redirect('home')
     
     if not Trait.objects.exists():
         default_traits = [
@@ -3191,10 +3197,16 @@ def questionnaires_list(request):
 
 @login_required
 def create_questionnaire(request):
-    from .models import Questionnaire, Trait
+    from .models import Questionnaire, Trait, GlobalSettings
     if not is_company_active(request.user):
         messages.error(request, 'Jūsų įmonė yra išjungta. Veiksmas negalimas.')
         return redirect('questionnaires_list')
+
+    user_company = getattr(getattr(request.user, 'profile', None), 'company_link', None)
+    settings = GlobalSettings.load()
+    if not request.user.is_superuser and not settings.is_personal_form_enabled_for_company(user_company):
+        messages.error(request, 'Individualių formų funkcija jūsų įmonei nėra įjungta.')
+        return redirect('home')
         
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
@@ -3227,10 +3239,16 @@ def create_questionnaire(request):
 
 @login_required
 def create_team_questionnaire(request):
-    from .models import Questionnaire, Trait, FeedbackRequest
+    from .models import Questionnaire, Trait, FeedbackRequest, GlobalSettings
     from users.models import Department
     if not is_company_active(request.user):
         messages.error(request, 'Jūsų įmonė yra išjungta. Veiksmas negalimas.')
+        return redirect('questionnaires_list')
+
+    user_company = getattr(getattr(request.user, 'profile', None), 'company_link', None)
+    settings = GlobalSettings.load()
+    if not request.user.is_superuser and not settings.is_team_form_enabled_for_company(user_company):
+        messages.error(request, 'Komandinių formų funkcija jūsų įmonei nėra įjungta.')
         return redirect('questionnaires_list')
         
     if request.method == 'POST':
@@ -3641,17 +3659,58 @@ def superadmin_features(request):
     if not request.user.is_superuser:
         return redirect('home')
         
+    from users.models import Company
     settings = GlobalSettings.load()
+    companies = Company.objects.all().order_by('name')
     
     if request.method == 'POST':
-        settings.personal_form_enabled = request.POST.get('personal_form_enabled') == 'on'
-        settings.team_form_enabled = request.POST.get('team_form_enabled') == 'on'
+        # 1. Asmeninė forma
+        pf_mode = request.POST.get('personal_form_mode', 'all')
+        if pf_mode == 'all':
+            settings.personal_form_enabled = True
+            settings.personal_form_all_companies = True
+            settings.personal_form_companies.clear()
+        elif pf_mode == 'specific':
+            settings.personal_form_enabled = True
+            settings.personal_form_all_companies = False
+            pf_company_ids = request.POST.getlist('personal_form_companies')
+            settings.personal_form_companies.set(pf_company_ids)
+        else:  # disabled
+            settings.personal_form_enabled = False
+            settings.personal_form_all_companies = False
+            settings.personal_form_companies.clear()
+
+        # 2. Komandinė forma
+        tf_mode = request.POST.get('team_form_mode', 'all')
+        if tf_mode == 'all':
+            settings.team_form_enabled = True
+            settings.team_form_all_companies = True
+            settings.team_form_companies.clear()
+        elif tf_mode == 'specific':
+            settings.team_form_enabled = True
+            settings.team_form_all_companies = False
+            tf_company_ids = request.POST.getlist('team_form_companies')
+            settings.team_form_companies.set(tf_company_ids)
+        else:  # disabled
+            settings.team_form_enabled = False
+            settings.team_form_all_companies = False
+            settings.team_form_companies.clear()
+
+        # 3. Kalbų pasirinkimas (globalus)
         settings.language_switcher_enabled = request.POST.get('language_switcher_enabled') == 'on'
         settings.save()
         messages.success(request, 'Funkcionalumų nustatymai sėkmingai atnaujinti.')
         return redirect('superadmin_features')
+
+    pf_selected_ids = set(settings.personal_form_companies.values_list('id', flat=True))
+    tf_selected_ids = set(settings.team_form_companies.values_list('id', flat=True))
         
-    return render(request, 'superadmin/features.html', {'settings': settings})
+    return render(request, 'superadmin/features.html', {
+        'settings': settings,
+        'companies': companies,
+        'pf_selected_ids': pf_selected_ids,
+        'tf_selected_ids': tf_selected_ids,
+    })
 
 
 @login_required

@@ -1,5 +1,5 @@
 from django import template
-from django.utils.translation import get_language
+from django.utils.translation import get_language, gettext_lazy as _
 
 register = template.Library()
 

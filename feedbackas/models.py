@@ -88,8 +88,14 @@ class AIUsageLog(models.Model):
         return f"{self.request_type} by {self.user} ({self.total_cost}$)"
 
 class GlobalSettings(models.Model):
-    personal_form_enabled = models.BooleanField(default=True, help_text="Įjungti 'Individuali forma' funkcionalumą visai platformai.")
-    team_form_enabled = models.BooleanField(default=True, help_text="Įjungti 'Komandinė forma' funkcionalumą visai platformai.")
+    personal_form_enabled = models.BooleanField(default=True, help_text="Bendrai įjungti 'Individuali forma' funkcionalumą.")
+    personal_form_all_companies = models.BooleanField(default=True, help_text="Taikyti 'Individuali forma' visoms įmonėms.")
+    personal_form_companies = models.ManyToManyField('users.Company', blank=True, related_name='personal_form_settings')
+
+    team_form_enabled = models.BooleanField(default=True, help_text="Bendrai įjungti 'Komandinė forma' funkcionalumą.")
+    team_form_all_companies = models.BooleanField(default=True, help_text="Taikyti 'Komandinė forma' visoms įmonėms.")
+    team_form_companies = models.ManyToManyField('users.Company', blank=True, related_name='team_form_settings')
+
     language_switcher_enabled = models.BooleanField(default=True, help_text="Įjungti kalbų pasirinkimą (LT/EN) visoje platformoje.")
 
     class Meta:
@@ -103,6 +109,40 @@ class GlobalSettings(models.Model):
     def load(cls):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
+
+    @property
+    def personal_form_mode(self):
+        if not self.personal_form_enabled:
+            return 'disabled'
+        if self.personal_form_all_companies:
+            return 'all'
+        return 'specific'
+
+    @property
+    def team_form_mode(self):
+        if not self.team_form_enabled:
+            return 'disabled'
+        if self.team_form_all_companies:
+            return 'all'
+        return 'specific'
+
+    def is_personal_form_enabled_for_company(self, company):
+        if not self.personal_form_enabled:
+            return False
+        if self.personal_form_all_companies:
+            return True
+        if not company:
+            return False
+        return self.personal_form_companies.filter(id=company.id).exists()
+
+    def is_team_form_enabled_for_company(self, company):
+        if not self.team_form_enabled:
+            return False
+        if self.team_form_all_companies:
+            return True
+        if not company:
+            return False
+        return self.team_form_companies.filter(id=company.id).exists()
 
 class PageDescription(models.Model):
     # Priežiūros režimas

@@ -55,7 +55,8 @@ class AIUsageLogAdmin(admin.ModelAdmin):
 
 @admin.register(GlobalSettings)
 class GlobalSettingsAdmin(admin.ModelAdmin):
-    list_display = ('personal_form_enabled', 'team_form_enabled', 'language_switcher_enabled')
+    list_display = ('personal_form_enabled', 'personal_form_all_companies', 'team_form_enabled', 'team_form_all_companies', 'language_switcher_enabled')
+    filter_horizontal = ('personal_form_companies', 'team_form_companies')
 
 @admin.register(PageDescription)
 class PageDescriptionAdmin(admin.ModelAdmin):
