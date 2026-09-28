@@ -95,17 +95,7 @@
                     <i data-lucide="user-check" class="w-4 h-4 text-indigo-600"></i>
                     <span>{% trans "Yra anketų vadovui" %} ({{ manager_surveys|length }})</span>
                 </div>
-                {% else %}
-                <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-semibold" title="{% trans 'Reikalingi bent 4 atsakymai apibendrintam rodymui' %}">
-                    <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600"></i>
-                    <span>{% trans "Trūksta duomenų kvorumui" %} (min. {{ min_quorum }})</span>
-                </div>
                 {% endif %}
-
-                <a href="{% url 'burnout_survey' %}" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition shadow-xs">
-                    <i data-lucide="heart-pulse" class="w-4 h-4 text-white"></i>
-                    <span>{% trans "Pildyti anketą" %}</span>
-                </a>
             </div>
         </header>
 
@@ -127,38 +117,11 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <a href="{% url 'burnout_survey' %}"
-                   class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap">
-                    {% trans "Pildyti anketą" %} →
-                </a>
                 <a href="{% url 'questionnaires_list' %}"
                    class="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap">
                     {% trans "Inicijuoti klausimyną" %} →
                 </a>
             </div>
-        </div>
-        {% elif total_feedback_count < min_quorum and has_manager_surveys %}
-        <!-- Pranešimas, kad duomenys rodomi vadovui be kvorumo apribojimų -->
-        <div class="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200/80 rounded-3xl p-5 sm:p-6 text-indigo-950 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="flex items-start gap-3.5">
-                <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <i data-lucide="user-check" class="w-5 h-5"></i>
-                </div>
-                <div>
-                    <h2 class="text-sm sm:text-base font-bold text-indigo-900">
-                        {% trans "Darbuotojų savijautos anketos vadovui (1-on-1)" %}
-                    </h2>
-                    <p class="text-xs sm:text-sm text-indigo-800/90 mt-0.5 max-w-3xl leading-relaxed">
-                        {% trans "Darbuotojas(-ai) pildydami nurodė matomumą „Vadovui“ – šios anketos pateikiamos Jums tiesiogiai žemiau, be kvorumo apribojimų (sukaupta" %} <strong>{{ total_feedback_count }}</strong> {% trans "vertinimas(-ai))." %}
-                    </p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-                <span class="px-3.5 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-xs whitespace-nowrap">
-                    {{ manager_surveys|length }} {% trans "anketa(-os) vadovui" %}
-                </span>
-            </div>
-        </div>
         {% endif %}
 
         {% if manager_surveys %}
@@ -361,7 +324,7 @@
                         </div>
                         <div class="flex items-baseline gap-2 mt-2">
                             <span class="text-3xl sm:text-4xl font-extrabold text-slate-900">
-                                {% if overall_quorum %}{{ overall_burnout_index }}{% else %}—{% endif %}
+                                {% if overall_quorum and overall_burnout_index is not None %}{{ overall_burnout_index }}{% else %}—{% endif %}
                             </span>
                             <span class="text-xs text-slate-400 font-bold">/ 100</span>
                         </div>
@@ -412,7 +375,7 @@
                         {% elif overall_burnout_level == 'high' %}bg-orange-100 text-orange-700
                         {% elif overall_burnout_level == 'medium' %}bg-amber-100 text-amber-700
                         {% else %}bg-emerald-100 text-emerald-700{% endif %}">
-                        {% if overall_quorum %}
+                        {% if overall_quorum and overall_burnout_index is not None %}
                             {% if overall_burnout_level == 'critical' %}{% trans "Kritinis" %}
                             {% elif overall_burnout_level == 'high' %}{% trans "Aukštas" %}
                             {% elif overall_burnout_level == 'medium' %}{% trans "Vidutinis" %}
@@ -445,7 +408,7 @@
                         </div>
                         <div class="flex items-baseline gap-2 mt-2">
                             <span class="text-3xl sm:text-4xl font-extrabold text-slate-900">
-                                {% if overall_quorum %}{{ overall_flight_index }}{% else %}—{% endif %}
+                                {% if overall_quorum and overall_flight_index is not None %}{{ overall_flight_index }}{% else %}—{% endif %}
                             </span>
                             <span class="text-xs text-slate-400 font-bold">/ 100</span>
                         </div>
@@ -496,7 +459,7 @@
                         {% elif overall_flight_level == 'high' %}bg-orange-100 text-orange-700
                         {% elif overall_flight_level == 'medium' %}bg-amber-100 text-amber-700
                         {% else %}bg-blue-100 text-blue-700{% endif %}">
-                        {% if overall_quorum %}
+                        {% if overall_quorum and overall_flight_index is not None %}
                             {% if overall_flight_level == 'critical' %}{% trans "Kritinė" %}
                             {% elif overall_flight_level == 'high' %}{% trans "Padidėjusi" %}
                             {% elif overall_flight_level == 'medium' %}{% trans "Stebima" %}
@@ -529,7 +492,7 @@
                         </div>
                         <div class="flex items-baseline gap-2 mt-2">
                             <span class="text-3xl sm:text-4xl font-extrabold text-slate-900">
-                                {% if overall_quorum %}{{ overall_recognition_score }}%{% else %}—{% endif %}
+                                {% if overall_quorum and overall_recognition_score is not None %}{{ overall_recognition_score }}%{% else %}—{% endif %}
                             </span>
                         </div>
                     </div>
@@ -571,7 +534,7 @@
 
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs mt-4">
                     <span class="font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                        {% if overall_quorum %}
+                        {% if overall_quorum and overall_recognition_score is not None %}
                             {% if overall_recognition_score >= 75 %}{% trans "Stipri kultūra" %}
                             {% elif overall_recognition_score >= 50 %}{% trans "Vidutinis" %}
                             {% else %}{% trans "Pripažinimo stoka" %}{% endif %}
@@ -746,7 +709,19 @@
             </div>
 
             <div class="h-72 w-full relative">
+                {% if chart_data.has_data %}
                 <canvas id="riskRadarTimelineChart"></canvas>
+                {% else %}
+                <div class="h-full w-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                        <i data-lucide="line-chart" class="w-6 h-6"></i>
+                    </div>
+                    <p class="text-sm font-bold text-slate-700">{% trans "Nėra savijautos anketų duomenų pasirinktam laikotarpiui" %}</p>
+                    <p class="text-xs text-slate-400 mt-1 max-w-md">
+                        {% trans "Grafiko dinamika atvaizduojama, kai komandos nariai užpildo savijautos anketas." %}
+                    </p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -1085,7 +1060,9 @@
         if (window.lucide) {
             lucide.createIcons();
         }
-        initTimelineChart();
+        if (chartData && chartData.has_data) {
+            initTimelineChart();
+        }
     });
 
     // Chart.js grafiko inicializavimas
@@ -1111,6 +1088,7 @@
                         borderWidth: 2.5,
                         pointRadius: 3,
                         pointHoverRadius: 6,
+                        spanGaps: true,
                     },
                     {
                         label: '{% trans "Nuotaika & Energija" %}',
@@ -1122,6 +1100,7 @@
                         borderWidth: 2.5,
                         pointRadius: 3,
                         pointHoverRadius: 6,
+                        spanGaps: true,
                     },
                     {
                         label: '{% trans "Pripažinimas" %}',
@@ -1133,6 +1112,7 @@
                         borderWidth: 2.5,
                         pointRadius: 3,
                         pointHoverRadius: 6,
+                        spanGaps: true,
                     }
                 ]
             },

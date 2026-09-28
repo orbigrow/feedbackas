@@ -1876,21 +1876,21 @@ def team_risk_radar(request):
 
     # 2. Prieigos kontrolė: tik vadovams pagal hierarchiją arba įmonės administratoriams
     is_admin = user.is_superuser or (hasattr(user, 'profile') and user.profile.is_company_admin)
-    is_manager = False
-    if hasattr(user, 'managed_departments'):
-        is_manager = user.managed_departments.filter(company=company).exists() if company else user.managed_departments.exists()
+    is_dept_manager = Department.objects.filter(manager=user, company=company).exists() if company else False
+    if not is_dept_manager and hasattr(user, 'managed_departments'):
+        is_dept_manager = user.managed_departments.filter(company=company).exists() if company else user.managed_departments.exists()
 
-    if not (is_admin or is_manager):
+    if not (is_admin or is_dept_manager):
         from django.contrib import messages
         messages.error(request, _('Prieiga apribota: Rizikos radaras skirtas tik vadovams ir rodo tik Jums pavaldžių skyrių informaciją.'))
         return redirect('home')
 
     # 3. Nustatome analizuojamus skyrius pagal vadovo hierarchiją
-    if is_admin:
-        managed_departments = Department.objects.filter(company=company).order_by('name')
-    else:
-        # Rekursyviai surenkame tiesiogiai vadovaujamus skyrius ir visus jų poskyrius hierarchijoje
-        direct_depts = list(Department.objects.filter(manager=user, company=company))
+    # Vadovas (manager) GRIEŽTAI negali matyti aukščiau esančių (tėvinių) ar kitų vadovų skyrių.
+    # Net jei vartotojas turi is_company_admin, jei jis vadovauja konkretiems skyriams,
+    # jis mato TIK savo tiesioginius skyrius ir jų pavaldžius poskyrius žemyn.
+    direct_depts = list(Department.objects.filter(manager=user, company=company)) if company else []
+    if direct_depts:
         seen_ids = set()
         to_check = list(direct_depts)
         for d in direct_depts:
@@ -1905,6 +1905,13 @@ def team_risk_radar(request):
                     to_check.append(child)
 
         managed_departments = Department.objects.filter(id__in=seen_ids, company=company).order_by('name')
+    elif user.is_superuser:
+        managed_departments = Department.objects.filter(company=company).order_by('name')
+    elif is_admin:
+        # Tik jei vartotojas nėra konkretaus skyriaus vadovas, bet yra bendras įmonės administratorius (pvz. HR)
+        managed_departments = Department.objects.filter(company=company).order_by('name')
+    else:
+        managed_departments = Department.objects.none()
 
     if not managed_departments.exists():
         from django.contrib import messages
@@ -2044,6 +2051,12 @@ def burnout_survey(request):
 
         comment = request.POST.get('comment', '').strip()
         factors = request.POST.getlist('contributing_factors')
+        custom_factors_raw = request.POST.get('custom_factors', '').strip()
+        if custom_factors_raw:
+            for cf in custom_factors_raw.split(','):
+                cf_clean = cf.strip()
+                if cf_clean and cf_clean not in factors:
+                    factors.append(cf_clean)
         contributing_factors = ','.join(factors) if factors else request.POST.get('contributing_factors', '').strip()
         visibility = request.POST.get('visibility', 'anonymous')
         if visibility not in ('private', 'manager', 'anonymous'):

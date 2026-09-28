@@ -551,8 +551,10 @@ class RiskAnalysisService:
         latest_surveys_map = {}
         if all_dept_user_ids:
             for s in WellbeingCheckin.objects.filter(
-                user_id__in=all_dept_user_ids
-            ).exclude(visibility='private').order_by('created_at'):
+                user_id__in=all_dept_user_ids,
+                company=company,
+                visibility='manager'
+            ).order_by('created_at'):
                 latest_surveys_map[s.user_id] = s
 
         # 3. Analizuojame kiekvieną skyrių
@@ -574,57 +576,48 @@ class RiskAnalysisService:
 
             dept_profiles = [p for p in all_member_profiles if p.department_id == dept.id]
             employee_count = len(dept_profiles)
-            total_responses = len(dept_fb) + len(dept_surveys)
-            feedback_count = total_responses
+            survey_count = len(dept_surveys)
+            feedback_count = survey_count
 
             dept_manager_surveys = [s for s in dept_surveys if getattr(s, 'visibility', 'anonymous') == 'manager']
             has_manager_surveys = len(dept_manager_surveys) > 0
 
-            # Kvorumo taisyklė: jei vartotojas pildydamas nurodo, kad anketa vadovui, vadovas ją turi matyti bet kuriuo atveju (net jei nėra 4 vertinimų)
-            has_quorum = (total_responses >= cls.MIN_QUORUM) or has_manager_surveys
+            # Kvorumo taisyklė: skaičiuojama tik pagal realias savijautos anketas
+            has_quorum = (survey_count >= cls.MIN_QUORUM) or has_manager_surveys
 
             # Darbuotojų individualių rodiklių apskaičiavimas
             dept_employees = []
             for profile in dept_profiles:
                 u = profile.user
                 emp_fb = [fb for fb in dept_fb if fb.feedback_request.requester_id == u.id]
-                emp_surveys = [s for s in dept_surveys if s.user_id == u.id]
-                emp_mgr_surveys = [s for s in emp_surveys if getattr(s, 'visibility', 'anonymous') == 'manager']
+                # Individualiam darbuotojui rodomos TIK vadovui skirtos anketos (1-on-1), kad nebūtų pažeistas anonimiškumas
+                emp_mgr_surveys = [s for s in dept_surveys if s.user_id == u.id and getattr(s, 'visibility', 'anonymous') == 'manager']
                 user_latest_survey = latest_surveys_map.get(u.id)
 
-                emp_resp_count = len(emp_fb) + len(emp_surveys)
-                if emp_resp_count > 0:
-                    emp_m = cls._calculate_metrics(emp_fb, emp_surveys)
+                active_survey = emp_mgr_surveys[0] if emp_mgr_surveys else user_latest_survey
+                is_past = (not emp_mgr_surveys) and (user_latest_survey is not None)
+
+                if active_survey:
+                    emp_m = cls._calculate_metrics(surveys=[active_survey])
                     b_score = emp_m['burnout_score']
                     f_score = emp_m['flight_score']
                     r_score = emp_m['recognition_score']
                     peaks = emp_m['workload_peaks']
                     trig = cls._determine_dominant_trigger(emp_m)
                     has_data = True
-                    is_past = False
-                elif user_latest_survey:
-                    emp_m = cls._calculate_metrics([], [user_latest_survey])
-                    b_score = emp_m['burnout_score']
-                    f_score = emp_m['flight_score']
-                    r_score = emp_m['recognition_score']
-                    peaks = emp_m['workload_peaks']
-                    trig = cls._determine_dominant_trigger(emp_m)
-                    has_data = True
-                    is_past = True
                 else:
                     b_score = None
                     f_score = None
                     r_score = None
                     peaks = 0
-                    trig = _('Laukiama anketos ar atsiliepimų')
+                    trig = _('Savijautos anketa dar nepildyta')
                     has_data = False
                     is_past = False
 
                 b_level = cls._determine_risk_level(b_score) if b_score is not None else 'unknown'
                 f_level = cls._determine_risk_level(f_score) if f_score is not None else 'unknown'
 
-                latest_mgr_s = emp_mgr_surveys[0] if emp_mgr_surveys else (user_latest_survey if (user_latest_survey and getattr(user_latest_survey, 'visibility', '') == 'manager') else None)
-                active_survey = latest_mgr_s or (emp_surveys[0] if emp_surveys else user_latest_survey)
+                latest_mgr_s = active_survey
 
                 first_l = u.first_name[:1] if u.first_name else ''
                 last_l = u.last_name[:1] if u.last_name else ''
@@ -644,10 +637,10 @@ class RiskAnalysisService:
                     'email': u.email,
                     'avatar_url': avatar_url,
                     'initials': initials,
-                    'feedback_count': len(emp_fb),
-                    'survey_count': len(emp_surveys),
-                    'total_responses': emp_resp_count,
-                    'has_manager_survey': bool(emp_mgr_surveys) or (latest_mgr_s is not None),
+                    'feedback_count': 0,
+                    'survey_count': 1 if active_survey else 0,
+                    'total_responses': 1 if active_survey else 0,
+                    'has_manager_survey': active_survey is not None,
                     'latest_manager_survey': latest_mgr_s,
                     'burnout_score': b_score,
                     'burnout_level': b_level,
@@ -672,9 +665,9 @@ class RiskAnalysisService:
 
             dept_employees.sort(key=_emp_sort_key)
 
-            if has_quorum:
-                dept_metrics = cls._calculate_metrics(dept_fb, dept_surveys)
-                prev_metrics = cls._calculate_metrics(dept_prev_fb, dept_prev_surveys) if (len(dept_prev_fb) + len(dept_prev_surveys)) >= 2 else None
+            if has_quorum and dept_surveys:
+                dept_metrics = cls._calculate_metrics(surveys=dept_surveys)
+                prev_metrics = cls._calculate_metrics(surveys=dept_prev_surveys) if len(dept_prev_surveys) >= 2 else None
 
                 burnout_score = dept_metrics['burnout_score']
                 flight_score = dept_metrics['flight_score']
@@ -683,7 +676,7 @@ class RiskAnalysisService:
                 total_peaks += workload_peaks
 
                 # Trendas lyginant su praėjusiu periodu
-                if prev_metrics:
+                if prev_metrics and prev_metrics['burnout_score'] is not None:
                     b_diff = burnout_score - prev_metrics['burnout_score']
                     f_diff = flight_score - prev_metrics['flight_score']
                 else:
@@ -694,7 +687,7 @@ class RiskAnalysisService:
                 flight_trend = 'up' if f_diff > 3 else ('down' if f_diff < -3 else 'stable')
 
                 # Rizikos lygis
-                level = cls._determine_risk_level(max(burnout_score, flight_score))
+                level = cls._determine_risk_level(max(burnout_score or 0, flight_score or 0))
 
                 # Dominuojantis trigeris
                 dominant_trigger = cls._determine_dominant_trigger(dept_metrics)
@@ -703,12 +696,12 @@ class RiskAnalysisService:
                 action_plan_id = cls._determine_action_plan_id(dept_metrics)
 
                 # Anomalijų / perspėjimų generavimas
-                if burnout_score >= 65 or b_diff >= 15:
+                if (burnout_score or 0) >= 65 or b_diff >= 15:
                     early_alerts.append({
                         'id': f'b_{dept.id}',
-                        'level': 'critical' if burnout_score >= 75 else 'warning',
+                        'level': 'critical' if (burnout_score or 0) >= 75 else 'warning',
                         'title': _('Perdegimo rizikos signalas'),
-                        'message': _('%(dept)s skyriuje perdegimo indeksas pasiekė %(score)d balų%(trend)s dėl pastebimo krūvio signalų.') % {
+                        'message': _('%(dept)s skyriuje perdegimo indeksas pasiekė %(score)d balų%(trend)s.') % {
                             'dept': dept.name,
                             'score': burnout_score,
                             'trend': f' ({"+" if b_diff > 0 else ""}{b_diff}% per periodą)' if b_diff != 0 else ''
@@ -718,12 +711,12 @@ class RiskAnalysisService:
                         'action_plan_id': 'action_burnout',
                     })
 
-                if flight_score >= 60 or f_diff >= 12:
+                if (flight_score or 0) >= 60 or f_diff >= 12:
                     early_alerts.append({
                         'id': f'f_{dept.id}',
-                        'level': 'critical' if flight_score >= 75 else 'warning',
+                        'level': 'critical' if (flight_score or 0) >= 75 else 'warning',
                         'title': _('Išėjimo rizikos signalas'),
-                        'message': _('%(dept)s skyriuje fiksuojama išėjimo rizika (%(score)d balų). Pastebimas tarpusavio ryšio ir pripažinimo sumažėjimas.') % {
+                        'message': _('%(dept)s skyriuje fiksuojama išėjimo rizika (%(score)d balų).') % {
                             'dept': dept.name,
                             'score': flight_score
                         },
@@ -737,7 +730,7 @@ class RiskAnalysisService:
                         'id': f'w_{dept.id}',
                         'level': 'warning',
                         'title': _('Viršvalandžių ir krūvio perkrovos pikas'),
-                        'message': _('%(dept)s skyriuje nustatyti %(peaks)d didelio krūvio ar skubių terminų paminėjimai.') % {
+                        'message': _('%(dept)s skyriuje nustatyti %(peaks)d didelio krūvio ar streso epizodai.') % {
                             'dept': dept.name,
                             'peaks': workload_peaks
                         },
@@ -750,7 +743,7 @@ class RiskAnalysisService:
                     'department_id': dept.id,
                     'department_name': dept.name,
                     'employee_count': employee_count,
-                    'feedback_count': feedback_count,
+                    'feedback_count': survey_count,
                     'has_quorum': True,
                     'has_manager_surveys': has_manager_surveys,
                     'manager_surveys_count': len(dept_manager_surveys),
@@ -775,7 +768,7 @@ class RiskAnalysisService:
                     'department_id': dept.id,
                     'department_name': dept.name,
                     'employee_count': employee_count,
-                    'feedback_count': feedback_count,
+                    'feedback_count': survey_count,
                     'has_quorum': False,
                     'has_manager_surveys': False,
                     'manager_surveys_count': 0,
@@ -783,26 +776,26 @@ class RiskAnalysisService:
                     'flight_score': None,
                     'recognition_score': None,
                     'workload_peaks': 0,
-                    'dominant_trigger': _('Trūksta duomenų kvorumui (min. 4 atsakymai)'),
+                    'dominant_trigger': _('Trūksta savijautos anketų duomenų (min. 4 atsakymai)'),
                     'action_plan_id': 'action_general',
                     'level': 'unknown',
                     'employees': dept_employees,
                 })
 
         # 4. Bendri įmonės rodikliai
-        total_current_count = len(all_current_feedbacks) + len(all_current_surveys)
+        total_current_count = len(all_current_surveys)
         total_manager_surveys = len([s for s in all_current_surveys if getattr(s, 'visibility', 'anonymous') == 'manager'])
         overall_quorum = (total_current_count >= cls.MIN_QUORUM) or (total_manager_surveys > 0)
 
-        if overall_quorum:
-            overall_metrics = cls._calculate_metrics(all_current_feedbacks, all_current_surveys)
-            prev_overall_metrics = cls._calculate_metrics(all_prev_feedbacks, all_prev_surveys) if (len(all_prev_feedbacks) + len(all_prev_surveys)) >= 2 else None
+        if overall_quorum and all_current_surveys:
+            overall_metrics = cls._calculate_metrics(surveys=all_current_surveys)
+            prev_overall_metrics = cls._calculate_metrics(surveys=all_prev_surveys) if len(all_prev_surveys) >= 2 else None
 
             overall_burnout_index = overall_metrics['burnout_score']
             overall_flight_index = overall_metrics['flight_score']
             overall_recognition_score = overall_metrics['recognition_score']
 
-            if prev_overall_metrics:
+            if prev_overall_metrics and prev_overall_metrics['burnout_score'] is not None:
                 ob_diff = overall_burnout_index - prev_overall_metrics['burnout_score']
                 of_diff = overall_flight_index - prev_overall_metrics['flight_score']
                 or_diff = overall_recognition_score - prev_overall_metrics['recognition_score']
@@ -818,9 +811,9 @@ class RiskAnalysisService:
             overall_flight_diff = f'{"+" if of_diff > 0 else ""}{of_diff}%'
             overall_recognition_diff = f'{"+" if or_diff > 0 else ""}{or_diff}%'
         else:
-            overall_burnout_index = 0
-            overall_flight_index = 0
-            overall_recognition_score = 0
+            overall_burnout_index = None
+            overall_flight_index = None
+            overall_recognition_score = None
             overall_burnout_trend = 'stable'
             overall_flight_trend = 'stable'
             overall_recognition_trend = 'stable'
@@ -828,13 +821,11 @@ class RiskAnalysisService:
             overall_flight_diff = '0%'
             overall_recognition_diff = '0%'
 
-        # 5. Laiko ašies duomenys Chart.js grafikui
+        # 5. Laiko ašies duomenys Chart.js grafikui TIK iš realių savijautos anketų
         chart_data = cls._generate_chart_timeline(
-            all_current_feedbacks,
             current_start,
             now,
             period_days,
-            overall_quorum,
             surveys=all_current_surveys
         )
 
@@ -864,153 +855,73 @@ class RiskAnalysisService:
         }
 
     @classmethod
-    def _calculate_metrics(cls, feedbacks=None, surveys=None):
+    def _calculate_metrics(cls, surveys=None, feedbacks=None):
         """
-        Apskaičiuoja perdegimo, išėjimo ir pripažinimo rodiklius iš atsiliepimų ir savijautos anketų sąrašo.
+        Apskaičiuoja perdegimo, išėjimo ir pripažinimo rodiklius TIK iš realių savijautos anketų sąrašo.
         """
-        feedbacks = feedbacks or []
         surveys = surveys or []
 
-        if not feedbacks and not surveys:
+        if not surveys:
             return {
-                'burnout_score': 0,
-                'flight_score': 0,
-                'recognition_score': 0,
+                'burnout_score': None,
+                'flight_score': None,
+                'recognition_score': None,
                 'workload_peaks': 0,
-                'avg_rating': 5.0,
-                'avg_teamwork': 5.0,
-                'avg_comm': 5.0,
-                'avg_initiative': 5.0,
+                'avg_mood': None,
+                'avg_energy': None,
+                'avg_stress': None,
+                'avg_workload': None,
                 'strain_ratio': 0.0,
                 'flight_ratio': 0.0,
+                'survey_count': 0,
+                'has_data': False,
             }
 
-        # 1. Atsiliepimų (Peer feedback) analizė
-        fb_burnout = None
-        fb_flight = None
-        fb_recog = None
-        fb_peaks = 0
-        avg_rating = 4.0
-        avg_teamwork = 4.0
-        avg_comm = 4.0
-        avg_initiative = 4.0
+        total_surveys = len(surveys)
+        avg_mood = sum(getattr(s, 'mood_score', 3) for s in surveys) / total_surveys
+        avg_energy = sum(getattr(s, 'energy_level', 5) for s in surveys) / total_surveys
+        avg_stress = sum(getattr(s, 'stress_level', 5) for s in surveys) / total_surveys
+        avg_workload = sum(getattr(s, 'workload_level', 3) for s in surveys) / total_surveys
+
+        # 1. Perdegimo indeksas (0 - 100):
+        # Didelis stresas + didelis darbo krūvis + maža energija
+        stress_factor = (avg_stress / 10.0) * 40.0
+        workload_factor = (avg_workload / 5.0) * 35.0
+        energy_deficit = ((10.0 - avg_energy) / 10.0) * 25.0
+        survey_burnout = int(round(stress_factor + workload_factor + energy_deficit))
+
+        # 2. Išėjimo rizika (Flight Risk 0 - 100%):
+        # Žema nuotaika + nuolatinis perdegimas
+        mood_deficit = ((5.0 - avg_mood) / 5.0) * 45.0
+        survey_flight = int(round(mood_deficit + (survey_burnout * 0.55)))
+
+        # 3. Pripažinimo / klimato indeksas:
+        survey_recog = int(round((avg_mood / 5.0) * 100.0))
+        survey_peaks = sum(1 for s in surveys if getattr(s, 'workload_level', 3) >= 4 or getattr(s, 'stress_level', 5) >= 8)
+
         strain_ratio = 0.0
         flight_ratio = 0.0
-        positive_ratio = 0.0
-
-        if feedbacks:
-            total_fb = len(feedbacks)
-            ratings = [fb.rating for fb in feedbacks if fb.rating]
-            teamwork_ratings = [fb.teamwork_rating for fb in feedbacks if hasattr(fb, 'teamwork_rating')]
-            comm_ratings = [fb.communication_rating for fb in feedbacks if hasattr(fb, 'communication_rating')]
-            initiative_ratings = [fb.initiative_rating for fb in feedbacks if hasattr(fb, 'initiative_rating')]
-
-            avg_rating = sum(ratings) / len(ratings) if ratings else 4.0
-            avg_teamwork = sum(teamwork_ratings) / len(teamwork_ratings) if teamwork_ratings else 4.0
-            avg_comm = sum(comm_ratings) / len(comm_ratings) if comm_ratings else 4.0
-            avg_initiative = sum(initiative_ratings) / len(initiative_ratings) if initiative_ratings else 4.0
-
-            strain_count = 0
-            flight_count = 0
-            positive_count = 0
-
-            for fb in feedbacks:
-                text = f"{fb.keywords or ''} {fb.comments or ''} {fb.feedback or ''}".lower()
-
-                has_strain = any(k in text for k in cls.BURNOUT_KEYWORDS)
-                has_flight = any(k in text for k in cls.FLIGHT_KEYWORDS)
-                has_positive = any(k in text for k in cls.POSITIVE_KEYWORDS)
-
-                if has_strain:
-                    strain_count += 1
-                if has_flight:
-                    flight_count += 1
-                if has_positive or fb.rating >= 4:
-                    positive_count += 1
-
-                if (fb.rating and fb.rating <= 2) or (has_strain and fb.rating and fb.rating <= 3):
-                    fb_peaks += 1
-
-            strain_ratio = strain_count / total_fb
-            flight_ratio = flight_count / total_fb
-            positive_ratio = positive_count / total_fb
-
-            rating_fatigue = max(0.0, (5.0 - ((avg_rating + avg_initiative) / 2.0)) / 4.0 * 50.0)
-            keyword_strain = strain_ratio * 35.0
-            peaks_strain = min(15.0, (fb_peaks / max(1, total_fb)) * 30.0)
-            fb_burnout = int(min(100, max(5, rating_fatigue + keyword_strain + peaks_strain)))
-
-            collab_deficit = max(0.0, (5.0 - ((avg_teamwork + avg_comm) / 2.0)) / 4.0 * 45.0)
-            flight_signals = flight_ratio * 35.0
-            recog_deficit = max(0.0, (1.0 - positive_ratio) * 20.0)
-            fb_flight = int(min(100, max(5, collab_deficit + flight_signals + recog_deficit)))
-            fb_recog = int(min(100, max(0, (avg_teamwork / 5.0 * 45.0) + (avg_comm / 5.0 * 30.0) + (positive_ratio * 25.0))))
-
-        # 2. Savijautos anketų (BurnoutSurveyResponse) analizė
-        survey_burnout = None
-        survey_flight = None
-        survey_recog = None
-        survey_peaks = 0
-
-        if surveys:
-            total_surveys = len(surveys)
-            avg_mood = sum(getattr(s, 'mood_score', 3) for s in surveys) / total_surveys
-            avg_energy = sum(getattr(s, 'energy_level', 5) for s in surveys) / total_surveys
-            avg_stress = sum(getattr(s, 'stress_level', 5) for s in surveys) / total_surveys
-            avg_workload = sum(getattr(s, 'workload_level', 3) for s in surveys) / total_surveys
-
-            # 1. Perdegimo indeksas (0 - 100):
-            # Didelis stresas + didelis darbo krūvis + maža energija
-            stress_factor = (avg_stress / 10.0) * 40.0
-            workload_factor = (avg_workload / 5.0) * 35.0
-            energy_deficit = ((10.0 - avg_energy) / 10.0) * 25.0
-            survey_burnout = int(round(stress_factor + workload_factor + energy_deficit))
-
-            # 2. Išėjimo rizika (Flight Risk 0 - 100%):
-            # Žema nuotaika + nuolatinis perdegimas + žemas tarpusavio grįžtamasis ryšys
-            mood_deficit = ((5.0 - avg_mood) / 5.0) * 45.0
-            survey_flight = int(round(mood_deficit + (survey_burnout * 0.55)))
-
-            survey_recog = int(round((avg_mood / 5.0) * 100.0))
-            survey_peaks = sum(1 for s in surveys if getattr(s, 'workload_level', 3) >= 4 or getattr(s, 'stress_level', 5) >= 8)
-
-            for s in surveys:
-                if s.comment:
-                    t = s.comment.lower()
-                    if any(k in t for k in cls.BURNOUT_KEYWORDS):
-                        strain_ratio = max(strain_ratio, 0.35)
-                    if any(k in t for k in cls.FLIGHT_KEYWORDS):
-                        flight_ratio = max(flight_ratio, 0.3)
-
-        # 3. Sujungimas (svertinis vidurkis)
-        if survey_burnout is not None and fb_burnout is not None:
-            final_burnout = int(round(0.65 * survey_burnout + 0.35 * fb_burnout))
-            final_flight = int(round(0.65 * survey_flight + 0.35 * fb_flight))
-            final_recog = int(round(0.65 * survey_recog + 0.35 * fb_recog))
-            final_peaks = fb_peaks + survey_peaks
-        elif survey_burnout is not None:
-            final_burnout = survey_burnout
-            final_flight = survey_flight
-            final_recog = survey_recog
-            final_peaks = survey_peaks
-        else:
-            final_burnout = fb_burnout or 20
-            final_flight = fb_flight or 20
-            final_recog = fb_recog or 70
-            final_peaks = fb_peaks
+        for s in surveys:
+            if getattr(s, 'comment', None):
+                t = s.comment.lower()
+                if any(k in t for k in cls.BURNOUT_KEYWORDS):
+                    strain_ratio = max(strain_ratio, 0.35)
+                if any(k in t for k in cls.FLIGHT_KEYWORDS):
+                    flight_ratio = max(flight_ratio, 0.3)
 
         return {
-            'burnout_score': min(100, max(0, final_burnout)),
-            'flight_score': min(100, max(0, final_flight)),
-            'recognition_score': min(100, max(0, final_recog)),
-            'workload_peaks': final_peaks,
-            'avg_rating': avg_rating,
-            'avg_teamwork': avg_teamwork,
-            'avg_comm': avg_comm,
-            'avg_initiative': avg_initiative,
+            'burnout_score': min(100, max(0, survey_burnout)),
+            'flight_score': min(100, max(0, survey_flight)),
+            'recognition_score': min(100, max(0, survey_recog)),
+            'workload_peaks': survey_peaks,
+            'avg_mood': round(avg_mood, 1),
+            'avg_energy': round(avg_energy, 1),
+            'avg_stress': round(avg_stress, 1),
+            'avg_workload': round(avg_workload, 1),
             'strain_ratio': strain_ratio,
             'flight_ratio': flight_ratio,
-            'positive_ratio': positive_ratio,
+            'survey_count': total_surveys,
+            'has_data': True,
         }
 
     @classmethod
@@ -1028,32 +939,31 @@ class RiskAnalysisService:
     @classmethod
     def _determine_dominant_trigger(cls, metrics):
         """Nustato pagrindinį veiksnį, darantį įtaką rizikos rodikliams."""
-        if metrics['strain_ratio'] >= 0.25:
+        if not metrics or not metrics.get('has_data'):
+            return _('Laukiama savijautos anketų')
+        if (metrics.get('avg_workload') and metrics['avg_workload'] >= 3.8) or (metrics.get('avg_stress') and metrics['avg_stress'] >= 7.0) or metrics.get('strain_ratio', 0) >= 0.25:
             return _('Intensyvus darbo krūvis ir terminų spaudimas')
-        elif metrics['avg_comm'] < 3.8:
-            return _('Komunikacijos barjerai ir grįžtamojo ryšio stoka')
-        elif metrics['avg_teamwork'] < 3.8:
-            return _('Trintis komandoje ir tarpusavio pripažinimo trūkumas')
-        elif metrics['avg_initiative'] < 3.8:
+        elif metrics.get('avg_energy') is not None and metrics['avg_energy'] < 5.0:
             return _('Krintanti darbuotojų energija ir įsitraukimas')
-        elif metrics['flight_ratio'] >= 0.2:
+        elif (metrics.get('avg_mood') is not None and metrics['avg_mood'] < 3.0) or metrics.get('flight_ratio', 0) >= 0.2:
             return _('Demotyvacijos ir atsiribojimo signalai')
         return _('Stabilus darbo ritmas ir subalansuota aplinka')
 
     @classmethod
     def _determine_action_plan_id(cls, metrics):
-        if metrics['burnout_score'] >= metrics['flight_score']:
-            return 'action_burnout' if metrics['burnout_score'] >= 50 else 'action_workload'
+        b_score = (metrics.get('burnout_score') or 0) if metrics else 0
+        f_score = (metrics.get('flight_score') or 0) if metrics else 0
+        if b_score >= f_score:
+            return 'action_burnout' if b_score >= 50 else 'action_workload'
         else:
-            return 'action_flight' if metrics['flight_score'] >= 50 else 'action_recognition'
+            return 'action_flight' if f_score >= 50 else 'action_recognition'
 
     @classmethod
-    def _generate_chart_timeline(cls, feedbacks, start_date, end_date, period_days, has_quorum, surveys=None):
-        """Generuoja laiko ašies taškus Chart.js grafikui."""
+    def _generate_chart_timeline(cls, start_date, end_date, period_days, surveys=None, feedbacks=None, has_quorum=True):
+        """Generuoja laiko ašies taškus Chart.js grafikui TIK iš realių savijautos anketų."""
         from datetime import timedelta
 
         surveys = surveys or []
-        feedbacks = feedbacks or []
 
         if period_days <= 7:
             steps = 7
@@ -1070,42 +980,48 @@ class RiskAnalysisService:
         mood_series = []
         recognition_series = []
 
+        if not surveys:
+            for i in range(steps):
+                window_start = start_date + (step_delta * i)
+                window_end = window_start + step_delta
+                labels.append(window_end.strftime('%m-%d'))
+                burnout_series.append(None)
+                mood_series.append(None)
+                recognition_series.append(None)
+            return {
+                'labels': labels,
+                'burnout_series': burnout_series,
+                'mood_series': mood_series,
+                'recognition_series': recognition_series,
+                'has_data': False,
+            }
+
+        has_any_point = False
         for i in range(steps):
             window_start = start_date + (step_delta * i)
             window_end = window_start + step_delta
             labels.append(window_end.strftime('%m-%d'))
 
-            if has_quorum and (feedbacks or surveys):
-                window_fbs = [fb for fb in feedbacks if window_start <= fb.created_at <= window_end]
-                window_surveys = [s for s in surveys if window_start <= s.created_at <= window_end]
-                if window_fbs or window_surveys:
-                    m = cls._calculate_metrics(window_fbs, window_surveys)
-                    burnout_series.append(m['burnout_score'])
-                    if window_surveys:
-                        avg_m = sum(getattr(s, 'mood_score', 3) for s in window_surveys) / len(window_surveys)
-                        mood_val = round(avg_m * 20, 1)
-                    else:
-                        mood_val = round(m['avg_rating'] * 20, 1)  # 1-5 skale paverčiama į 0-100
-                    mood_series.append(mood_val)
-                    recognition_series.append(m['recognition_score'])
-                else:
-                    # Tęstinumo interpoliavimas
-                    prev_b = burnout_series[-1] if burnout_series else 25
-                    prev_m = mood_series[-1] if mood_series else 75
-                    prev_r = recognition_series[-1] if recognition_series else 70
-                    burnout_series.append(prev_b)
-                    mood_series.append(prev_m)
-                    recognition_series.append(prev_r)
+            window_surveys = [s for s in surveys if window_start <= s.created_at <= window_end]
+            if window_surveys:
+                m = cls._calculate_metrics(surveys=window_surveys)
+                burnout_series.append(m['burnout_score'])
+                avg_m = m['avg_mood'] if m['avg_mood'] is not None else 3.0
+                mood_val = round(avg_m * 20, 1)
+                mood_series.append(mood_val)
+                recognition_series.append(m['recognition_score'])
+                has_any_point = True
             else:
-                burnout_series.append(0)
-                mood_series.append(0)
-                recognition_series.append(0)
+                burnout_series.append(None)
+                mood_series.append(None)
+                recognition_series.append(None)
 
         return {
             'labels': labels,
             'burnout_series': burnout_series,
             'mood_series': mood_series,
             'recognition_series': recognition_series,
+            'has_data': has_any_point,
         }
 
     @classmethod

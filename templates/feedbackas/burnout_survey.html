@@ -224,6 +224,32 @@
                             </span>
                         </label>
                     </div>
+
+                    <!-- Galimybė įvesti savo žodžius / priežastis -->
+                    <div class="pt-2">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">
+                            {% trans "Nerandate tinkamo varianto? Įrašykite savo:" %}
+                        </label>
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-lg">
+                            <div class="relative flex-1">
+                                <input type="text"
+                                       id="customFactorInput"
+                                       name="custom_factors"
+                                       placeholder="{% trans 'Pvz.: Naujas projektas, Neaiškūs reikalavimai...' %}"
+                                       class="w-full px-4 py-2.5 text-xs sm:text-sm bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/15 transition outline-none"
+                                       onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addCustomFactor(); }">
+                            </div>
+                            <button type="button"
+                                    onclick="addCustomFactor()"
+                                    class="px-4 py-2.5 bg-slate-100 hover:bg-primary hover:text-white text-slate-700 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 shrink-0 border border-slate-200 hover:border-primary cursor-pointer active:scale-95 shadow-2xs">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>{% trans "Pridėti" %}</span>
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">
+                            {% trans "Galite įvesti kelis žodžius ar frazes (įveskite ir spauskite „Pridėti“ arba „Enter“)" %}
+                        </p>
+                    </div>
                 </section>
 
                 <hr class="border-slate-100">
@@ -332,6 +358,25 @@
     box-shadow: 0 4px 10px rgba(42, 83, 132, 0.4);
     cursor: pointer;
 }
+
+.chip-btn .custom-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.35rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1;
+    border-radius: 9999px;
+    padding: 2px 4px;
+    opacity: 0.75;
+    transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.chip-btn .custom-chip-remove:hover {
+    opacity: 1;
+    background-color: rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+}
 </style>
 
 <script>
@@ -380,6 +425,52 @@ function toggleChip(input) {
     }
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function addCustomFactor() {
+    const input = document.getElementById('customFactorInput');
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) return;
+
+    // Check if factor already exists
+    const existingInputs = Array.from(document.querySelectorAll('#factorsContainer input[name="contributing_factors"]'));
+    const matched = existingInputs.find(el => el.value.trim().toLowerCase() === val.toLowerCase());
+    if (matched) {
+        if (!matched.checked) {
+            matched.checked = true;
+            toggleChip(matched);
+        }
+        input.value = '';
+        return;
+    }
+
+    const container = document.getElementById('factorsContainer');
+    const label = document.createElement('label');
+    label.className = "factor-chip cursor-pointer select-none custom-factor-chip";
+    label.innerHTML = `
+        <input type="checkbox" name="contributing_factors" value="${escapeHtml(val)}" class="hidden" checked onchange="toggleChip(this)">
+        <span class="chip-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all bg-primary text-white shadow-xs">
+            <span>✏️</span>
+            <span>${escapeHtml(val)}</span>
+            <span role="button" class="custom-chip-remove" onclick="event.stopPropagation(); removeCustomChip(this)" title="{% trans 'Pašalinti' %}">✕</span>
+        </span>
+    `;
+    container.appendChild(label);
+    input.value = '';
+}
+
+function removeCustomChip(btn) {
+    const label = btn.closest('.factor-chip');
+    if (label) {
+        label.remove();
+    }
+}
+
 function updateVisibilityCards() {
     const cards = {
         'private': document.getElementById('visCardPrivate'),
@@ -403,6 +494,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialMood = parseInt(document.getElementById('moodScoreInput').value) || 5;
     selectMood(initialMood);
     updateVisibilityCards();
+
+    const form = document.getElementById('wellbeingForm');
+    if (form) {
+        form.addEventListener('submit', () => {
+            const input = document.getElementById('customFactorInput');
+            if (input && input.value.trim()) {
+                addCustomFactor();
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
