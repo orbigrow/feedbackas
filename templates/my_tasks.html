@@ -42,7 +42,11 @@
                     class="flex items-center gap-2 border-b-2 border-slate-900 text-slate-900 pb-3 px-1 transition-colors">
                     <span>{% trans "Užduotys man" %}</span>
                     <span class="text-xs text-slate-400 font-normal">({% trans "Pildymas" %})</span>
-                    <span class="bg-teal-50 text-teal-700 border border-teal-200/60 py-0.5 px-2.5 rounded-full text-[11px] font-bold">{{ assigned_requests.count }}</span>
+                    {% if assigned_pending_count > 0 %}
+                    <span class="bg-amber-100 text-amber-800 border border-amber-200/60 py-0.5 px-2.5 rounded-full text-[11px] font-bold">{{ assigned_pending_count }}</span>
+                    {% else %}
+                    <span class="bg-slate-100 text-slate-500 py-0.5 px-2.5 rounded-full text-[11px] font-bold">{{ assigned_requests.count }}</span>
+                    {% endif %}
                 </button>
                 <button id="btn-tab-made"
                     class="flex items-center gap-2 border-b-2 border-transparent text-slate-400 pb-3 px-1 hover:text-slate-700 transition-colors">

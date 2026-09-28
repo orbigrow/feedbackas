@@ -799,10 +799,9 @@ def home(request):
     recent_activity.sort(key=lambda x: x['date'], reverse=True)
     recent_activity = recent_activity[:5]
     
-    # Gauti atsiliepimų prašymai (iš kitų kolegų) - tik aktualūs laukiantys prašymai
+    # Gauti atsiliepimų prašymai ir laukiančios užduotys - visi aktualūs laukiantys pildymai
     all_received_requests = FeedbackRequest.objects.filter(
         requested_to=request.user,
-        is_self_initiated=False,
         status='pending'
     ).select_related('requester', 'requester__profile').order_by(
         'due_date',
@@ -1315,7 +1314,16 @@ def my_tasks_list(request):
     made_requests = FeedbackRequest.objects.filter(requester=request.user, is_self_initiated=False).select_related('requested_to', 'feedback').order_by('-due_date')
 
     # Feedback requests assigned to the current user (tasks to do) – visi laukiantys arba užbaigti vartotojo pildymai
-    assigned_requests = FeedbackRequest.objects.filter(requested_to=request.user).select_related('requester', 'feedback').order_by('-due_date')
+    assigned_requests = FeedbackRequest.objects.filter(
+        requested_to=request.user
+    ).select_related('requester', 'feedback').order_by(
+        models.Case(
+            models.When(status='pending', then=0),
+            default=1
+        ),
+        '-due_date'
+    )
+    assigned_pending_count = assigned_requests.filter(status='pending').count()
 
     # All completed feedbacks received by the current user (from colleagues)
     received_feedbacks = Feedback.objects.filter(
@@ -1334,6 +1342,7 @@ def my_tasks_list(request):
     context = {
         'made_requests': made_requests,
         'assigned_requests': assigned_requests,
+        'assigned_pending_count': assigned_pending_count,
         'received_feedbacks': received_feedbacks,
         'active_tab': active_tab,
     }
