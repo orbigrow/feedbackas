@@ -2590,64 +2590,370 @@ def superadmin_companies_list(request):
     }
     return render(request, 'superadmin/companies_list.html', context)
 
-@user_passes_test(lambda u: u.is_superuser)
-def superadmin_ai_analytics(request):
+def get_ai_usage_timeline_data(start_date, end_date, granularity='day', selected_company_ids=None):
+    """
+    Surenka laiko eilutės duomenis AI sąnaudų grafikui centais (ct).
+    Palaiko detalumus: 'hour', 'day', 'week', 'month'.
+    Palaiko vienos ar kelių įmonių filtravimą.
+    """
     from datetime import datetime, timedelta
-    from django.db.models import Sum, Count
+    from django.utils import timezone
+    from django.db.models.functions import TruncHour, TruncDay, TruncWeek, TruncMonth
+    from django.db.models import Sum, Count, Q
     from feedbackas.models import AIUsageLog
 
-    # Determine date range
-    today = timezone.now().date()
-    # Default: this month
-    first_day_of_month = today.replace(day=1)
-    
-    start_date_str = request.GET.get('start_date', first_day_of_month.strftime('%Y-%m-%d'))
-    end_date_str = request.GET.get('end_date', today.strftime('%Y-%m-%d'))
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(start_date, datetime.min.time()), tz)
+    end_dt_inclusive = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), datetime.min.time()), tz)
 
-    try:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-    except ValueError:
-        start_date = first_day_of_month
-        end_date = today
+    trunc_map = {
+        'hour': (TruncHour, '%Y-%m-%d %H:00', '%m-%d %H:00'),
+        'day': (TruncDay, '%Y-%m-%d', '%Y-%m-%d'),
+        'week': (TruncWeek, '%Y-%m-%d', '%m-%d (Sav.)'),
+        'month': (TruncMonth, '%Y-%m', '%Y-%m')
+    }
+    TruncFunc, key_fmt, display_fmt = trunc_map.get(granularity, trunc_map['day'])
 
-    # Filter logs
-    # Make sure we include the end date completely
-    end_date_inclusive = end_date + timedelta(days=1)
-    logs = AIUsageLog.objects.filter(timestamp__gte=start_date, timestamp__lt=end_date_inclusive)
+    bucket_keys = []
+    bucket_labels = []
+    bucket_full_labels = []
 
-    # Global KPI
-    total_cost = logs.aggregate(Sum('total_cost'))['total_cost__sum'] or 0.0
-    total_queries = logs.count()
+    if granularity == 'hour':
+        curr = start_dt
+        max_hours = 744  # Iki 31 dienos valandomis
+        count = 0
+        while curr < end_dt_inclusive and count < max_hours:
+            bucket_keys.append(curr.strftime(key_fmt))
+            bucket_labels.append(curr.strftime(display_fmt))
+            bucket_full_labels.append(curr.strftime('%Y-%m-%d %H:00'))
+            curr += timedelta(hours=1)
+            count += 1
+    elif granularity == 'day':
+        curr = start_date
+        while curr <= end_date:
+            bucket_keys.append(curr.strftime(key_fmt))
+            bucket_labels.append(curr.strftime(display_fmt))
+            bucket_full_labels.append(curr.strftime('%Y-%m-%d'))
+            curr += timedelta(days=1)
+    elif granularity == 'week':
+        curr = start_date - timedelta(days=start_date.weekday())
+        while curr <= end_date:
+            w_num = curr.isocalendar()[1]
+            bucket_keys.append(curr.strftime(key_fmt))
+            bucket_labels.append(f'{curr.strftime("%m-%d")} (W{w_num})')
+            bucket_full_labels.append(f'{curr.strftime("%Y-%m-%d")} (Savaitė {w_num})')
+            curr += timedelta(days=7)
+    elif granularity == 'month':
+        curr = start_date.replace(day=1)
+        while curr <= end_date:
+            bucket_keys.append(curr.strftime(key_fmt))
+            bucket_labels.append(curr.strftime(display_fmt))
+            bucket_full_labels.append(curr.strftime('%Y m. %B'))
+            curr = (curr + timedelta(days=32)).replace(day=1)
 
-    # Aggregate by company
-    company_stats = logs.values('company__name').annotate(
+    # Filtruojame žurnalą
+    qs = AIUsageLog.objects.filter(timestamp__gte=start_dt, timestamp__lt=end_dt_inclusive)
+
+    filter_by_company = bool(selected_company_ids and 'all' not in selected_company_ids)
+    if filter_by_company:
+        has_unassigned = 'unassigned' in selected_company_ids
+        numeric_ids = [int(x) for x in selected_company_ids if str(x).isdigit()]
+        if numeric_ids and has_unassigned:
+            qs = qs.filter(Q(company_id__in=numeric_ids) | Q(company__isnull=True))
+        elif numeric_ids:
+            qs = qs.filter(company_id__in=numeric_ids)
+        elif has_unassigned:
+            qs = qs.filter(company__isnull=True)
+
+    db_data = qs.annotate(b=TruncFunc('timestamp')).values('b', 'company__id', 'company__name').annotate(
         total_cost=Sum('total_cost'),
-        total_queries=Count('id')
+        cnt=Count('id')
+    ).order_by('b')
+
+    company_series = {}
+    for r in db_data:
+        cid = str(r['company__id']) if r['company__id'] else 'unassigned'
+        cname = r['company__name'] or 'Kiti / Nepriskirta'
+
+        b = r['b']
+        if granularity == 'hour':
+            k = b.strftime(key_fmt)
+        elif granularity == 'day':
+            k = b.strftime(key_fmt)
+        elif granularity == 'week':
+            w_start = b.date() - timedelta(days=b.date().weekday())
+            k = w_start.strftime(key_fmt)
+        else:
+            k = b.strftime(key_fmt)
+
+        if cid not in company_series:
+            company_series[cid] = {'name': cname, 'id': cid, 'costs': {}, 'queries': {}}
+
+        cents = float(r['total_cost'] or 0.0) * 100.0
+        company_series[cid]['costs'][k] = company_series[cid]['costs'].get(k, 0.0) + cents
+        company_series[cid]['queries'][k] = company_series[cid]['queries'].get(k, 0) + r['cnt']
+
+    palette = [
+        {'border': '#6366f1', 'bg': 'rgba(99, 102, 241, 0.12)'},  # Indigo
+        {'border': '#10b981', 'bg': 'rgba(16, 185, 129, 0.12)'},  # Emerald
+        {'border': '#f59e0b', 'bg': 'rgba(245, 158, 11, 0.12)'},  # Amber
+        {'border': '#f43f5e', 'bg': 'rgba(244, 63, 94, 0.12)'},   # Rose
+        {'border': '#06b6d4', 'bg': 'rgba(6, 182, 212, 0.12)'},   # Cyan
+        {'border': '#8b5cf6', 'bg': 'rgba(139, 92, 246, 0.12)'},  # Violet
+        {'border': '#ec4899', 'bg': 'rgba(236, 72, 153, 0.12)'},  # Pink
+        {'border': '#64748b', 'bg': 'rgba(100, 116, 139, 0.12)'}, # Slate
+    ]
+
+    active_cids = list(company_series.keys())
+    active_cids.sort(key=lambda cid: sum(company_series[cid]['costs'].values()), reverse=True)
+
+    datasets = []
+    color_idx = 0
+    total_series = [0.0] * len(bucket_keys)
+    total_queries_series = [0] * len(bucket_keys)
+
+    for cid in active_cids:
+        info = company_series[cid]
+        c_costs = [round(info['costs'].get(k, 0.0), 6) for k in bucket_keys]
+        c_queries = [info['queries'].get(k, 0) for k in bucket_keys]
+
+        for i, val in enumerate(c_costs):
+            total_series[i] += val
+            total_queries_series[i] += c_queries[i]
+
+        style = palette[color_idx % len(palette)]
+        color_idx += 1
+
+        datasets.append({
+            'label': info['name'],
+            'company_id': cid,
+            'data': c_costs,
+            'query_counts': c_queries,
+            'borderColor': style['border'],
+            'backgroundColor': style['bg'],
+            'tension': 0.35,
+            'fill': True,
+            'borderWidth': 2.5,
+            'pointRadius': 3,
+            'pointHoverRadius': 6,
+        })
+
+    if len(datasets) > 1:
+        datasets.insert(0, {
+            'label': 'Bendra suma (Visos)',
+            'company_id': 'total',
+            'data': [round(x, 6) for x in total_series],
+            'query_counts': total_queries_series,
+            'borderColor': '#1e293b',
+            'backgroundColor': 'rgba(30, 41, 59, 0.04)',
+            'borderDash': [5, 5],
+            'tension': 0.35,
+            'fill': False,
+            'borderWidth': 2,
+            'pointRadius': 3,
+            'pointHoverRadius': 6,
+        })
+
+    total_cost_usd = float(qs.aggregate(Sum('total_cost'))['total_cost__sum'] or 0.0)
+    total_cost_cents = total_cost_usd * 100.0
+    total_queries_count = qs.count()
+    avg_cents = (total_cost_cents / total_queries_count) if total_queries_count > 0 else 0.0
+
+    return {
+        'labels': bucket_labels,
+        'full_labels': bucket_full_labels,
+        'datasets': datasets,
+        'granularity': granularity,
+        'total_cost_usd': total_cost_usd,
+        'total_cost_cents': round(total_cost_cents, 4),
+        'total_queries': total_queries_count,
+        'avg_cents': round(avg_cents, 4),
+    }
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_ai_analytics(request):
+    import json
+    from datetime import datetime, timedelta
+    from django.db.models import Sum, Count, Q
+    from feedbackas.models import AIUsageLog
+    from users.models import Company
+
+    today = timezone.now().date()
+    earliest_log = AIUsageLog.objects.order_by('timestamp').first()
+
+    # Nustatome pradines ir pabaigos datas
+    start_date_str = request.GET.get('start_date', '').strip()
+    end_date_str = request.GET.get('end_date', '').strip()
+
+    if start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = earliest_log.timestamp.date().replace(day=1) if earliest_log else today.replace(day=1)
+            end_date = today
+    else:
+        if earliest_log:
+            start_date = earliest_log.timestamp.date().replace(day=1)
+        else:
+            start_date = today.replace(day=1)
+        end_date = today
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
+
+    # Detalumas: 'hour', 'day', 'week', 'month'
+    granularity = request.GET.get('granularity', '').lower()
+    if granularity not in ('hour', 'day', 'week', 'month'):
+        span_days = (end_date - start_date).days
+        if span_days <= 2:
+            granularity = 'hour'
+        elif span_days > 90:
+            granularity = 'month'
+        elif span_days > 35:
+            granularity = 'week'
+        else:
+            granularity = 'day'
+
+    # Pasirinktos įmonės
+    selected_cids = request.GET.getlist('companies')
+    if not selected_cids and request.GET.get('companies'):
+        selected_cids = [x.strip() for x in request.GET.get('companies').split(',') if x.strip()]
+
+    # Laiko eilutės duomenys grafikui
+    timeline = get_ai_usage_timeline_data(
+        start_date=start_date,
+        end_date=end_date,
+        granularity=granularity,
+        selected_company_ids=selected_cids
+    )
+
+    # AJAX JSON atsakymas
+    if request.GET.get('format') == 'json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse(timeline)
+
+    # Bendras filtruotas žurnalas papildomai lentelei ir kortelėms
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(start_date, datetime.min.time()), tz)
+    end_dt_inclusive = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), datetime.min.time()), tz)
+
+    logs = AIUsageLog.objects.filter(timestamp__gte=start_dt, timestamp__lt=end_dt_inclusive)
+
+    # Visos įmonės su jų statistika pasirinkimui
+    all_companies = list(Company.objects.all().order_by('name'))
+    has_unassigned = logs.filter(company__isnull=True).exists()
+
+    company_stats_qs = logs.values('company__id', 'company__name').annotate(
+        total_cost=Sum('total_cost'),
+        total_queries=Count('id'),
+        prompt_tokens=Sum('prompt_tokens'),
+        completion_tokens=Sum('completion_tokens')
     ).order_by('-total_cost')
 
-    company_labels = []
-    company_costs = []
-    for stat in company_stats:
-        company_labels.append(stat['company__name'] or 'Nepriskirta įmonė')
-        company_costs.append(float(stat['total_cost']))
+    comp_totals_map = {}
+    for st in company_stats_qs:
+        cid = str(st['company__id']) if st['company__id'] else 'unassigned'
+        comp_totals_map[cid] = {
+            'cost_usd': float(st['total_cost'] or 0.0),
+            'cost_cents': float(st['total_cost'] or 0.0) * 100.0,
+            'queries': st['total_queries'],
+            'prompt_tokens': st['prompt_tokens'] or 0,
+            'completion_tokens': st['completion_tokens'] or 0,
+        }
 
-    # Aggregate by user (Top 20) — neįtraukiame foninių užklausų (feedback_analysis)
-    user_stats = logs.exclude(request_type='feedback_analysis').values('user__first_name', 'user__last_name', 'user__username', 'company__name').annotate(
+    available_companies = []
+    for c in all_companies:
+        cid = str(c.id)
+        stat = comp_totals_map.get(cid, {'cost_usd': 0.0, 'cost_cents': 0.0, 'queries': 0, 'prompt_tokens': 0, 'completion_tokens': 0})
+        is_sel = (not selected_cids) or ('all' in selected_cids) or (cid in selected_cids)
+        available_companies.append({
+            'id': cid,
+            'name': c.name,
+            'is_selected': is_sel,
+            'total_cents': round(stat['cost_cents'], 4),
+            'total_cost': stat['cost_usd'],
+            'queries': stat['queries'],
+            'prompt_tokens': stat['prompt_tokens'],
+            'completion_tokens': stat['completion_tokens'],
+            'has_data': stat['queries'] > 0,
+        })
+
+    if has_unassigned:
+        stat = comp_totals_map.get('unassigned', {'cost_usd': 0.0, 'cost_cents': 0.0, 'queries': 0, 'prompt_tokens': 0, 'completion_tokens': 0})
+        is_sel = (not selected_cids) or ('all' in selected_cids) or ('unassigned' in selected_cids)
+        available_companies.append({
+            'id': 'unassigned',
+            'name': 'Kiti / Nepriskirta',
+            'is_selected': is_sel,
+            'total_cents': round(stat['cost_cents'], 4),
+            'total_cost': stat['cost_usd'],
+            'queries': stat['queries'],
+            'prompt_tokens': stat['prompt_tokens'],
+            'completion_tokens': stat['completion_tokens'],
+            'has_data': stat['queries'] > 0,
+        })
+
+    # Top darbuotojai
+    user_logs_qs = logs.exclude(request_type='feedback_analysis')
+    if selected_cids and 'all' not in selected_cids:
+        numeric_ids = [int(x) for x in selected_cids if str(x).isdigit()]
+        has_unass = 'unassigned' in selected_cids
+        if numeric_ids and has_unass:
+            user_logs_qs = user_logs_qs.filter(Q(company_id__in=numeric_ids) | Q(company__isnull=True))
+        elif numeric_ids:
+            user_logs_qs = user_logs_qs.filter(company_id__in=numeric_ids)
+        elif has_unass:
+            user_logs_qs = user_logs_qs.filter(company__isnull=True)
+
+    user_stats = user_logs_qs.values(
+        'user__first_name', 'user__last_name', 'user__username', 'company__name'
+    ).annotate(
         total_cost=Sum('total_cost'),
         total_queries=Count('id')
     ).order_by('-total_cost')[:20]
 
+    user_stats_list = []
+    for us in user_stats:
+        cost_usd = float(us['total_cost'] or 0.0)
+        user_stats_list.append({
+            'first_name': us['user__first_name'],
+            'last_name': us['user__last_name'],
+            'username': us['user__username'],
+            'company_name': us['company__name'] or 'Kiti / Nepriskirta',
+            'total_queries': us['total_queries'],
+            'total_cost': cost_usd,
+            'total_cents': round(cost_usd * 100.0, 4),
+            'user__first_name': us['user__first_name'],
+            'user__last_name': us['user__last_name'],
+            'user__username': us['user__username'],
+            'company__name': us['company__name'] or 'Kiti / Nepriskirta',
+        })
+
+    # Aktyviausia įmonė
+    active_comps_with_cents = [c for c in available_companies if c['total_cents'] > 0]
+    top_company = max(active_comps_with_cents, key=lambda x: x['total_cents'], default=None) if active_comps_with_cents else None
+    top_company_name = top_company['name'] if top_company else None
+    top_company_cents = top_company['total_cents'] if top_company else 0.0
+
     context = {
         'start_date': start_date_str,
         'end_date': end_date_str,
-        'total_cost': total_cost,
-        'total_queries': total_queries,
-        'company_labels': json.dumps(company_labels),
-        'company_costs': json.dumps(company_costs),
-        'user_stats': user_stats,
+        'granularity': granularity,
+        'selected_cids': selected_cids,
+        'selected_cids_json': json.dumps(selected_cids),
+        'available_companies': available_companies,
+        'available_companies_json': json.dumps([{'id': c['id'], 'name': c['name']} for c in available_companies]),
+        'timeline_json': json.dumps(timeline),
+        'total_cost': timeline['total_cost_usd'],
+        'total_cents': timeline['total_cost_cents'],
+        'total_queries': timeline['total_queries'],
+        'avg_cents': timeline['avg_cents'],
+        'top_company_name': top_company_name,
+        'top_company_cents': top_company_cents,
+        'user_stats': user_stats_list,
     }
     return render(request, 'superadmin/ai_analytics.html', context)
+
 
 
 @user_passes_test(lambda u: u.is_superuser)

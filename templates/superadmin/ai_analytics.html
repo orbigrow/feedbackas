@@ -1,244 +1,781 @@
 {% extends 'superadmin/base_superadmin.html' %}
+{% load static %}
 
 {% block title %}AI Analitika - Superadmin{% endblock %}
 
 {% block content %}
-<main class="flex-1 overflow-y-auto bg-bg-secondary p-6">
-    <div class="max-w-7xl mx-auto">
+<main class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
         <!-- Header & Breadcrumb -->
-        <div class="md:flex md:items-center md:justify-between mb-8">
-            <div class="flex-1 min-w-0">
-                <nav class="flex text-sm text-text-muted mb-2" aria-label="Breadcrumb">
-                    <ol class="inline-flex items-center space-x-1 md:space-x-3">
-                        <li class="inline-flex items-center">
-                            <a href="{% url 'superadmin_companies_list' %}" class="hover:text-primary transition-colors">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <nav class="flex text-xs font-medium text-slate-500 mb-1.5" aria-label="Breadcrumb">
+                    <ol class="inline-flex items-center space-x-1 sm:space-x-2">
+                        <li>
+                            <a href="{% url 'superadmin_companies_list' %}" class="hover:text-indigo-600 transition-colors">
                                 Įmonės
                             </a>
                         </li>
-                        <li>
-                            <div class="flex items-center">
-                                <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                                </svg>
-                                <span class="text-text-main font-medium">AI Statistika</span>
-                            </div>
+                        <li class="flex items-center">
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 mx-1"></i>
+                            <span class="text-slate-800 font-semibold">AI Sąnaudos</span>
                         </li>
                     </ol>
                 </nav>
-                <h2 class="text-2xl font-bold leading-7 text-text-main sm:text-3xl sm:truncate flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    Dirbtinio Intelekto (AI) Sąnaudos
-                </h2>
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-sm shadow-indigo-200 shrink-0">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                            Dirbtinio Intelekto (AI) Sąnaudos
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-500">
+                            Sąnaudų dinamika centais (¢ / ct), užklausų periodiškumas ir įmonių palyginimas
+                        </p>
+                    </div>
+                </div>
             </div>
-            
-            <!-- Date Filter -->
-            <div class="mt-4 flex md:mt-0 md:ml-4">
-                <form method="get" class="flex flex-col sm:flex-row items-center gap-3 bg-bg-main p-2 rounded-lg shadow-sm border border-gray-100">
-                    <div class="flex items-center gap-2">
-                        <label for="start_date" class="text-xs font-semibold text-text-muted uppercase">Nuo:</label>
-                        <input type="date" id="start_date" name="start_date" value="{{ start_date }}" class="text-sm border-gray-200 rounded-md focus:ring-primary focus:border-primary p-1.5 cursor-pointer max-w-[130px]">
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <label for="end_date" class="text-xs font-semibold text-text-muted uppercase">Iki:</label>
-                        <input type="date" id="end_date" name="end_date" value="{{ end_date }}" class="text-sm border-gray-200 rounded-md focus:ring-primary focus:border-primary p-1.5 cursor-pointer max-w-[130px]">
-                    </div>
-                    <button type="submit" class="w-full sm:w-auto px-4 py-1.5 bg-bg-secondary text-text-main font-semibold text-sm rounded-md hover:bg-gray-200 transition">
-                        Filtruoti
-                    </button>
-                    <a href="{% url 'superadmin_ai_analytics' %}" class="w-full sm:w-auto px-2 py-1.5 text-gray-400 hover:text-text-main text-sm" title="Išvalyti filtrą">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                    </a>
-                </form>
+
+            <!-- Greitas eksportas / nuoroda -->
+            <div class="flex items-center gap-2 self-start md:self-auto">
+                <a href="{% url 'superadmin_ai_analytics' %}" 
+                   class="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition"
+                   title="Atstatyti filtrus">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>Atstatyti</span>
+                </a>
             </div>
         </div>
 
-        <!-- Global KPI Cards -->
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-            <div class="bg-bg-main overflow-hidden shadow-sm rounded-xl border border-gray-100 flex items-center p-5">
-                <div class="p-3 rounded-full bg-blue-50 text-blue-600 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-text-muted mb-1">
-                        Bendra išlaidų suma (pasirinktu laikotarpiu)
-                    </dt>
-                    <dd class="text-3xl font-extrabold text-text-main">
-                        ${{ total_cost|floatformat:6 }}
-                    </dd>
-                </div>
-            </div>
-            
-            <div class="bg-bg-main overflow-hidden shadow-sm rounded-xl border border-gray-100 flex items-center p-5">
-                <div class="p-3 rounded-full bg-purple-50 text-purple-600 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-text-muted mb-1">
-                        Bendras kreipimųsi skaičius (užklausos)
-                    </dt>
-                    <dd class="text-3xl font-extrabold text-text-main">
-                        {{ total_queries }}
-                    </dd>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Chart and Top Users Split -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Company chart -->
-            <div class="lg:col-span-2 bg-bg-main p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="text-lg font-bold text-text-main mb-6 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                    Išlaidos pagal įmonę ($)
-                </h3>
-                <div class="relative h-80 w-full">
-                    <canvas id="companyChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Top Users List -->
-            <div class="bg-bg-main p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="text-lg font-bold text-text-main mb-6 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    Aktyviausi darbuotojai (Top 20)
-                </h3>
+        <!-- Filtravimo skydelis (Data, Įmonės, Greitieji filtrai) -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 
-                <div class="overflow-y-auto max-h-[320px] pr-2">
-                    {% if user_stats %}
-                    <ul class="space-y-4">
-                        {% for stat in user_stats %}
-                        <li class="flex items-center justify-between p-3 rounded-lg hover:bg-bg-secondary transition-colors border border-transparent hover:border-gray-100">
-                            <div class="flex items-center gap-3 overflow-hidden">
-                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-primary font-bold text-xs">
-                                    {{ forloop.counter }}
-                                </div>
-                                <div class="truncate">
-                                    <p class="text-sm font-semibold text-text-main truncate">
-                                        {{ stat.user__first_name|default:stat.user__username }} {{ stat.user__last_name }}
-                                    </p>
-                                    <p class="text-xs text-text-muted truncate mt-0.5">
-                                        {{ stat.company__name|default:"-" }} &middot; {{ stat.total_queries }} užkl.
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="text-right ml-2 flex-shrink-0">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold leading-5 bg-green-100 text-green-800">
-                                    ${{ stat.total_cost|floatformat:6 }}
-                                </span>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <div class="flex flex-col items-center justify-center h-40 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-300 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        <p class="text-sm text-text-muted">Laikotarpiu nėra užklausų</p>
+                <!-- Data: Nuo / Iki -->
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                        <label for="start_date" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Nuo:</label>
+                        <input type="date" id="start_date" name="start_date" value="{{ start_date }}" 
+                               class="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 border-none p-0 focus:ring-0 cursor-pointer">
                     </div>
-                    {% endif %}
+                    <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                        <label for="end_date" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Iki:</label>
+                        <input type="date" id="end_date" name="end_date" value="{{ end_date }}" 
+                               class="bg-transparent text-xs sm:text-sm font-semibold text-slate-700 border-none p-0 focus:ring-0 cursor-pointer">
+                    </div>
+                    <button type="button" id="applyDateBtn"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm shadow-indigo-200 flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                        <span>Filtruoti</span>
+                    </button>
+                </div>
+
+                <!-- Greitieji periodo mygtukai (Presets) -->
+                <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 hidden sm:inline">Greitai:</span>
+                    <button type="button" onclick="setPreset('today')" class="preset-btn px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 font-semibold text-slate-600 transition">
+                        Šiandien
+                    </button>
+                    <button type="button" onclick="setPreset('7d')" class="preset-btn px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 font-semibold text-slate-600 transition">
+                        Pask. 7 d.
+                    </button>
+                    <button type="button" onclick="setPreset('this_month')" class="preset-btn px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 font-semibold text-slate-600 transition">
+                        Šis mėnuo
+                    </button>
+                    <button type="button" onclick="setPreset('30d')" class="preset-btn px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 font-semibold text-slate-600 transition">
+                        Pask. 30 d.
+                    </button>
+                    <button type="button" onclick="setPreset('all_time')" class="preset-btn px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 font-semibold text-slate-600 transition">
+                        Visi laikai
+                    </button>
+                </div>
+            </div>
+
+            <!-- Įmonių pasirinkimas (Multi-select) -->
+            <div class="pt-3 border-t border-slate-100">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2.5">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="building-2" class="w-3.5 h-3.5 text-indigo-500"></i>
+                            Pasirinkite įmonę (-es) palyginimui:
+                        </span>
+                        <span id="selectedCountBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            Visos įmonės
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <button type="button" onclick="selectAllCompanies(true)" class="text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer">
+                            Pažymėti visas
+                        </button>
+                        <span class="text-slate-300">|</span>
+                        <button type="button" onclick="selectAllCompanies(false)" class="text-slate-500 hover:text-slate-700 font-semibold cursor-pointer">
+                            Nuvalyti
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Įmonių mygtukai / kortelės (Pills) -->
+                <div class="flex flex-wrap items-center gap-2" id="companyPillsContainer">
+                    <button type="button" id="pill-all" onclick="toggleAllPill()" 
+                            class="company-pill px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer {% if not selected_cids or 'all' in selected_cids %}bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-100{% else %}bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100{% endif %}">
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                        <span>Visos įmonės</span>
+                    </button>
+
+                    {% for c in available_companies %}
+                    <button type="button" id="pill-{{ c.id }}" data-cid="{{ c.id }}" onclick="toggleCompanyPill('{{ c.id }}')"
+                            class="company-pill px-3 py-1.5 rounded-xl border text-xs font-semibold transition flex items-center gap-2 cursor-pointer {% if c.is_selected %}bg-white border-indigo-300 text-indigo-900 shadow-sm ring-1 ring-indigo-500/20{% else %}bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 opacity-60{% endif %}">
+                        <span class="w-2 h-2 rounded-full {% if forloop.counter0 == 0 %}bg-indigo-500{% elif forloop.counter0 == 1 %}bg-emerald-500{% elif forloop.counter0 == 2 %}bg-amber-500{% elif forloop.counter0 == 3 %}bg-rose-500{% elif forloop.counter0 == 4 %}bg-cyan-500{% else %}bg-purple-500{% endif %}"></span>
+                        <span class="font-bold">{{ c.name }}</span>
+                        {% if c.total_cents > 0 %}
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md {% if c.is_selected %}bg-indigo-100/70 text-indigo-800{% else %}bg-slate-200 text-slate-600{% endif %}">
+                            {{ c.total_cents|floatformat:4 }} ct
+                        </span>
+                        {% endif %}
+                    </button>
+                    {% endfor %}
                 </div>
             </div>
         </div>
+
+        <!-- KPI Suvestinės Kortelės (4 kortelės) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- 1. Bendra suma centais -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Sąnaudos (Centais)</span>
+                    <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-extrabold text-sm">
+                        ¢
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="kpiTotalCents" class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        {{ total_cents|floatformat:4 }}
+                    </span>
+                    <span class="text-sm font-bold text-amber-600">ct</span>
+                </div>
+                <p id="kpiTotalUsd" class="text-xs text-slate-400 mt-1 font-medium">
+                    Ekvivalentas: ${{ total_cost|floatformat:6 }} USD
+                </p>
+                <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-amber-500/5 rounded-full pointer-events-none"></div>
+            </div>
+
+            <!-- 2. Bendras užklausų skaičius -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Bendros Užklausos</span>
+                    <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="message-square" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-1.5">
+                    <span id="kpiTotalQueries" class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        {{ total_queries }}
+                    </span>
+                    <span class="text-xs font-semibold text-slate-500">užkl.</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1 font-medium">
+                    Sugeneruotų atsiliepimų ir analizės užklausos
+                </p>
+                <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-blue-500/5 rounded-full pointer-events-none"></div>
+            </div>
+
+            <!-- 3. Vidutinė užklausos kaina -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Vidurkis užklausai</span>
+                    <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i data-lucide="gauge" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-1.5">
+                    <span id="kpiAvgCents" class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        {{ avg_cents|floatformat:4 }}
+                    </span>
+                    <span class="text-xs font-bold text-emerald-600">ct / užkl.</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1 font-medium">
+                    Vidutinės sąnaudos vienam atsiliepimui
+                </p>
+                <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-emerald-500/5 rounded-full pointer-events-none"></div>
+            </div>
+
+            <!-- 4. Aktyviausia įmonė -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Didžiausios Sąnaudos</span>
+                    <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <i data-lucide="crown" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="truncate">
+                    <p id="kpiTopCompany" class="text-lg font-bold text-slate-900 truncate" title="{{ top_company_name|default:'Nėra duomenų' }}">
+                        {{ top_company_name|default:"—" }}
+                    </p>
+                </div>
+                <p id="kpiTopCompanyCents" class="text-xs font-semibold text-purple-600 mt-1">
+                    {% if top_company_name %}{{ top_company_cents|floatformat:4 }} ct iš viso{% else %}Šiuo periodu užklausų nėra{% endif %}
+                </p>
+                <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-purple-500/5 rounded-full pointer-events-none"></div>
+            </div>
+
+        </div>
+
+        <!-- PAGRINDINIS GRAFIKAS: AI Sąnaudų Dinamika (Centais) -->
+        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm space-y-4">
+            
+            <!-- Grafiko viršutinė juosta: Antraštė + Detalumo perjungiklis (Valandos / Dienos / Savaitės / Mėnesiai) -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-5 h-5 text-indigo-600"></i>
+                            AI Sąnaudų Dinamika Laike (Centais)
+                        </h2>
+                        <span id="chartGranularityBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 uppercase">
+                            {{ granularity }}
+                        </span>
+                    </div>
+                    <p id="chartSubtitle" class="text-xs text-slate-500 mt-0.5">
+                        Rodomas pasirinktų įmonių sąnaudų pokytis centais (¢ / ct)
+                    </p>
+                </div>
+
+                <!-- Detalumo mygtukai (Valandos, Dienos, Savaitės, Mėnesiai) -->
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0 self-start sm:self-auto">
+                    <button type="button" onclick="setGranularity('hour')" id="btn-hour" 
+                            class="granularity-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 {% if granularity == 'hour' %}bg-white text-indigo-700 font-bold shadow-sm ring-1 ring-slate-900/5{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-200/60{% endif %}">
+                        <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                        <span>Valandomis</span>
+                    </button>
+                    <button type="button" onclick="setGranularity('day')" id="btn-day" 
+                            class="granularity-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 {% if granularity == 'day' %}bg-white text-indigo-700 font-bold shadow-sm ring-1 ring-slate-900/5{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-200/60{% endif %}">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                        <span>Dienomis</span>
+                    </button>
+                    <button type="button" onclick="setGranularity('week')" id="btn-week" 
+                            class="granularity-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 {% if granularity == 'week' %}bg-white text-indigo-700 font-bold shadow-sm ring-1 ring-slate-900/5{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-200/60{% endif %}">
+                        <i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>
+                        <span>Savaitėmis</span>
+                    </button>
+                    <button type="button" onclick="setGranularity('month')" id="btn-month" 
+                            class="granularity-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 {% if granularity == 'month' %}bg-white text-indigo-700 font-bold shadow-sm ring-1 ring-slate-900/5{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-200/60{% endif %}">
+                        <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>
+                        <span>Mėnesiais</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas konteineris -->
+            <div class="relative w-full h-[380px] pt-2">
+                <canvas id="aiTimelineChart"></canvas>
+                <div id="chartLoadingOverlay" class="hidden absolute inset-0 bg-white/70 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-xl transition">
+                    <div class="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg">
+                        <div class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Kraunami duomenys...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Papildoma paaiškinamoji eilutė po grafiku -->
+            <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+                <div class="flex items-center gap-3">
+                    <span class="flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        Paspauskite legendos elementą grafiko viršuje, kad paslėptumėte / parodytumėte konkrečios įmonės kreivę
+                    </span>
+                </div>
+                <div>
+                    <span>1 USD = 100 centų (¢)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dvi detalios lentelės (Įmonių suvestinė ir Top darbuotojai) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Kairė (2 stulpeliai): Įmonių sąnaudų lentelė -->
+            <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="building" class="w-4 h-4 text-indigo-600"></i>
+                        Įmonių Sąnaudų Suvestinė
+                    </h3>
+                    <span class="text-xs text-slate-400 font-medium">
+                        {{ available_companies|length }} įmonės (-ių)
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                                <th class="pb-2.5 font-bold">Įmonė</th>
+                                <th class="pb-2.5 text-right font-bold">Užklausos</th>
+                                <th class="pb-2.5 text-right font-bold">Tokenai (P / C)</th>
+                                <th class="pb-2.5 text-right font-bold">Vid. kaina</th>
+                                <th class="pb-2.5 text-right font-bold">Sąnaudos centais</th>
+                                <th class="pb-2.5 text-right font-bold">Sąnaudos USD</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100/80" id="companiesTableBody">
+                            {% for c in available_companies %}
+                            <tr class="hover:bg-slate-50/70 transition">
+                                <td class="py-3 font-semibold text-slate-800 flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full {% if forloop.counter0 == 0 %}bg-indigo-500{% elif forloop.counter0 == 1 %}bg-emerald-500{% elif forloop.counter0 == 2 %}bg-amber-500{% elif forloop.counter0 == 3 %}bg-rose-500{% elif forloop.counter0 == 4 %}bg-cyan-500{% else %}bg-purple-500{% endif %} shrink-0"></span>
+                                    <span class="truncate max-w-[180px]">{{ c.name }}</span>
+                                </td>
+                                <td class="py-3 text-right font-semibold text-slate-700">
+                                    {{ c.queries }}
+                                </td>
+                                <td class="py-3 text-right text-slate-500 font-mono text-[11px]">
+                                    {{ c.prompt_tokens }} / {{ c.completion_tokens }}
+                                </td>
+                                <td class="py-3 text-right text-slate-600 font-medium">
+                                    {% if c.queries > 0 %}
+                                        {{ c.total_cents|floatformat:4 }} ct
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 text-right font-bold text-amber-600 font-mono">
+                                    {{ c.total_cents|floatformat:4 }} ct
+                                </td>
+                                <td class="py-3 text-right font-medium text-slate-500 font-mono">
+                                    ${{ c.total_cost|floatformat:6 }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-slate-400 italic">
+                                    Duomenų šiam periodui nerasta.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Dešinė (1 stulpelis): Aktyviausi darbuotojai (Top 20) -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-orange-500"></i>
+                        Aktyviausi Darbuotojai
+                    </h3>
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Top 20</span>
+                </div>
+
+                <div class="overflow-y-auto max-h-[380px] pr-1 space-y-2.5 custom-scroll flex-1" id="usersListContainer">
+                    {% for stat in user_stats %}
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/80 transition">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                {{ forloop.counter }}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold text-slate-800 truncate">
+                                    {% if stat.first_name or stat.last_name %}
+                                        {{ stat.first_name }} {{ stat.last_name }}
+                                    {% else %}
+                                        {{ stat.username }}
+                                    {% endif %}
+                                </p>
+                                <p class="text-[11px] text-slate-400 truncate">
+                                    {{ stat.company_name }} &middot; {{ stat.total_queries }} užkl.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0 ml-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/70">
+                                {{ stat.total_cents|floatformat:4 }} ct
+                            </span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="py-12 text-center text-slate-400 text-xs italic">
+                        Pasirinktu periodu naudotojų užklausų nerasta.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
     </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous"></script>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const labels = {{ company_labels|safe|default:"[]" }};
-    const data = {{ company_costs|safe|default:"[]" }};
-    
-    // Only render chart if there is data
-    if(labels.length > 0 && data.length > 0) {
-        const ctx = document.getElementById('companyChart').getContext('2d');
-        
-        // Gradient fill
-        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(88, 80, 236, 0.5)'); // primary var--color-primary
-        gradient.addColorStop(1, 'rgba(88, 80, 236, 0.05)');
+<!-- Chart.js ir Lucide bibliotekos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
 
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Išlaidos ($)',
-                    data: data,
-                    backgroundColor: gradient,
-                    borderColor: '#5850ec', // primary 
-                    borderWidth: 2,
-                    borderRadius: 6,
-                    hoverBackgroundColor: '#5850ec',
-                }]
-            },
+<script>
+// Pradinė būsena iš Django konteksto
+let currentStartDate = "{{ start_date }}";
+let currentEndDate = "{{ end_date }}";
+let currentGranularity = "{{ granularity }}";
+let selectedCompanies = {{ selected_cids_json|safe }};
+let timelineData = {{ timeline_json|safe }};
+let chartInstance = null;
+
+// Inicializacija
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+    renderChart(timelineData);
+
+    // Mygtuko "Filtruoti" paspaudimas
+    document.getElementById('applyDateBtn').addEventListener('click', function() {
+        const s = document.getElementById('start_date').value;
+        const e = document.getElementById('end_date').value;
+        if (s && e) {
+            currentStartDate = s;
+            currentEndDate = e;
+            fetchAndUpdateData();
+        }
+    });
+});
+
+// Grafiko piešimas / perbraižymas
+function renderChart(data) {
+    const ctx = document.getElementById('aiTimelineChart').getContext('2d');
+    
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    const hasData = data && data.datasets && data.datasets.length > 0 && data.labels && data.labels.length > 0;
+
+    if (!hasData) {
+        // Tuščios būsenos atvaizdavimas
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: { labels: ['Nėra duomenų'], datasets: [] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: '#1f2937',
-                        padding: 12,
-                        titleFont: { size: 14, weight: 'bold' },
-                        bodyFont: { size: 13 },
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 6 }).format(context.parsed.y);
-                                }
-                                return label;
-                            }
-                        }
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Pasirinktu laikotarpiu AI sąnaudų duomenų nerasta.',
+                        color: '#94a3b8',
+                        font: { size: 14, weight: 'normal' }
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: '#f3f4f6',
-                            drawBorder: false,
-                        },
-                        ticks: {
-                            font: { family: "'Inter', sans-serif", size: 11 },
-                            color: '#6b7280',
-                            callback: function(value, index, values) {
-                                return '$' + value;
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false,
-                            drawBorder: false,
-                        },
-                        ticks: {
-                            font: { family: "'Inter', sans-serif", size: 12, weight: '600' },
-                            color: '#374151'
-                        }
-                    }
-                },
-                animation: {
-                    duration: 1200,
-                    easing: 'easeOutQuart'
                 }
             }
         });
-    } else {
-        // Fallback for no data
-        const canvasContainer = document.getElementById('companyChart').parentElement;
-        canvasContainer.innerHTML = `
-            <div class="flex flex-col items-center justify-center h-full text-center text-text-muted">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-gray-200 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                <p class="text-base font-medium text-gray-500">Duomenų už pasirinktą laikotarpį nerasta.</p>
-                <p class="text-sm mt-1">Pabandykite pakeisti datos filtrus.</p>
-            </div>
-        `;
+        return;
     }
-});
+
+    // Paruošiame dataset'us su gražiais gradientais
+    const datasets = data.datasets.map(ds => {
+        return {
+            label: ds.label,
+            data: ds.data,
+            queryCounts: ds.query_counts || [],
+            borderColor: ds.borderColor,
+            backgroundColor: ds.backgroundColor,
+            borderWidth: ds.borderWidth || 2.5,
+            borderDash: ds.borderDash || [],
+            tension: ds.tension !== undefined ? ds.tension : 0.35,
+            fill: ds.fill !== undefined ? ds.fill : true,
+            pointRadius: ds.pointRadius || 3,
+            pointHoverRadius: ds.pointHoverRadius || 6,
+            pointBackgroundColor: ds.borderColor,
+        };
+    });
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: datasets,
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'start',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 16,
+                        font: { family: "'Inter', sans-serif", size: 11, weight: '600' },
+                        color: '#475569',
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    titleFont: { family: "'Inter', sans-serif", size: 12, weight: 'bold' },
+                    bodyFont: { family: "'Inter', sans-serif", size: 11 },
+                    callbacks: {
+                        title: function(items) {
+                            if (!items.length) return '';
+                            const idx = items[0].dataIndex;
+                            if (data.full_labels && data.full_labels[idx]) {
+                                return data.full_labels[idx];
+                            }
+                            return items[0].label;
+                        },
+                        label: function(context) {
+                            const val = context.parsed.y;
+                            const label = context.dataset.label || '';
+                            const qCount = (context.dataset.queryCounts && context.dataset.queryCounts[context.dataIndex]) || 0;
+                            const usdVal = (val / 100.0).toFixed(6);
+                            return `${label}: ${val.toFixed(4)} ct ($${usdVal}) [${qCount} užkl.]`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Sąnaudos centais (ct)',
+                        color: '#94a3b8',
+                        font: { family: "'Inter', sans-serif", size: 11, weight: '600' }
+                    },
+                    grid: {
+                        color: '#f1f5f9',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        font: { family: "'Inter', sans-serif", size: 11 },
+                        color: '#64748b',
+                        callback: function(value) {
+                            return value.toFixed(3) + ' ct';
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        font: { family: "'Inter', sans-serif", size: 11, weight: '500' },
+                        color: '#64748b',
+                        maxRotation: 45,
+                        minRotation: 0,
+                    }
+                }
+            },
+            animation: {
+                duration: 600,
+                easing: 'easeOutQuart'
+            }
+        }
+    });
+
+    // Atnaujiname antraštės žymą
+    const badge = document.getElementById('chartGranularityBadge');
+    if (badge) {
+        const ltNames = { 'hour': 'Valandomis', 'day': 'Dienomis', 'week': 'Savaitėmis', 'month': 'Mėnesiais' };
+        badge.innerText = ltNames[currentGranularity] || currentGranularity;
+    }
+}
+
+// Asinchroninis duomenų gavimas (AJAX)
+function fetchAndUpdateData() {
+    const overlay = document.getElementById('chartLoadingOverlay');
+    if (overlay) overlay.classList.remove('hidden');
+
+    const params = new URLSearchParams();
+    params.set('format', 'json');
+    params.set('start_date', currentStartDate);
+    params.set('end_date', currentEndDate);
+    params.set('granularity', currentGranularity);
+
+    if (selectedCompanies && selectedCompanies.length > 0) {
+        selectedCompanies.forEach(cid => {
+            params.append('companies', cid);
+        });
+    }
+
+    // Atnaujiname URL naršyklėje
+    const browserParams = new URLSearchParams(params);
+    browserParams.delete('format');
+    const newUrl = window.location.pathname + '?' + browserParams.toString();
+    window.history.replaceState({}, '', newUrl);
+
+    fetch(window.location.pathname + '?' + params.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        timelineData = data;
+        renderChart(data);
+
+        // Atnaujiname KPI korteles
+        if (data.total_cost_cents !== undefined) {
+            document.getElementById('kpiTotalCents').innerText = data.total_cost_cents.toFixed(4);
+            document.getElementById('kpiTotalUsd').innerText = `Ekvivalentas: $${data.total_cost_usd.toFixed(6)} USD`;
+            document.getElementById('kpiTotalQueries').innerText = data.total_queries;
+            document.getElementById('kpiAvgCents').innerText = data.avg_cents.toFixed(4);
+        }
+    })
+    .catch(err => {
+        console.error('Klaida gaunant AI sąnaudų duomenis:', err);
+    })
+    .finally(() => {
+        if (overlay) overlay.classList.add('hidden');
+    });
+}
+
+// Detalumo keitimas
+function setGranularity(g) {
+    if (currentGranularity === g) return;
+    currentGranularity = g;
+
+    // Atnaujiname mygtukų stilių
+    document.querySelectorAll('.granularity-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-indigo-700', 'font-bold', 'shadow-sm', 'ring-1', 'ring-slate-900/5');
+        btn.classList.add('text-slate-600');
+    });
+    const activeBtn = document.getElementById(`btn-${g}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('text-slate-600');
+        activeBtn.classList.add('bg-white', 'text-indigo-700', 'font-bold', 'shadow-sm', 'ring-1', 'ring-slate-900/5');
+    }
+
+    fetchAndUpdateData();
+}
+
+// Įmonių žymų (Pills) valdymas
+function toggleCompanyPill(cid) {
+    // Jei buvo pasirinkta "all", išvalome ir pradedame konkrečių įmonių pasirinkimą
+    if (selectedCompanies.includes('all') || selectedCompanies.length === 0) {
+        selectedCompanies = [cid];
+    } else if (selectedCompanies.includes(cid)) {
+        selectedCompanies = selectedCompanies.filter(x => x !== cid);
+        if (selectedCompanies.length === 0) {
+            selectedCompanies = ['all'];
+        }
+    } else {
+        selectedCompanies.push(cid);
+    }
+    updatePillsVisuals();
+    fetchAndUpdateData();
+}
+
+function toggleAllPill() {
+    selectedCompanies = ['all'];
+    updatePillsVisuals();
+    fetchAndUpdateData();
+}
+
+function selectAllCompanies(selectAll) {
+    if (selectAll) {
+        selectedCompanies = ['all'];
+    } else {
+        selectedCompanies = [];
+    }
+    updatePillsVisuals();
+    fetchAndUpdateData();
+}
+
+function updatePillsVisuals() {
+    const isAll = selectedCompanies.includes('all') || selectedCompanies.length === 0;
+    
+    const allPill = document.getElementById('pill-all');
+    if (allPill) {
+        if (isAll) {
+            allPill.className = "company-pill px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-100";
+        } else {
+            allPill.className = "company-pill px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100";
+        }
+    }
+
+    document.querySelectorAll('.company-pill[data-cid]').forEach(btn => {
+        const cid = btn.getAttribute('data-cid');
+        const isSel = isAll || selectedCompanies.includes(cid);
+        if (isSel) {
+            btn.className = "company-pill px-3 py-1.5 rounded-xl border text-xs font-semibold transition flex items-center gap-2 cursor-pointer bg-white border-indigo-300 text-indigo-900 shadow-sm ring-1 ring-indigo-500/20";
+        } else {
+            btn.className = "company-pill px-3 py-1.5 rounded-xl border text-xs font-semibold transition flex items-center gap-2 cursor-pointer bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 opacity-60";
+        }
+    });
+
+    const badge = document.getElementById('selectedCountBadge');
+    if (badge) {
+        if (isAll) {
+            badge.innerText = "Visos įmonės";
+        } else {
+            badge.innerText = `Pasirinkta: ${selectedCompanies.length}`;
+        }
+    }
+}
+
+// Greitieji periodo mygtukai (Presets)
+function setPreset(type) {
+    const today = new Date();
+    let s = new Date();
+    let e = today;
+    let recGranularity = 'day';
+
+    if (type === 'today') {
+        s = today;
+        recGranularity = 'hour';
+    } else if (type === '7d') {
+        s.setDate(today.getDate() - 7);
+        recGranularity = 'day';
+    } else if (type === 'this_month') {
+        s = new Date(today.getFullYear(), today.getMonth(), 1);
+        recGranularity = 'day';
+    } else if (type === '30d') {
+        s.setDate(today.getDate() - 30);
+        recGranularity = 'day';
+    } else if (type === 'all_time') {
+        s = new Date(2026, 0, 1); // 2026-01-01
+        recGranularity = 'month';
+    }
+
+    function fmt(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    currentStartDate = fmt(s);
+    currentEndDate = fmt(e);
+    currentGranularity = recGranularity;
+
+    document.getElementById('start_date').value = currentStartDate;
+    document.getElementById('end_date').value = currentEndDate;
+
+    // Atnaujiname mygtukus
+    document.querySelectorAll('.granularity-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-indigo-700', 'font-bold', 'shadow-sm', 'ring-1', 'ring-slate-900/5');
+        btn.classList.add('text-slate-600');
+    });
+    const activeBtn = document.getElementById(`btn-${currentGranularity}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('text-slate-600');
+        activeBtn.classList.add('bg-white', 'text-indigo-700', 'font-bold', 'shadow-sm', 'ring-1', 'ring-slate-900/5');
+    }
+
+    fetchAndUpdateData();
+}
 </script>
 {% endblock %}
