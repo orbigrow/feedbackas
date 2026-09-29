@@ -203,31 +203,27 @@
                     <!-- Rodiklių juosta -->
                     <div class="grid grid-cols-3 gap-2.5 pt-1">
                         <div class="p-2.5 rounded-xl bg-white border border-slate-200/80">
-                            <span class="text-[10px] uppercase font-bold text-slate-400 block">{% trans "Energija" %}</span>
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">{% trans "Išsekimas" %}</span>
                             <div class="flex items-center gap-1 font-bold text-slate-800 text-xs mt-0.5">
                                 <span class="text-amber-500">⚡</span>
-                                <span>{{ entry.energy_level }} / 10</span>
+                                <span class="{% if entry.exhaustion_level <= 2 %}text-rose-600 font-extrabold{% endif %}">{{ entry.exhaustion_level }} / 5</span>
                             </div>
                         </div>
 
                         <div class="p-2.5 rounded-xl bg-white border border-slate-200/80">
-                            <span class="text-[10px] uppercase font-bold text-slate-400 block">{% trans "Stresas" %}</span>
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">{% trans "Prasmė & ryšys" %}</span>
                             <div class="flex items-center gap-1 font-bold text-slate-800 text-xs mt-0.5">
-                                <span class="text-rose-500">〽️</span>
-                                <span>{{ entry.stress_level }} / 10</span>
+                                <span class="text-indigo-500">🎯</span>
+                                <span class="{% if entry.engagement_meaning <= 2 %}text-rose-600 font-extrabold{% endif %}">{{ entry.engagement_meaning }} / 5</span>
                             </div>
                         </div>
 
                         <div class="p-2.5 rounded-xl bg-white border border-slate-200/80">
-                            <span class="text-[10px] uppercase font-bold text-slate-400 block">{% trans "Krūvis" %}</span>
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">{% trans "Krūvio kontrolė" %}</span>
                             <div class="flex items-center gap-1 font-bold text-slate-800 text-xs mt-0.5 truncate">
                                 <span class="text-secondary">💼</span>
-                                <span>
-                                    {% if entry.workload_level == 1 %}{% trans "Labai mažas" %} (1/5)
-                                    {% elif entry.workload_level == 2 %}{% trans "Nedidelis" %} (2/5)
-                                    {% elif entry.workload_level == 3 %}{% trans "Subalansuotas" %} (3/5)
-                                    {% elif entry.workload_level == 4 %}{% trans "Optimalus" %} (4/5)
-                                    {% else %}{% trans "Perkrova" %} (5/5){% endif %}
+                                <span class="{% if entry.workload_control <= 2 %}text-rose-600 font-extrabold{% endif %}">
+                                    {{ entry.workload_control }} / 5
                                 </span>
                             </div>
                         </div>

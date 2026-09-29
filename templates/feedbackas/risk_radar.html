@@ -90,7 +90,7 @@
                     <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
                     <span>{% trans "Kvorumas užtikrintas" %}</span>
                 </div>
-                {% elif has_manager_surveys %}
+                {% elif has_manager_surveys and manager_surveys %}
                 <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl text-xs font-semibold" title="{% trans 'Pateikta tiesioginių anketų vadovui' %}">
                     <i data-lucide="user-check" class="w-4 h-4 text-indigo-600"></i>
                     <span>{% trans "Yra anketų vadovui" %} ({{ manager_surveys|length }})</span>
@@ -231,43 +231,34 @@
                     <!-- Išsamus anketos turinys (suskleidžiamas) -->
                     <div id="surveyBody-{{ survey.id }}" class="space-y-4 pt-3 border-t border-slate-200/60">
                         <!-- Rodiklių tinklelis -->
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-white rounded-xl p-3 border border-slate-200/60 text-center">
-                            <!-- Nuotaika -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-white rounded-xl p-3 border border-slate-200/60 text-center">
+                            <!-- Išsekimas ir atsigavimas -->
                             <div class="space-y-1">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Nuotaika" %}</span>
-                                <div class="text-sm font-bold flex items-center justify-center gap-1">
-                                    {% if survey.mood_score == 5 %}<span>🤩</span> <span class="text-xs text-emerald-700">{% trans "Puikiai" %}</span>
-                                    {% elif survey.mood_score == 4 %}<span>🙂</span> <span class="text-xs text-teal-700">{% trans "Gerai" %}</span>
-                                    {% elif survey.mood_score == 3 %}<span>😐</span> <span class="text-xs text-amber-700">{% trans "Normaliai" %}</span>
-                                    {% elif survey.mood_score == 2 %}<span>😕</span> <span class="text-xs text-orange-700">{% trans "Prastai" %}</span>
-                                    {% else %}<span>😫</span> <span class="text-xs text-rose-700">{% trans "Labai blogai" %}</span>{% endif %}
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Išsekimas (Nuovargis)" %}</span>
+                                <div class="text-xs font-bold flex items-center justify-center gap-1">
+                                    <span class="{% if survey.exhaustion_level <= 2 %}text-rose-600 font-black{% elif survey.exhaustion_level == 3 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                                        ⚡ {{ survey.exhaustion_level }}/5
+                                    </span>
                                 </div>
                             </div>
 
-                            <!-- Energija -->
+                            <!-- Santykis su darbu ir prasmė -->
                             <div class="space-y-1">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Energija" %}</span>
-                                <div class="text-xs font-bold text-slate-800 flex items-center justify-center gap-1">
-                                    <span class="text-amber-500">⚡</span>
-                                    <span>{{ survey.energy_level }}/10</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Santykis / Prasmė" %}</span>
+                                <div class="text-xs font-bold flex items-center justify-center gap-1">
+                                    <span class="{% if survey.engagement_meaning <= 2 %}text-rose-600 font-black{% elif survey.engagement_meaning == 3 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                                        🎯 {{ survey.engagement_meaning }}/5
+                                    </span>
                                 </div>
                             </div>
 
-                            <!-- Stresas -->
-                            <div class="space-y-1">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Stresas" %}</span>
-                                <div class="text-xs font-bold {% if survey.stress_level >= 7 %}text-rose-600{% elif survey.stress_level >= 4 %}text-amber-600{% else %}text-emerald-600{% endif %} flex items-center justify-center gap-1">
-                                    <span>🔥</span>
-                                    <span>{{ survey.stress_level }}/10</span>
-                                </div>
-                            </div>
-
-                            <!-- Krūvis -->
-                            <div class="space-y-1">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Krūvis" %}</span>
-                                <div class="text-xs font-bold text-slate-800 flex items-center justify-center gap-1">
-                                    <span>💼</span>
-                                    <span>{{ survey.workload_level }}/5</span>
+                            <!-- Darbo krūvis ir kontrolė -->
+                            <div class="space-y-1 col-span-2 sm:col-span-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Krūvis ir kontrolė" %}</span>
+                                <div class="text-xs font-bold flex items-center justify-center gap-1">
+                                    <span class="{% if survey.workload_control <= 2 %}text-rose-600 font-black{% elif survey.workload_control == 3 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                                        💼 {{ survey.workload_control }}/5
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -873,6 +864,15 @@
                                                                 <div class="min-w-0">
                                                                     <div class="font-bold text-slate-800 group-hover/emp:text-indigo-600 flex items-center gap-1.5 transition">
                                                                         <span class="truncate">{{ emp.full_name }}</span>
+                                                                        {% if emp.is_red_flag %}
+                                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200 shrink-0" title="{{ emp.red_flag_reason }}">
+                                                                            🚩 {% trans "Raudona vėliava" %}
+                                                                        </span>
+                                                                        {% elif emp.is_yellow_flag %}
+                                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 shrink-0" title="{{ emp.yellow_flag_reason }}">
+                                                                            ⚠️ {% trans "Geltona vėliava" %}
+                                                                        </span>
+                                                                        {% endif %}
                                                                         {% if emp.has_manager_survey %}
                                                                         <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0" title="{% trans 'Pateikta savijautos anketa vadovui 1-on-1' %}">
                                                                             <i data-lucide="user-check" class="w-2.5 h-2.5"></i>
@@ -898,7 +898,15 @@
                                                                     {{ emp.survey_count }}
                                                                 </span>
                                                             </div>
-                                                            {% if emp.latest_mood %}
+                                                            {% if emp.latest_exhaustion %}
+                                                            <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 flex-wrap">
+                                                                <span>⚡ <b class="{% if emp.latest_exhaustion <= 2 %}text-rose-600{% else %}text-slate-700{% endif %}">{{ emp.latest_exhaustion }}/5</b></span>
+                                                                <span>•</span>
+                                                                <span>🎯 <b class="{% if emp.latest_engagement <= 2 %}text-rose-600{% else %}text-slate-700{% endif %}">{{ emp.latest_engagement }}/5</b></span>
+                                                                <span>•</span>
+                                                                <span>💼 <b class="{% if emp.latest_workload_control <= 2 %}text-rose-600{% else %}text-slate-700{% endif %}">{{ emp.latest_workload_control }}/5</b></span>
+                                                            </div>
+                                                            {% elif emp.latest_mood %}
                                                             <div class="text-[10px] text-slate-400 mt-0.5">
                                                                 {% trans "Nuotaika:" %} <span class="font-bold text-slate-700">{{ emp.latest_mood }}/5</span>
                                                                 {% if emp.latest_stress %}, {% trans "Stresas:" %} <span class="font-bold text-slate-700">{{ emp.latest_stress }}/10</span>{% endif %}

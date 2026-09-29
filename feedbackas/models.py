@@ -92,7 +92,21 @@ class WellbeingCheckin(models.Model):
     company = models.ForeignKey('users.Company', on_delete=models.CASCADE, null=True, blank=True, related_name='wellbeing_checkins')
     department = models.ForeignKey('users.Department', on_delete=models.SET_NULL, null=True, blank=True, related_name='wellbeing_checkins')
 
-    # Rodikliai pagal calculate_team_risk_metrics (risk_service.py):
+    # Mokslinės perdegimo dimensijos (1 - 5):
+    exhaustion_level = models.IntegerField(
+        default=3,
+        help_text="Išsekimas ir atsigavimas: 1 (visiškas išsekimas) iki 5 (energingas ir pailsėjęs)"
+    )
+    engagement_meaning = models.IntegerField(
+        default=3,
+        help_text="Santykis su darbu ir prasmė: 1 (stipri apatija/cinizmas) iki 5 (labai įsitraukęs)"
+    )
+    workload_control = models.IntegerField(
+        default=3,
+        help_text="Darbo krūvis ir kontrolė: 1 (visiškai perkrautas) iki 5 (puikiai subalansuotas)"
+    )
+
+    # Istoriniai / suderinamumo rodikliai:
     mood_score = models.IntegerField(default=3, help_text="Nuotaika: 1 (labai blogai) iki 5 (puikiai)")
     energy_level = models.IntegerField(default=5, help_text="Energijos lygis: 1 (visiškas išsekimas) iki 10 (pilnas energijos)")
     stress_level = models.IntegerField(default=5, help_text="Streso lygis: 1 (visiškai ramus) iki 10 (maksimalus stresas)")
@@ -125,6 +139,17 @@ class WellbeingCheckin(models.Model):
         if not self.contributing_factors:
             return []
         return [f.strip() for f in self.contributing_factors.split(',') if f.strip()]
+
+    def save(self, *args, **kwargs):
+        # Užtikriname atgalinį suderinamumą su senais rodikliais
+        if self.engagement_meaning is not None:
+            self.mood_score = self.engagement_meaning
+        if self.exhaustion_level is not None:
+            self.energy_level = max(1, min(10, self.exhaustion_level * 2))
+        if self.workload_control is not None:
+            self.workload_level = max(1, min(5, 6 - self.workload_control))
+            self.stress_level = max(1, min(10, (6 - self.workload_control) * 2))
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"WellbeingCheckin #{self.id} by {self.user.username} ({self.created_at.strftime('%Y-%m-%d')})"

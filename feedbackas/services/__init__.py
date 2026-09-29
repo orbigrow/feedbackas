@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db.models import Avg
 from feedbackas.models import Feedback, FeedbackRequest
 from django.contrib.auth.models import User
-from .risk_service import calculate_team_risk_metrics
+from .risk_service import calculate_team_risk_metrics, evaluate_burnout_flags_for_user
 
 class FeedbackAnalytics:
     @staticmethod
@@ -480,7 +480,7 @@ class RiskAnalysisService:
     ]
 
     @classmethod
-    def analyze_company_risk(cls, company, period_days=14, user_departments=None):
+    def analyze_company_risk(cls, company, period_days=14, user_departments=None, requesting_user=None):
         """
         Atlieka pilną įmonės / leistinų skyrių rizikų analizę pasirinktam periodui.
         """
@@ -489,6 +489,7 @@ class RiskAnalysisService:
         from django.db.models import Avg, Count, Q
         from users.models import Department
         from feedbackas.models import Feedback, WellbeingCheckin
+        from .risk_service import evaluate_burnout_flags_for_user, can_view_manager_survey
 
         now = timezone.now()
         current_start = now - timedelta(days=period_days)
@@ -529,14 +530,14 @@ class RiskAnalysisService:
             Q(department_id__in=dept_ids) | Q(user__profile__department_id__in=dept_ids),
             created_at__gte=current_start,
             created_at__lte=now
-        ).exclude(visibility='private').select_related('user', 'user__profile')
+        ).exclude(visibility='private').select_related('user', 'user__profile', 'department', 'department__parent')
 
         surveys_prev_qs = WellbeingCheckin.objects.filter(
             Q(company=company) | Q(user__profile__company_link=company),
             Q(department_id__in=dept_ids) | Q(user__profile__department_id__in=dept_ids),
             created_at__gte=previous_start,
             created_at__lt=previous_end
-        ).exclude(visibility='private').select_related('user', 'user__profile')
+        ).exclude(visibility='private').select_related('user', 'user__profile', 'department', 'department__parent')
 
         all_current_surveys = list(surveys_current_qs)
         all_prev_surveys = list(surveys_prev_qs)
@@ -554,7 +555,7 @@ class RiskAnalysisService:
                 user_id__in=all_dept_user_ids,
                 company=company,
                 visibility='manager'
-            ).order_by('created_at'):
+            ).select_related('user', 'user__profile', 'department', 'department__parent').order_by('created_at'):
                 latest_surveys_map[s.user_id] = s
 
         # 3. Analizuojame kiekvieną skyrių
@@ -579,7 +580,11 @@ class RiskAnalysisService:
             survey_count = len(dept_surveys)
             feedback_count = survey_count
 
-            dept_manager_surveys = [s for s in dept_surveys if getattr(s, 'visibility', 'anonymous') == 'manager']
+            dept_manager_surveys = [
+                s for s in dept_surveys 
+                if getattr(s, 'visibility', 'anonymous') == 'manager'
+                and (not requesting_user or can_view_manager_survey(requesting_user, s))
+            ]
             has_manager_surveys = len(dept_manager_surveys) > 0
 
             # Kvorumo taisyklė: skaičiuojama tik pagal realias savijautos anketas
@@ -590,12 +595,26 @@ class RiskAnalysisService:
             for profile in dept_profiles:
                 u = profile.user
                 emp_fb = [fb for fb in dept_fb if fb.feedback_request.requester_id == u.id]
-                # Individualiam darbuotojui rodomos TIK vadovui skirtos anketos (1-on-1), kad nebūtų pažeistas anonimiškumas
-                emp_mgr_surveys = [s for s in dept_surveys if s.user_id == u.id and getattr(s, 'visibility', 'anonymous') == 'manager']
+                # Individualiam darbuotojui rodomos TIK vadovui skirtos anketos (1-on-1), kad nebūtų pažeistas anonimiškumas.
+                # Vadovas gali matyti savo paties rodiklius, o kitų darbuotojų – tik jei turi vadovo prieigą.
+                can_see_emp = (requesting_user and u.id == requesting_user.id) or (not requesting_user)
+                emp_mgr_surveys = [
+                    s for s in dept_surveys 
+                    if s.user_id == u.id 
+                    and getattr(s, 'visibility', 'anonymous') == 'manager'
+                    and (can_see_emp or can_view_manager_survey(requesting_user, s))
+                ]
                 user_latest_survey = latest_surveys_map.get(u.id)
+                if user_latest_survey and not can_see_emp and not can_view_manager_survey(requesting_user, user_latest_survey):
+                    user_latest_survey = None
 
                 active_survey = emp_mgr_surveys[0] if emp_mgr_surveys else user_latest_survey
                 is_past = (not emp_mgr_surveys) and (user_latest_survey is not None)
+
+                # Vertiname Raudonos ir Geltonos vėliavų riziką pagal anketų istoriją
+                user_flags = evaluate_burnout_flags_for_user(u.id, company=company)
+                is_rf = user_flags['is_red_flag']
+                is_yf = user_flags['is_yellow_flag']
 
                 if active_survey:
                     emp_m = cls._calculate_metrics(surveys=[active_survey])
@@ -614,7 +633,18 @@ class RiskAnalysisService:
                     has_data = False
                     is_past = False
 
-                b_level = cls._determine_risk_level(b_score) if b_score is not None else 'unknown'
+                # Pritaiko vėliavų svorį – balai nėra tiesiog suvidurkinami
+                if is_rf:
+                    b_score = max(b_score or 0, 85)
+                    b_level = 'critical'
+                    trig = _('Raudona vėliava: išsekimas ir atsiribojimas (2+ apklausos iš eilės)')
+                elif is_yf:
+                    b_score = max(b_score or 0, 65)
+                    b_level = 'high' if b_level in ('low', 'medium', 'unknown') else b_level
+                    trig = _('Geltona vėliava: perkrova / kontrolės stoka > 2 sav.')
+                else:
+                    b_level = cls._determine_risk_level(b_score) if b_score is not None else 'unknown'
+
                 f_level = cls._determine_risk_level(f_score) if f_score is not None else 'unknown'
 
                 latest_mgr_s = active_survey
@@ -651,7 +681,14 @@ class RiskAnalysisService:
                     'dominant_trigger': trig,
                     'has_data': has_data,
                     'is_past_data': is_past,
+                    'is_red_flag': is_rf,
+                    'red_flag_reason': user_flags['red_flag_reason'],
+                    'is_yellow_flag': is_yf,
+                    'yellow_flag_reason': user_flags['yellow_flag_reason'],
                     'latest_survey_date': active_survey.created_at if active_survey else None,
+                    'latest_exhaustion': getattr(active_survey, 'exhaustion_level', None) if active_survey else None,
+                    'latest_engagement': getattr(active_survey, 'engagement_meaning', None) if active_survey else None,
+                    'latest_workload_control': getattr(active_survey, 'workload_control', None) if active_survey else None,
                     'latest_mood': active_survey.mood_score if active_survey else None,
                     'latest_stress': active_survey.stress_level if active_survey else None,
                     'latest_energy': active_survey.energy_level if active_survey else None,
@@ -659,9 +696,10 @@ class RiskAnalysisService:
                 })
 
             def _emp_sort_key(e):
+                rf = 2 if e.get('is_red_flag') else (1 if e.get('is_yellow_flag') else 0)
                 sc = max(e['burnout_score'] or 0, e['flight_score'] or 0)
                 mgr = 1 if e['has_manager_survey'] else 0
-                return (-mgr, -sc, e['full_name'].lower())
+                return (-rf, -mgr, -sc, e['full_name'].lower())
 
             dept_employees.sort(key=_emp_sort_key)
 
@@ -674,6 +712,15 @@ class RiskAnalysisService:
                 recognition_score = dept_metrics['recognition_score']
                 workload_peaks = dept_metrics['workload_peaks']
                 total_peaks += workload_peaks
+
+                # Tikriname komandos vėliavas
+                dept_red_flags = sum(1 for e in dept_employees if e.get('is_red_flag'))
+                dept_yellow_flags = sum(1 for e in dept_employees if e.get('is_yellow_flag'))
+
+                if dept_red_flags > 0:
+                    burnout_score = max(burnout_score or 0, 75 + min(20, dept_red_flags * 5))
+                elif dept_yellow_flags > 0:
+                    burnout_score = max(burnout_score or 0, 58 + min(15, dept_yellow_flags * 3))
 
                 # Trendas lyginant su praėjusiu periodu
                 if prev_metrics and prev_metrics['burnout_score'] is not None:
@@ -695,8 +742,35 @@ class RiskAnalysisService:
                 # Rekomenduojamas veiksmas
                 action_plan_id = cls._determine_action_plan_id(dept_metrics)
 
+                # Vėliavų signalai į early_alerts
+                if dept_red_flags > 0:
+                    early_alerts.append({
+                        'id': f'rf_{dept.id}',
+                        'level': 'critical',
+                        'title': _('Raudona vėliava: Aukšta perdegimo rizika'),
+                        'message': _('%(dept)s skyriuje nustatytas darbuotojas(-ai) (%(count)d), kuriam išsekimas ir atsiribojimas kartojasi bent 2 apklausas iš eilės.') % {
+                            'dept': dept.name,
+                            'count': dept_red_flags,
+                        },
+                        'department_name': dept.name,
+                        'recommended_action': _('Nedelsiant organizuoti palaikymo 1-on-1 pokalbį ir perskirstyti kritines atsakomybes'),
+                        'action_plan_id': 'action_burnout',
+                    })
+                elif dept_yellow_flags > 0:
+                    early_alerts.append({
+                        'id': f'yf_{dept.id}',
+                        'level': 'warning',
+                        'title': _('Geltona vėliava: Vidutinė perdegimo rizika'),
+                        'message': _('%(dept)s skyriuje nustatyta, kad prasta darbo krūvio kontrolė laikosi ilgiau nei 2 savaites.') % {
+                            'dept': dept.name,
+                        },
+                        'department_name': dept.name,
+                        'recommended_action': _('Peržiūrėti užduočių prioritetus ir terminus, kol neprasidėjo lėtinis išsekimas'),
+                        'action_plan_id': 'action_workload',
+                    })
+
                 # Anomalijų / perspėjimų generavimas
-                if (burnout_score or 0) >= 65 or b_diff >= 15:
+                if ((burnout_score or 0) >= 65 or b_diff >= 15) and dept_red_flags == 0:
                     early_alerts.append({
                         'id': f'b_{dept.id}',
                         'level': 'critical' if (burnout_score or 0) >= 75 else 'warning',
@@ -782,9 +856,12 @@ class RiskAnalysisService:
                     'employees': dept_employees,
                 })
 
-        # 4. Bendri įmonės rodikliai
         total_current_count = len(all_current_surveys)
-        total_manager_surveys = len([s for s in all_current_surveys if getattr(s, 'visibility', 'anonymous') == 'manager'])
+        total_manager_surveys = len([
+            s for s in all_current_surveys 
+            if getattr(s, 'visibility', 'anonymous') == 'manager'
+            and (not requesting_user or can_view_manager_survey(requesting_user, s))
+        ])
         overall_quorum = (total_current_count >= cls.MIN_QUORUM) or (total_manager_surveys > 0)
 
         if overall_quorum and all_current_surveys:
@@ -878,6 +955,9 @@ class RiskAnalysisService:
             }
 
         total_surveys = len(surveys)
+        avg_exhaustion = sum(getattr(s, 'exhaustion_level', 3) for s in surveys) / total_surveys
+        avg_engagement = sum(getattr(s, 'engagement_meaning', 3) for s in surveys) / total_surveys
+        avg_workload_ctrl = sum(getattr(s, 'workload_control', 3) for s in surveys) / total_surveys
         avg_mood = sum(getattr(s, 'mood_score', 3) for s in surveys) / total_surveys
         avg_energy = sum(getattr(s, 'energy_level', 5) for s in surveys) / total_surveys
         avg_stress = sum(getattr(s, 'stress_level', 5) for s in surveys) / total_surveys
@@ -914,6 +994,9 @@ class RiskAnalysisService:
             'flight_score': min(100, max(0, survey_flight)),
             'recognition_score': min(100, max(0, survey_recog)),
             'workload_peaks': survey_peaks,
+            'avg_exhaustion': round(avg_exhaustion, 1),
+            'avg_engagement': round(avg_engagement, 1),
+            'avg_workload_ctrl': round(avg_workload_ctrl, 1),
             'avg_mood': round(avg_mood, 1),
             'avg_energy': round(avg_energy, 1),
             'avg_stress': round(avg_stress, 1),

@@ -1948,33 +1948,31 @@ def team_risk_radar(request):
     analysis = RiskAnalysisService.analyze_company_risk(
         company=company,
         period_days=period_days,
-        user_departments=user_departments_to_analyze
+        user_departments=user_departments_to_analyze,
+        requesting_user=user
     )
 
     # 6. Vadovui skirtos anketos (visibility='manager')
-    # Vadovas jas turi matyti bet kuriuo atveju (be kvorumo apribojimų)
+    # Vadovas mato pavaldinių anketas (be kvorumo apribojimų),
+    # tačiau NIEKADA nemato savo paties anketos. Ją mato tik jo vadovas.
     from datetime import timedelta
+    from .services.risk_service import can_view_manager_survey
     cutoff_manager = timezone.now() - timedelta(days=period_days)
     
     manager_surveys_qs = WellbeingCheckin.objects.filter(
         company=company,
         visibility='manager',
         created_at__gte=cutoff_manager
-    ).select_related('user', 'user__profile', 'department').order_by('-created_at')
+    ).exclude(user=user).select_related('user', 'user__profile', 'department', 'department__parent').order_by('-created_at')
 
-    if not is_admin:
-        manager_surveys_qs = manager_surveys_qs.filter(
-            Q(department__in=managed_departments) |
-            Q(user__profile__department__in=managed_departments) |
-            Q(user__profile__manager=user)
-        )
     if selected_department:
         manager_surveys_qs = manager_surveys_qs.filter(
             Q(department=selected_department) |
             Q(user__profile__department=selected_department)
         )
 
-    manager_surveys = list(manager_surveys_qs)
+    # Filtruojame pagal hierarchinę prieigą – tik tas anketas, kurių vadovas yra prisijungęs vartotojas
+    manager_surveys = [s for s in manager_surveys_qs if can_view_manager_survey(user, s)]
 
     all_companies = Company.objects.all().order_by('name') if user.is_superuser else []
 
@@ -1989,7 +1987,7 @@ def team_risk_radar(request):
         # Vadovui skirtos anketos (1-on-1)
         'manager_surveys': manager_surveys,
         'manager_surveys_count': len(manager_surveys),
-        'has_manager_surveys': analysis.get('has_manager_surveys', False) or (len(manager_surveys) > 0),
+        'has_manager_surveys': len(manager_surveys) > 0,
         # Bendri rodikliai
         'overall_quorum': analysis['overall_quorum'],
         'min_quorum': analysis['min_quorum'],
@@ -2043,20 +2041,23 @@ def burnout_survey(request):
 
     if request.method == 'POST':
         try:
-            mood_score = int(request.POST.get('mood_score', 3))
-            energy_level = int(request.POST.get('energy_level', 5))
-            stress_level = int(request.POST.get('stress_level', 5))
-            workload_level = int(request.POST.get('workload_level', 3))
+            exhaustion_level = int(request.POST.get('exhaustion_level', 3))
+            engagement_meaning = int(request.POST.get('engagement_meaning', 3))
+            workload_control = int(request.POST.get('workload_control', 3))
         except (ValueError, TypeError):
-            mood_score = 3
-            energy_level = 5
-            stress_level = 5
-            workload_level = 3
+            exhaustion_level = 3
+            engagement_meaning = 3
+            workload_control = 3
 
-        mood_score = max(1, min(5, mood_score))
-        energy_level = max(1, min(10, energy_level))
-        stress_level = max(1, min(10, stress_level))
-        workload_level = max(1, min(5, workload_level))
+        exhaustion_level = max(1, min(5, exhaustion_level))
+        engagement_meaning = max(1, min(5, engagement_meaning))
+        workload_control = max(1, min(5, workload_control))
+
+        # Atgalinis suderinamumas su istoriniais rodikliais:
+        mood_score = engagement_meaning
+        energy_level = max(1, min(10, exhaustion_level * 2))
+        stress_level = max(1, min(10, (6 - workload_control) * 2))
+        workload_level = max(1, min(5, 6 - workload_control))
 
         comment = request.POST.get('comment', '').strip()
         factors = request.POST.getlist('contributing_factors')
@@ -2075,6 +2076,9 @@ def burnout_survey(request):
             user=user,
             company=company,
             department=department,
+            exhaustion_level=exhaustion_level,
+            engagement_meaning=engagement_meaning,
+            workload_control=workload_control,
             mood_score=mood_score,
             energy_level=energy_level,
             stress_level=stress_level,
@@ -2088,10 +2092,19 @@ def burnout_survey(request):
         messages.success(request, _('Ačiū! Jūsų savijautos anketa sėkmingai išsaugota.'))
         return redirect('burnout_survey_success')
 
+    latest_has_low_score = False
+    if latest_response:
+        latest_has_low_score = (
+            latest_response.exhaustion_level <= 2 or 
+            latest_response.engagement_meaning <= 2 or 
+            latest_response.workload_control <= 2
+        )
+
     context = {
         'company': company,
         'department': department,
         'latest_response': latest_response,
+        'latest_has_low_score': latest_has_low_score,
     }
     return render(request, 'feedbackas/burnout_survey.html', context)
 
@@ -2164,19 +2177,28 @@ def team_member_detail(request, user_id):
     member = get_object_or_404(User, id=user_id)
     
     # Verify current user is a manager of the member's department or a parent department (or superuser)
-    member_dept = member.profile.department if hasattr(member, 'profile') else None
+    member_profile = getattr(member, 'profile', None)
+    member_dept = getattr(member_profile, 'department', None) if member_profile else None
+    user_profile = getattr(request.user, 'profile', None)
+
     is_authorized = False
     if request.user.is_superuser:
         is_authorized = True
+    elif member == request.user:
+        is_authorized = True
+    elif user_profile and user_profile.is_company_admin and getattr(user_profile, 'company_link_id', None) == getattr(member_profile, 'company_link_id', None):
+        is_authorized = True
+    elif member_profile and member_profile.manager_id == request.user.id:
+        is_authorized = True
     elif member_dept:
         # Check direct manager
-        if member_dept.manager == request.user:
+        if member_dept.manager_id == request.user.id:
             is_authorized = True
         else:
             # Walk up the parent chain
             parent = member_dept.parent
             while parent:
-                if parent.manager == request.user:
+                if parent.manager_id == request.user.id:
                     is_authorized = True
                     break
                 parent = parent.parent
@@ -2204,11 +2226,16 @@ def team_member_detail(request, user_id):
     ).order_by('-avg_rating')
     
     # Wellbeing checkins designated for manager (visibility='manager')
+    # Darbuotojo anketas mato jo vadovas arba pats darbuotojas savo profilyje.
     from .models import WellbeingCheckin
-    wellbeing_checkins = WellbeingCheckin.objects.filter(
-        user=member,
-        visibility='manager'
-    ).order_by('-created_at')
+    from .services.risk_service import can_view_manager_survey
+    wellbeing_checkins = [
+        s for s in WellbeingCheckin.objects.filter(
+            user=member,
+            visibility='manager'
+        ).select_related('user', 'user__profile', 'department', 'department__parent').order_by('-created_at')
+        if member == request.user or can_view_manager_survey(request.user, s)
+    ]
 
     context = {
         'member': member,
