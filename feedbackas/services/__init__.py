@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db.models import Avg
 from feedbackas.models import Feedback, FeedbackRequest
 from django.contrib.auth.models import User
-from .risk_service import calculate_team_risk_metrics, evaluate_burnout_flags_for_user
+from .risk_service import calculate_team_risk_metrics, evaluate_burnout_flags_for_user, calculate_employee_burnout_metrics
 
 class FeedbackAnalytics:
     @staticmethod
@@ -612,43 +612,33 @@ class RiskAnalysisService:
                 active_survey = emp_mgr_surveys[0] if emp_mgr_surveys else user_latest_survey
                 is_past = (not emp_mgr_surveys) and (user_latest_survey is not None)
 
-                # Vertiname Raudonos ir Geltonos vėliavų riziką pagal anketų istoriją
-                user_flags = evaluate_burnout_flags_for_user(u.id, company=company)
-                is_rf = user_flags['is_red_flag']
-                is_yf = user_flags['is_yellow_flag']
+                # Tikslus šio darbuotojo anketų skaičius šiame periode
+                u_dept_surveys = [s for s in dept_surveys if s.user_id == u.id]
+                u_survey_count = len(u_dept_surveys)
 
-                if active_survey:
-                    emp_m = cls._calculate_metrics(surveys=[active_survey])
-                    b_score = emp_m['burnout_score']
-                    f_score = emp_m['flight_score']
-                    r_score = emp_m['recognition_score']
-                    peaks = emp_m['workload_peaks']
-                    trig = cls._determine_dominant_trigger(emp_m)
-                    has_data = True
-                else:
-                    b_score = None
-                    f_score = None
-                    r_score = None
-                    peaks = 0
-                    trig = _('Savijautos anketa dar nepildyta')
-                    has_data = False
-                    is_past = False
+                # Individualaus darbuotojo kumuliacinis perdegimo ir išėjimo rizikos skaičiavimas:
+                # Balai nėra tiesiog suvidurkinami viename įraše – balas kyla sulig anketomis,
+                # atsižvelgiant į iš eilės pasikartojančius blogus vertinimus bei Raudonas/Geltonas vėliavas.
+                emp_metrics = calculate_employee_burnout_metrics(
+                    user_id=u.id,
+                    company=company,
+                    active_survey=active_survey,
+                    checkins=u_dept_surveys if u_dept_surveys else ([active_survey] if active_survey else None)
+                )
 
-                # Pritaiko vėliavų svorį – balai nėra tiesiog suvidurkinami
-                if is_rf:
-                    b_score = max(b_score or 0, 85)
-                    b_level = 'critical'
-                    trig = _('Raudona vėliava: išsekimas ir atsiribojimas (2+ apklausos iš eilės)')
-                elif is_yf:
-                    b_score = max(b_score or 0, 65)
-                    b_level = 'high' if b_level in ('low', 'medium', 'unknown') else b_level
-                    trig = _('Geltona vėliava: perkrova / kontrolės stoka > 2 sav.')
-                else:
-                    b_level = cls._determine_risk_level(b_score) if b_score is not None else 'unknown'
-
-                f_level = cls._determine_risk_level(f_score) if f_score is not None else 'unknown'
-
-                latest_mgr_s = active_survey
+                has_data = emp_metrics['has_data']
+                b_score = emp_metrics['burnout_score']
+                b_level = emp_metrics['burnout_level']
+                f_score = emp_metrics['flight_score']
+                f_level = emp_metrics['flight_level']
+                r_score = emp_metrics['recognition_score']
+                peaks = emp_metrics['workload_peaks']
+                trig = _(emp_metrics['dominant_trigger']) if emp_metrics['dominant_trigger'] else _('Savijautos anketa dar nepildyta')
+                action_plan_id = emp_metrics['action_plan_id']
+                is_rf = emp_metrics['is_red_flag']
+                is_yf = emp_metrics['is_yellow_flag']
+                rf_reason = emp_metrics['red_flag_reason']
+                yf_reason = emp_metrics['yellow_flag_reason']
 
                 first_l = u.first_name[:1] if u.first_name else ''
                 last_l = u.last_name[:1] if u.last_name else ''
@@ -669,10 +659,10 @@ class RiskAnalysisService:
                     'avatar_url': avatar_url,
                     'initials': initials,
                     'feedback_count': 0,
-                    'survey_count': 1 if active_survey else 0,
-                    'total_responses': 1 if active_survey else 0,
+                    'survey_count': u_survey_count if u_survey_count > 0 else (1 if active_survey else 0),
+                    'total_responses': u_survey_count if u_survey_count > 0 else (1 if active_survey else 0),
                     'has_manager_survey': active_survey is not None,
-                    'latest_manager_survey': latest_mgr_s,
+                    'latest_manager_survey': active_survey,
                     'burnout_score': b_score,
                     'burnout_level': b_level,
                     'flight_score': f_score,
@@ -680,12 +670,13 @@ class RiskAnalysisService:
                     'recognition_score': r_score,
                     'workload_peaks': peaks,
                     'dominant_trigger': trig,
+                    'action_plan_id': action_plan_id,
                     'has_data': has_data,
                     'is_past_data': is_past,
                     'is_red_flag': is_rf,
-                    'red_flag_reason': user_flags['red_flag_reason'],
+                    'red_flag_reason': rf_reason,
                     'is_yellow_flag': is_yf,
-                    'yellow_flag_reason': user_flags['yellow_flag_reason'],
+                    'yellow_flag_reason': yf_reason,
                     'latest_survey_date': active_survey.created_at if active_survey else None,
                     'latest_exhaustion': getattr(active_survey, 'exhaustion_level', None) if active_survey else None,
                     'latest_engagement': getattr(active_survey, 'engagement_meaning', None) if active_survey else None,
@@ -700,7 +691,7 @@ class RiskAnalysisService:
                 rf = 2 if e.get('is_red_flag') else (1 if e.get('is_yellow_flag') else 0)
                 sc = max(e['burnout_score'] or 0, e['flight_score'] or 0)
                 mgr = 1 if e['has_manager_survey'] else 0
-                return (-rf, -mgr, -sc, e['full_name'].lower())
+                return (-rf, -sc, -mgr, e['full_name'].lower())
 
             dept_employees.sort(key=_emp_sort_key)
 
@@ -708,25 +699,39 @@ class RiskAnalysisService:
                 dept_metrics = cls._calculate_metrics(surveys=dept_surveys)
                 prev_metrics = cls._calculate_metrics(surveys=dept_prev_surveys) if len(dept_prev_surveys) >= 2 else None
 
-                burnout_score = dept_metrics['burnout_score']
-                flight_score = dept_metrics['flight_score']
-                recognition_score = dept_metrics['recognition_score']
-                workload_peaks = dept_metrics['workload_peaks']
+                # Skyriaus atveju rodomi „blogiausiai“ besijaučiančio darbuotojo rezultatai
+                employees_with_data = [e for e in dept_employees if e.get('has_data')]
+                worst_emp = employees_with_data[0] if employees_with_data else None
+
+                if worst_emp:
+                    burnout_score = worst_emp['burnout_score']
+                    burnout_level = worst_emp['burnout_level']
+                    flight_score = worst_emp['flight_score']
+                    flight_level = worst_emp['flight_level']
+                    recognition_score = worst_emp['recognition_score']
+                    dominant_trigger = worst_emp['dominant_trigger']
+                    action_plan_id = worst_emp.get('action_plan_id') or ('action_burnout' if (burnout_score or 0) >= (flight_score or 0) else 'action_flight')
+                    level = cls._determine_risk_level(max(burnout_score or 0, flight_score or 0))
+                else:
+                    burnout_score = dept_metrics['burnout_score']
+                    burnout_level = cls._determine_risk_level(burnout_score)
+                    flight_score = dept_metrics['flight_score']
+                    flight_level = cls._determine_risk_level(flight_score)
+                    recognition_score = dept_metrics['recognition_score']
+                    dominant_trigger = cls._determine_dominant_trigger(dept_metrics)
+                    action_plan_id = cls._determine_action_plan_id(dept_metrics)
+                    level = cls._determine_risk_level(max(burnout_score or 0, flight_score or 0))
+
+                workload_peaks = sum(e.get('workload_peaks', 0) for e in dept_employees) or dept_metrics['workload_peaks']
                 total_peaks += workload_peaks
 
-                # Tikriname komandos vėliavas
                 dept_red_flags = sum(1 for e in dept_employees if e.get('is_red_flag'))
                 dept_yellow_flags = sum(1 for e in dept_employees if e.get('is_yellow_flag'))
 
-                if dept_red_flags > 0:
-                    burnout_score = max(burnout_score or 0, 75 + min(20, dept_red_flags * 5))
-                elif dept_yellow_flags > 0:
-                    burnout_score = max(burnout_score or 0, 58 + min(15, dept_yellow_flags * 3))
-
                 # Trendas lyginant su praėjusiu periodu
                 if prev_metrics and prev_metrics['burnout_score'] is not None:
-                    b_diff = burnout_score - prev_metrics['burnout_score']
-                    f_diff = flight_score - prev_metrics['flight_score']
+                    b_diff = (burnout_score or 0) - prev_metrics['burnout_score']
+                    f_diff = (flight_score or 0) - prev_metrics['flight_score']
                 else:
                     b_diff = 0
                     f_diff = 0
@@ -734,14 +739,6 @@ class RiskAnalysisService:
                 burnout_trend = 'up' if b_diff > 3 else ('down' if b_diff < -3 else 'stable')
                 flight_trend = 'up' if f_diff > 3 else ('down' if f_diff < -3 else 'stable')
 
-                # Rizikos lygis
-                level = cls._determine_risk_level(max(burnout_score or 0, flight_score or 0))
-
-                # Dominuojantis trigeris
-                dominant_trigger = cls._determine_dominant_trigger(dept_metrics)
-
-                # Rekomenduojamas veiksmas
-                action_plan_id = cls._determine_action_plan_id(dept_metrics)
 
                 # Vėliavų signalai į early_alerts
                 if dept_red_flags > 0:

@@ -81,6 +81,187 @@ def evaluate_burnout_flags_for_user(user_id, company=None):
     return evaluate_burnout_flags_from_checkins(checkins)
 
 
+def calculate_employee_burnout_metrics(user_id=None, company=None, active_survey=None, checkins=None):
+    """
+    Apskaičiuoja individualaus darbuotojo kumuliacinį perdegimo (Burnout) ir 
+    išėjimo (Flight) rizikos indeksą pagal anketų istoriją.
+    
+    Taisyklės:
+    1. Balai nėra tiesiog suvidurkinami viename įraše – balas kyla sulig anketomis,
+       kuo daugiau blogų vertinimų iš eilės, tuo didesnis balas:
+       - 1 bloga anketa: darbuotojas gali būti tiesiog „pavargęs po sunkios savaitės“ (~50-65 balai).
+       - 2 blogos anketos iš eilės: nuovargis tampa tęstinis (~70-80 balų).
+       - 3+ blogos anketos iš eilės: lėtinis perdegimas (~85-95 balai).
+    2. Raudona vėliava (Aukšta rizika):
+       Jei exhaustion_level <= 2 IR engagement_meaning <= 2 kartojasi bent 2 apklausas iš eilės.
+       Tiesioginis signalas, kad darbuotojas nebeatsigauna ir atsiriboja nuo darbo (balas >= 85).
+    3. Geltona vėliava (Vidutinė rizika):
+       Jei workload_control <= 2 laikosi ilgiau nei 2 savaites, net jei kiti du rodikliai
+       dar nepasiekė dugno (prevencija prieš atsirandant išsekimui, balas >= 70).
+    """
+    if checkins is None and user_id:
+        qs = WellbeingCheckin.objects.filter(user_id=user_id)
+        if company:
+            qs = qs.filter(company=company)
+        checkins = list(qs.order_by('-created_at')[:10])
+    elif checkins is None:
+        checkins = [active_survey] if active_survey else []
+
+    if active_survey and active_survey not in checkins:
+        checkins = [active_survey] + [c for c in checkins if getattr(c, 'id', None) != getattr(active_survey, 'id', None)]
+
+    if not checkins:
+        return {
+            'has_data': False,
+            'burnout_score': None,
+            'burnout_level': 'unknown',
+            'flight_score': None,
+            'flight_level': 'unknown',
+            'recognition_score': None,
+            'workload_peaks': 0,
+            'dominant_trigger': 'Savijautos anketa dar nepildyta',
+            'action_plan_id': 'action_general',
+            'is_red_flag': False,
+            'red_flag_reason': '',
+            'is_yellow_flag': False,
+            'yellow_flag_reason': '',
+            'consecutive_strained': 0,
+            'survey_count': 0,
+        }
+
+    latest = checkins[0]
+
+    def _get_levels(c):
+        e = getattr(c, 'exhaustion_level', None)
+        m = getattr(c, 'engagement_meaning', None)
+        w = getattr(c, 'workload_control', None)
+        if e is None:
+            e = max(1, min(5, int(round((getattr(c, 'energy_level', 6) or 6) / 2.0))))
+        if m is None:
+            m = max(1, min(5, getattr(c, 'mood_score', 3) or 3))
+        if w is None:
+            w = max(1, min(5, 6 - (getattr(c, 'workload_level', 3) or 3)))
+        return e, m, w
+
+    def _get_survey_strain(c):
+        e, m, w = _get_levels(c)
+        e_strain = max(0.0, (5 - e) / 4.0)
+        w_strain = max(0.0, (5 - w) / 4.0)
+        m_strain = max(0.0, (5 - m) / 4.0)
+        return (e_strain * 0.40) + (w_strain * 0.35) + (m_strain * 0.25), e_strain, w_strain, m_strain
+
+    def _is_strained(c):
+        e, m, w = _get_levels(c)
+        strain, _, _, _ = _get_survey_strain(c)
+        return (e <= 2 or w <= 2 or m <= 2 or strain >= 0.45)
+
+    latest_strain, latest_e_strain, latest_w_strain, latest_m_strain = _get_survey_strain(latest)
+
+    # Skaičiuojame iš eilės einančias įtemptas anketas nuo naujausios
+    consecutive_strained = 0
+    for c in checkins:
+        if _is_strained(c):
+            consecutive_strained += 1
+        else:
+            break
+
+    # Vertiname vėliavas
+    flags_info = evaluate_burnout_flags_from_checkins(checkins)
+    is_red_flag = flags_info['is_red_flag']
+    red_flag_reason = flags_info['red_flag_reason']
+    is_yellow_flag = flags_info['is_yellow_flag']
+    yellow_flag_reason = flags_info['yellow_flag_reason']
+
+    # Kumuliacinis perdegimo balas sulig anketų skaičiumi
+    if consecutive_strained == 0:
+        burnout = int(round(latest_strain * 35.0))
+    elif consecutive_strained == 1:
+        # 1 bloga anketa: pradinė indikacija (~50-63 balai), o ne katastrofiški 95
+        burnout = int(round(35.0 + latest_strain * 28.0))
+    elif consecutive_strained == 2:
+        # 2 blogos anketos iš eilės: tęstinis nuovargis (~70-80 balų)
+        burnout = int(round(52.0 + latest_strain * 26.0))
+    else:
+        # 3+ blogos anketos iš eilės: lėtinis perdegimas (~85-95 balai)
+        extra = min(10.0, (consecutive_strained - 3) * 3.0)
+        burnout = int(round(66.0 + latest_strain * 22.0 + extra))
+
+    if is_red_flag:
+        burnout = max(burnout, 85 + min(15, (consecutive_strained - 2) * 5))
+    elif is_yellow_flag:
+        burnout = max(burnout, 70 + min(15, (consecutive_strained - 1) * 3))
+
+    burnout_score = min(100, max(0, burnout))
+
+    # Išėjimo rizika (Flight risk)
+    latest_m_val = getattr(latest, 'engagement_meaning', None)
+    if latest_m_val is None:
+        latest_m_val = getattr(latest, 'mood_score', 3) or 3
+    mood_deficit = ((5.0 - latest_m_val) / 4.0) * 45.0
+    flight = int(round(mood_deficit + (burnout_score * 0.55)))
+    if is_red_flag:
+        flight = max(flight, 75)
+    elif is_yellow_flag:
+        flight = max(flight, 55)
+    flight_score = min(100, max(0, flight))
+
+    # Pripažinimo / klimato balas
+    recognition_score = min(100, max(0, int(round((latest_m_val / 5.0) * 100.0))))
+
+    # Darbo krūvio pikai
+    workload_peaks = sum(1 for c in checkins if getattr(c, 'workload_level', 3) >= 4 or getattr(c, 'stress_level', 5) >= 8 or getattr(c, 'workload_control', 3) <= 2)
+
+    # Dominuojantis trigeris
+    if is_red_flag:
+        dominant_trigger = 'Raudona vėliava: lėtinis išsekimas ir atsiribojimas (2+ apklausos iš eilės)'
+    elif is_yellow_flag:
+        dominant_trigger = yellow_flag_reason or 'Geltona vėliava: perkrautas darbo krūvis / kontrolės stoka > 2 sav.'
+    elif latest_e_strain >= latest_w_strain and latest_e_strain >= latest_m_strain and latest_e_strain >= 0.4:
+        dominant_trigger = 'Lėtinis nuovargis ir energijos stygius'
+    elif latest_w_strain >= latest_m_strain and latest_w_strain >= 0.4:
+        dominant_trigger = 'Didelis darbo krūvis ir kontrolės stoka'
+    elif latest_m_strain >= 0.4:
+        dominant_trigger = 'Prasmės trūkumas ir kylantis atsiribojimas'
+    else:
+        dominant_trigger = 'Stabilus darbo ritmas ir subalansuota savijauta'
+
+    def _determine_risk_level(score):
+        if score is None:
+            return 'unknown'
+        if score >= 75:
+            return 'critical'
+        elif score >= 55:
+            return 'high'
+        elif score >= 35:
+            return 'medium'
+        return 'low'
+
+    b_level = _determine_risk_level(burnout_score)
+    f_level = _determine_risk_level(flight_score)
+
+    action_plan_id = 'action_burnout' if burnout_score >= flight_score else 'action_flight'
+    if burnout_score < 50 and flight_score < 50:
+        action_plan_id = 'action_workload' if burnout_score >= flight_score else 'action_recognition'
+
+    return {
+        'has_data': True,
+        'burnout_score': burnout_score,
+        'burnout_level': b_level,
+        'flight_score': flight_score,
+        'flight_level': f_level,
+        'recognition_score': recognition_score,
+        'workload_peaks': workload_peaks,
+        'dominant_trigger': dominant_trigger,
+        'action_plan_id': action_plan_id,
+        'is_red_flag': is_red_flag,
+        'red_flag_reason': red_flag_reason,
+        'is_yellow_flag': is_yellow_flag,
+        'yellow_flag_reason': yellow_flag_reason,
+        'consecutive_strained': consecutive_strained,
+        'survey_count': len(checkins),
+    }
+
+
 def calculate_team_risk_metrics(department_id=None, days=14):
     """
     Apskaičiuoja apibendrintą komandos perdegimo (Burnout) ir 
