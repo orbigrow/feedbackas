@@ -1913,29 +1913,33 @@ def team_risk_radar(request):
                     seen_ids.add(child.id)
                     to_check.append(child)
 
-        managed_departments = Department.objects.filter(id__in=seen_ids, company=company).order_by('name')
+        managed_departments = list(Department.objects.filter(id__in=seen_ids, company=company).select_related('parent'))
     elif user.is_superuser:
-        managed_departments = Department.objects.filter(company=company).order_by('name')
+        managed_departments = list(Department.objects.filter(company=company).select_related('parent'))
     elif is_admin:
         # Tik jei vartotojas nėra konkretaus skyriaus vadovas, bet yra bendras įmonės administratorius (pvz. HR)
-        managed_departments = Department.objects.filter(company=company).order_by('name')
+        managed_departments = list(Department.objects.filter(company=company).select_related('parent'))
     else:
-        managed_departments = Department.objects.none()
+        managed_departments = []
 
-    if not managed_departments.exists():
+    if not managed_departments:
         from django.contrib import messages
         messages.error(request, _('Jūs neturite priskirtų pavaldžių skyrių rizikos radaro peržiūrai.'))
         return redirect('home')
+
+    # Surūšiuojame leistinus skyrius pagal organizacinę hierarchiją
+    from .services.risk_service import build_hierarchical_departments
+    managed_departments = build_hierarchical_departments(managed_departments)
 
     # Filtravimas pagal konkretų pasirinktą skyrių (tik iš leistinų vadovui)
     dept_id = request.GET.get('department_id')
     user_departments_to_analyze = managed_departments
     selected_department = None
     if dept_id:
-        try:
-            selected_department = managed_departments.get(id=dept_id)
+        selected_department = next((d for d in managed_departments if str(d.id) == str(dept_id)), None)
+        if selected_department:
             user_departments_to_analyze = [selected_department]
-        except (Department.DoesNotExist, ValueError):
+        else:
             selected_department = None
             user_departments_to_analyze = managed_departments
 

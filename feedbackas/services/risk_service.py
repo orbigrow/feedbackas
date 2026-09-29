@@ -236,3 +236,54 @@ def can_view_manager_survey(viewer, survey):
 
     return False
 
+
+def build_hierarchical_departments(departments):
+    """
+    Surūšiuoja skyrių sąrašą pagal organizacinę medžio hierarchiją (DFS: Tėvinis -> Vaikiniai -> Poskyriai).
+    Kiekvienam skyriui priskiria:
+      - hierarchy_level (0, 1, 2...)
+      - hierarchy_parent_name (tėvinio skyriaus pavadinimas)
+      - hierarchy_path ("Generalinis / IT / Poskyris")
+      - is_root_department (ar tai šakninis skyrius šiame sąraše)
+      - has_sub_departments (ar turi vaikinių skyrių)
+    """
+    if not departments:
+        return []
+
+    dept_list = list(departments)
+    dept_map = {d.id: d for d in dept_list}
+    children_map = {d.id: [] for d in dept_list}
+    roots = []
+
+    for d in dept_list:
+        if d.parent_id and d.parent_id in dept_map:
+            children_map[d.parent_id].append(d)
+        else:
+            roots.append(d)
+
+    roots.sort(key=lambda x: (x.name or '').lower())
+    for p_id in children_map:
+        children_map[p_id].sort(key=lambda x: (x.name or '').lower())
+
+    ordered = []
+
+    def dfs(dept, level=0, path=None):
+        current_path = (path or []) + [dept.name]
+        parent_obj = dept_map.get(dept.parent_id) if (dept.parent_id and dept.parent_id in dept_map) else None
+
+        dept.hierarchy_level = level
+        dept.hierarchy_parent_name = parent_obj.name if parent_obj else None
+        dept.hierarchy_path = " / ".join(current_path)
+        dept.is_root_department = (level == 0)
+        dept.has_sub_departments = len(children_map.get(dept.id, [])) > 0
+
+        ordered.append(dept)
+        for child in children_map.get(dept.id, []):
+            dfs(child, level + 1, current_path)
+
+    for r in roots:
+        dfs(r, 0, [])
+
+    return ordered
+
+

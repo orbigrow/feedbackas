@@ -489,21 +489,22 @@ class RiskAnalysisService:
         from django.db.models import Avg, Count, Q
         from users.models import Department
         from feedbackas.models import Feedback, WellbeingCheckin
-        from .risk_service import evaluate_burnout_flags_for_user, can_view_manager_survey
+        from .risk_service import evaluate_burnout_flags_for_user, can_view_manager_survey, build_hierarchical_departments
 
         now = timezone.now()
         current_start = now - timedelta(days=period_days)
         previous_start = current_start - timedelta(days=period_days)
         previous_end = current_start
 
-        # 1. Nustatome analizuojamus skyrius
+        # 1. Nustatome analizuojamus skyrius pagal organizacinę hierarchiją
         if user_departments is not None:
-            departments = list(user_departments)
+            raw_departments = list(user_departments)
         elif company:
-            departments = list(Department.objects.filter(company=company).order_by('name'))
+            raw_departments = list(Department.objects.filter(company=company).select_related('parent'))
         else:
-            departments = []
+            raw_departments = []
 
+        departments = build_hierarchical_departments(raw_departments)
         dept_ids = [d.id for d in departments]
 
         # 2. Gauname visus periodo atsiliepimus ir tiesioginius savijautos anketų atsakymus
@@ -816,6 +817,11 @@ class RiskAnalysisService:
                 department_risks.append({
                     'department_id': dept.id,
                     'department_name': dept.name,
+                    'hierarchy_level': getattr(dept, 'hierarchy_level', 0),
+                    'parent_name': getattr(dept, 'hierarchy_parent_name', None),
+                    'hierarchy_path': getattr(dept, 'hierarchy_path', dept.name),
+                    'is_root': getattr(dept, 'is_root_department', True),
+                    'has_sub_departments': getattr(dept, 'has_sub_departments', False),
                     'employee_count': employee_count,
                     'feedback_count': survey_count,
                     'has_quorum': True,
@@ -841,6 +847,11 @@ class RiskAnalysisService:
                 department_risks.append({
                     'department_id': dept.id,
                     'department_name': dept.name,
+                    'hierarchy_level': getattr(dept, 'hierarchy_level', 0),
+                    'parent_name': getattr(dept, 'hierarchy_parent_name', None),
+                    'hierarchy_path': getattr(dept, 'hierarchy_path', dept.name),
+                    'is_root': getattr(dept, 'is_root_department', True),
+                    'has_sub_departments': getattr(dept, 'has_sub_departments', False),
                     'employee_count': employee_count,
                     'feedback_count': survey_count,
                     'has_quorum': False,
