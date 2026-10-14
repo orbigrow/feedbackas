@@ -98,13 +98,23 @@ class OpenRouterService:
 
         data = response.json()
         
-        # Sukuriame loginį įrašą
-        if user or company:
-            usage = data.get('usage', {})
-            prompt_tokens = usage.get('prompt_tokens', 0)
-            completion_tokens = usage.get('completion_tokens', 0)
-            # OpenRouter dažniausiai grąžina 'cost', bet kai kurie modeliai/atsakymai gali turėti 'total_cost'
-            total_cost = usage.get('cost') or usage.get('total_cost', 0.0)
+        # Užtikriname, kad company būtų nustatyta iš naudotojo profilio, jei nebuvo perduota tiesiogiai
+        if not company and user and hasattr(user, 'profile'):
+            company = getattr(user.profile, 'company_link', None)
+
+        # Sukuriame loginį įrašą visiems AI kvietimams, kad sąnaudų dinamikoje matytųsi visos užklausos
+        try:
+            usage = data.get('usage', {}) if isinstance(data, dict) else {}
+            prompt_tokens = usage.get('prompt_tokens', 0) or 0
+            completion_tokens = usage.get('completion_tokens', 0) or 0
+            # OpenRouter grąžina 'cost' arba 'total_cost' usage objekte arba šakniniame JSON
+            total_cost = (
+                usage.get('cost') or
+                usage.get('total_cost') or
+                (data.get('cost') if isinstance(data, dict) else None) or
+                (data.get('total_cost') if isinstance(data, dict) else None) or
+                0.0
+            )
             
             AIUsageLog.objects.create(
                 user=user,
@@ -116,8 +126,12 @@ class OpenRouterService:
                 total_cost=Decimal(str(total_cost)),
                 raw_response=data
             )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Nepavyko išsaugoti AIUsageLog (%s): %s", request_type, e)
             
         return data['choices'][0]['message']['content']
+
 
     @staticmethod
     def generate(ratings, keywords, comments, existing_feedback, colleague_name, user=None, company=None, language='lt', colleague_first_name=None, colleague_last_name=None):

@@ -3057,6 +3057,35 @@ def superadmin_ai_analytics(request):
     top_company_name = top_company['name'] if top_company else None
     top_company_cents = top_company['total_cents'] if top_company else 0.0
 
+    # Funkcionalumų / užklausų tipų statistika (atsiliepimų generavimas, perdegimo signalų AI analizė, stiprybių išskyrimas)
+    type_labels = {
+        'feedback_generation': 'Atsiliepimų generavimas',
+        'burnout_signal_analysis': 'Perdegimo signalų AI analizė',
+        'feedback_analysis': 'Stiprybių ir silpnybių išskyrimas',
+        'general': 'Kitos / Bendros užklausos',
+    }
+    type_stats_qs = logs.values('request_type').annotate(
+        total_cost=Sum('total_cost'),
+        total_queries=Count('id'),
+        prompt_tokens=Sum('prompt_tokens'),
+        completion_tokens=Sum('completion_tokens'),
+    ).order_by('-total_cost')
+
+    feature_stats = []
+    for ts in type_stats_qs:
+        rtype = ts['request_type'] or 'general'
+        cost_usd = float(ts['total_cost'] or 0.0)
+        cost_cents = cost_usd * 100.0
+        feature_stats.append({
+            'request_type': rtype,
+            'label': type_labels.get(rtype, rtype),
+            'queries': ts['total_queries'],
+            'prompt_tokens': ts['prompt_tokens'] or 0,
+            'completion_tokens': ts['completion_tokens'] or 0,
+            'total_cost': cost_usd,
+            'total_cents': round(cost_cents, 4),
+        })
+
     context = {
         'start_date': start_date_str,
         'end_date': end_date_str,
@@ -3073,8 +3102,10 @@ def superadmin_ai_analytics(request):
         'top_company_name': top_company_name,
         'top_company_cents': top_company_cents,
         'user_stats': user_stats_list,
+        'feature_stats': feature_stats,
     }
     return render(request, 'superadmin/ai_analytics.html', context)
+
 
 
 

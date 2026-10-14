@@ -450,16 +450,21 @@ def run_burnout_ai_analysis_task(employee_id, requested_by_id=None, language='lt
     from feedbackas.models import BurnoutSignalAnalysis
     from feedbackas.ai_service import OpenRouterService
 
-    employee = User.objects.select_related('profile').get(id=employee_id)
-    requested_by = User.objects.filter(id=requested_by_id).first() if requested_by_id else None
-    company = getattr(getattr(employee, 'profile', None), 'company_link', None)
+    employee = User.objects.select_related('profile', 'profile__company_link').get(id=employee_id)
+    requested_by = User.objects.filter(id=requested_by_id).select_related('profile', 'profile__company_link').first() if requested_by_id else None
+    
+    emp_profile = getattr(employee, 'profile', None)
+    req_profile = getattr(requested_by, 'profile', None) if requested_by else None
+    company = getattr(emp_profile, 'company_link', None) or (getattr(req_profile, 'company_link', None) if req_profile else None)
+    user_for_log = requested_by or employee
+
     report = build_employee_signal_report(employee)
     fp = f"{report['fingerprint']}:{language}"
 
     source = 'ai'
     try:
         result = OpenRouterService.analyze_burnout_signals(
-            report, language=language, user=requested_by, company=company
+            report, language=language, user=user_for_log, company=company
         )
         if not result:
             raise ValueError('Empty AI result')
@@ -467,6 +472,7 @@ def run_burnout_ai_analysis_task(employee_id, requested_by_id=None, language='lt
         logger.error(f'Burnout AI analysis failed for user {employee_id}: {e}')
         result = build_rule_based_analysis(report, language)
         source = 'rules'
+
 
     obj = BurnoutSignalAnalysis.objects.create(
         employee=employee,

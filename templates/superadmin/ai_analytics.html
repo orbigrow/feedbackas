@@ -406,8 +406,77 @@
 
         </div>
 
+        <!-- 3. Funkcionalumų sąnaudų suvestinė pagal AI užklausų tipą -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col mt-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">
+                            AI Sąnaudos pagal Funkcionalumą (Užklausų Tipą)
+                        </h3>
+                        <p class="text-xs text-slate-400 font-medium">
+                            Atsiliepimų generavimo, perdegimo signalų analizės ir kitų modulių AI išlaidos
+                        </p>
+                    </div>
+                </div>
+                <span class="text-xs text-slate-400 font-semibold">
+                    {{ feature_stats|length }} moduliai (-ių)
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                            <th class="pb-2.5 font-bold">Funkcionalumas</th>
+                            <th class="pb-2.5 font-bold">Užklausos tipas (kodas)</th>
+                            <th class="pb-2.5 text-right font-bold">Užklausos</th>
+                            <th class="pb-2.5 text-right font-bold">Tokenai (P / C)</th>
+                            <th class="pb-2.5 text-right font-bold">Sąnaudos centais</th>
+                            <th class="pb-2.5 text-right font-bold">Sąnaudos USD</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100/80">
+                        {% for f in feature_stats %}
+                        <tr class="hover:bg-slate-50/70 transition">
+                            <td class="py-3 font-semibold text-slate-800 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full {% if f.request_type == 'feedback_generation' %}bg-indigo-500{% elif f.request_type == 'burnout_signal_analysis' %}bg-rose-500{% elif f.request_type == 'feedback_analysis' %}bg-teal-500{% else %}bg-slate-400{% endif %} shrink-0"></span>
+                                <span class="font-bold">{{ f.label }}</span>
+                            </td>
+                            <td class="py-3 text-slate-400 font-mono text-[11px]">
+                                {{ f.request_type }}
+                            </td>
+                            <td class="py-3 text-right font-semibold text-slate-700">
+                                {{ f.queries }}
+                            </td>
+                            <td class="py-3 text-right text-slate-500 font-mono text-[11px]">
+                                {{ f.prompt_tokens }} / {{ f.completion_tokens }}
+                            </td>
+                            <td class="py-3 text-right font-bold text-amber-600 font-mono">
+                                {{ f.total_cents|floatformat:4 }} ct
+                            </td>
+                            <td class="py-3 text-right font-medium text-slate-500 font-mono">
+                                ${{ f.total_cost|floatformat:6 }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-400 italic">
+                                Duomenų šiam periodui nerasta.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 </main>
+
 
 <!-- Chart.js ir Lucide bibliotekos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
