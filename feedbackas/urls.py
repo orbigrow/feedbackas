@@ -65,6 +65,7 @@ urlpatterns = [
     path('team-statistics/', views.team_statistics, name='team_statistics'),
     path('team-statistics/member/<hashid:user_id>/', views.team_member_detail, name='team_member_detail'),
     path('risk-radar/', views.team_risk_radar, name='team_risk_radar'),
+    path('risk-radar/burnout-signals/<hashid:user_id>/', views.employee_burnout_signals, name='employee_burnout_signals'),
     path('burnout-survey/', views.burnout_survey, name='burnout_survey'),
     path('perdegimo-anketa/', views.burnout_survey, name='perdegimo_anketa'),
     path('burnout-survey/history/', views.wellbeing_history, name='wellbeing_history'),

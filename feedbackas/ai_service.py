@@ -67,7 +67,7 @@ def parse_name_gender_vocative(full_name='', first_name='', last_name=''):
 
 class OpenRouterService:
     @staticmethod
-    def _call_openrouter(prompt, user=None, company=None, request_type='general'):
+    def _call_openrouter(prompt, user=None, company=None, request_type='general', temperature=0.7, max_tokens=1024, timeout=60):
         """
         Siunčia užklausą į OpenRouter API ir grąžina atsakymą bei rinka išlaidas.
         """
@@ -84,15 +84,15 @@ class OpenRouterService:
             'messages': [
                 {'role': 'user', 'content': prompt}
             ],
-            'temperature': 0.7,
-            'max_tokens': 1024,
+            'temperature': temperature,
+            'max_tokens': max_tokens,
         }
 
         response = requests.post(
             'https://openrouter.ai/api/v1/chat/completions',
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=timeout
         )
         response.raise_for_status()
 
@@ -168,6 +168,10 @@ GRIEŽTI REIKALAVIMAI:
 4. JOKIO MARKDOWN FORMATAVIMO:
    - Griežtai nenaudok jokių žvaigždučių (**), paryškinimų, antraščių ar sąrašo punktų. Tik paprastas tekstas, atskirtas pastraipomis.
 
+5. PERDEGIMO SIGNALAI:
+   - Jei raktiniuose žodžiuose ar komentaruose minimas nuovargis, išsekimas, perkrova, viršvalandžiai ar prarastas entuziazmas – tai NE kritika.
+   - Tokiu atveju 2 pastraipoje švelniai ir rūpestingai parodyk, kad pastebi kolegos krūvį, paskatink pasirūpinti savimi ir nebijoti prašyti pagalbos ar deleguoti.
+
 Vertinimo duomenys (skalė 1-4: 1=Mokosi, 2=Daro, 3=Varo, 4=Pavyzdys):
 - Komandinis darbas: {ratings.get('teamwork')}
 - Komunikacija: {ratings.get('communication')}
@@ -200,6 +204,10 @@ STRICT REQUIREMENTS:
 
 3. NO MARKDOWN:
    - No asterisks, bold text, headers, or bullet points. Just clean paragraphs.
+
+4. BURNOUT SIGNALS:
+   - If keywords or comments mention fatigue, exhaustion, overload, overtime or lost enthusiasm, this is NOT criticism.
+   - In that case, use paragraph 2 to show genuine care: acknowledge their workload and encourage rest, delegating and asking for help.
 
 Evaluation data (scale 1-4: 1=Learning, 2=Doing, 3=Excelling, 4=Role Model):
 - Teamwork: {ratings.get('teamwork')}
@@ -294,3 +302,91 @@ Evaluation data (scale 1-4: 1=Learning, 2=Doing, 3=Excelling, 4=Role Model):
         except Exception as e:
             print(f"Failed to parse extracted traits: {e}")
             return {"strengths": [], "improvements": []}
+
+    @staticmethod
+    def analyze_burnout_signals(report, language='lt', user=None, company=None):
+        """
+        Išanalizuoja kolegų įvertinimuose pastebėtus perdegimo signalus ir grąžina
+        struktūrizuotą įvertinimą (dict). Vardai į modelį NESIUNČIAMI.
+        """
+        items_lines = []
+        for it in report.get('flagged_items', [])[:20]:
+            kws = ', '.join(it.get('signal_keywords') or []) or '-'
+            comment = (it.get('comment_excerpt') or '').replace('\n', ' ').strip() or '-'
+            items_lines.append(f"- {it['date']} | kolega {it['evaluator']} | signalai: {kws} | komentaras: {comment}")
+        items_block = '\n'.join(items_lines) or '-'
+
+        timeline = ', '.join(
+            f"{m['label']}: {m['flagged']}/{m['total']}" for m in report.get('timeline', [])
+        )
+        top_kw = ', '.join(f"{k['keyword']} ({k['count']})" for k in report.get('top_keywords', [])) or '-'
+
+        out_lang = 'lietuvių' if language != 'en' else 'English'
+
+        prompt = f"""
+Tu esi patyręs organizacinės psichologijos ir darbuotojų gerovės (well-being) specialistas.
+Vadovas nori suprasti, ar jo komandos narys gali artėti prie perdegimo. Remkis TIK žemiau pateiktais
+kolegų įvertinimų duomenimis (raktiniais žodžiais ir komentarais). Nediagnozuok – vertink rizikos signalus,
+būk atsargus, empatiškas, nedramatizuok ir neišgalvok faktų, kurių nėra duomenyse.
+
+Perdegimo dimensijos (Maslach): išsekimas, cinizmas/atsiribojimas, sumažėjęs efektyvumas.
+
+DUOMENYS (paskutinės {report['lookback_days']} d.):
+- Iš viso gautų įvertinimų: {report['total_feedbacks']}
+- Įvertinimų su perdegimo signalais: {report['flagged_feedbacks']} ({report['flagged_ratio_pct']}%)
+- Skirtingų kolegų, pažymėjusių signalus: {report['distinct_evaluators_flagging']} (iš jų per paskutines 60 d.: {report['distinct_recent_evaluators']})
+- Signalų dalis: naujesnėje pusėje {report['recent_flagged_ratio_pct']}%, senesnėje {report['older_flagged_ratio_pct']}%
+- Vidutinis bendras įvertinimas (1-4): naujesnis {report.get('avg_rating_recent')}, senesnis {report.get('avg_rating_older')}
+- Mėnesių dinamika (signalai/visi): {timeline}
+- Dažniausi signalų raktažodžiai: {top_kw}
+- Signalai komentaruose: {', '.join(report.get('comment_signal_terms') or []) or '-'}
+
+ĮVERTINIMAI SU SIGNALAIS:
+{items_block}
+
+Atsakyk GRIEŽTAI TIK validžiu JSON (be Markdown, be ``` blokų), {out_lang} kalba, tokios struktūros:
+{{
+  "risk_level": "low" | "medium" | "high" | "critical",
+  "risk_score": sveikasis skaičius 0-100 (tikimybė, kad darbuotojas artėja prie perdegimo),
+  "trajectory": "improving" | "stable" | "worsening",
+  "headline": "viena trumpa išvada (iki 12 žodžių)",
+  "summary": "2-4 sakiniai: ką rodo duomenys, kiek tai patikima, kokios dimensijos ryškiausios",
+  "key_signals": ["iki 5 trumpų pastebėtų signalų"],
+  "protective_factors": ["iki 3 teigiamų aspektų, jei jų matyti duomenyse; kitaip tuščias sąrašas"],
+  "recommendations": ["3-4 konkretūs, praktiški veiksmai vadovui"],
+  "conversation_starters": ["3 švelnūs, atviri klausimai 1-on-1 pokalbiui"]
+}}
+"""
+
+        response_text = OpenRouterService._call_openrouter(
+            prompt, user=user, company=company, request_type='burnout_signal_analysis',
+            temperature=0.3, max_tokens=1200, timeout=90
+        )
+        cleaned = (response_text or '').replace('```json', '').replace('```', '').strip()
+        start, end = cleaned.find('{'), cleaned.rfind('}')
+        if start == -1 or end == -1:
+            raise ValueError('AI response does not contain JSON')
+        data = json.loads(cleaned[start:end + 1])
+
+        def _list(key, limit):
+            val = data.get(key) or []
+            return [str(v).strip() for v in val if str(v).strip()][:limit] if isinstance(val, list) else []
+
+        risk_level = data.get('risk_level') if data.get('risk_level') in ('low', 'medium', 'high', 'critical') else 'medium'
+        trajectory = data.get('trajectory') if data.get('trajectory') in ('improving', 'stable', 'worsening') else report.get('trend', 'stable')
+        try:
+            risk_score = max(0, min(100, int(data.get('risk_score', 50))))
+        except (TypeError, ValueError):
+            risk_score = 50
+
+        return {
+            'risk_level': risk_level,
+            'risk_score': risk_score,
+            'trajectory': trajectory,
+            'headline': str(data.get('headline', '')).strip(),
+            'summary': str(data.get('summary', '')).strip(),
+            'key_signals': _list('key_signals', 5),
+            'protective_factors': _list('protective_factors', 3),
+            'recommendations': _list('recommendations', 4),
+            'conversation_starters': _list('conversation_starters', 3),
+        }

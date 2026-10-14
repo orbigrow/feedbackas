@@ -157,6 +157,30 @@ class WellbeingCheckin(models.Model):
 # Atgalinio suderinamumo alias
 BurnoutSurveyResponse = WellbeingCheckin
 
+
+class BurnoutSignalAnalysis(models.Model):
+    """
+    AI (arba taisyklėmis grįsta) analizė, ar darbuotojas artėja prie perdegimo,
+    remiantis kolegų įvertinimuose pažymėtais raktiniais žodžiais ir komentarais.
+    Rezultatas saugomas pagal duomenų „pirštų atspaudą“, kad ta pati analizė nebūtų kartojama.
+    """
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='burnout_signal_analyses')
+    company = models.ForeignKey('users.Company', on_delete=models.SET_NULL, null=True, blank=True, related_name='burnout_signal_analyses')
+    requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='requested_burnout_analyses')
+    fingerprint = models.CharField(max_length=64, db_index=True)
+    risk_level = models.CharField(max_length=20, default='low')
+    source = models.CharField(max_length=10, default='ai', choices=[('ai', 'AI'), ('rules', 'Taisyklės')])
+    result = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Perdegimo signalų analizė"
+        verbose_name_plural = "Perdegimo signalų analizės"
+
+    def __str__(self):
+        return f"BurnoutSignalAnalysis #{self.id} – {self.employee} ({self.risk_level})"
+
 class GlobalSettings(models.Model):
     personal_form_enabled = models.BooleanField(default=True, help_text="Bendrai įjungti 'Individuali forma' funkcionalumą.")
     personal_form_all_companies = models.BooleanField(default=True, help_text="Taikyti 'Individuali forma' visoms įmonėms.")

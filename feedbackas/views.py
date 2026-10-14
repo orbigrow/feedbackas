@@ -1163,14 +1163,30 @@ def fill_feedback(request, request_id):
     if feedback_request.questionnaire and ' (' in feedback_request.project_name and feedback_request.project_name.endswith(')'):
         is_team_form = True
 
+    # Perdegimo signalų funkcionalumas įjungtas tik toms įmonėms, kurioms aktyvuotas Rizikos radaras
+    target_user = feedback_request.requester
+    target_profile = getattr(target_user, 'profile', None) if target_user else None
+    viewer_profile = getattr(request.user, 'profile', None)
+
+    company = None
+    if target_profile and target_profile.company_link:
+        company = target_profile.company_link
+    elif viewer_profile and viewer_profile.company_link:
+        company = viewer_profile.company_link
+
+    from .models import GlobalSettings
+    burnout_signals_enabled = GlobalSettings.load().is_risk_radar_enabled_for_company(company)
+
     context = {
         'form': form,
         'feedback_request': feedback_request,
         'questionnaire_traits_json': json.dumps(questionnaire_traits),
         'has_questionnaire': feedback_request.questionnaire is not None,
         'is_team_form': is_team_form,
+        'burnout_signals_enabled': burnout_signals_enabled,
     }
     return render(request, 'fill_feedback.html', context)
+
 
 
 
@@ -2017,6 +2033,112 @@ def team_risk_radar(request):
         'action_plans_json': json.dumps(analysis['action_plans']),
     }
     return render(request, 'feedbackas/risk_radar.html', context)
+
+
+@login_required
+@ratelimit(key='user', rate='10/10m', method='POST', block=True)
+def employee_burnout_signals(request, user_id):
+    """
+    Grąžina darbuotojo kolegų įvertinimuose pastebėtų perdegimo signalų ataskaitą ir AI analizę (JSON).
+    GET  – ataskaita + išsaugota analizė arba paleidžiama AI užduotis (status=processing).
+    GET ?fallback=1 – jei AI nepasiekiamas, grąžinama taisyklėmis grįsta analizė.
+    POST – priverstinai perskaičiuoti AI analizę.
+    """
+    from django.core.cache import cache
+    from django.utils.translation import gettext as _
+    from .models import GlobalSettings
+    from .services.burnout_signals import (
+        build_employee_signal_report, can_view_employee_signals, get_or_build_analysis,
+        build_rule_based_analysis,
+    )
+
+    employee = get_object_or_404(User.objects.select_related('profile', 'profile__department'), id=user_id)
+
+    if not can_view_employee_signals(request.user, employee):
+        return JsonResponse({'error': _('Neturite teisės matyti šio darbuotojo analizės.')}, status=403)
+
+    company = getattr(getattr(employee, 'profile', None), 'company_link', None)
+    if not request.user.is_superuser and not GlobalSettings.load().is_risk_radar_enabled_for_company(company):
+        return JsonResponse({'error': _('Rizikos radaras Jūsų įmonei neaktyvuotas.')}, status=403)
+
+    language = 'en' if getattr(request, 'LANGUAGE_CODE', 'lt').startswith('en') else 'lt'
+    report = build_employee_signal_report(employee)
+    fingerprint = report.pop('fingerprint')
+    force = request.method == 'POST'
+
+    analysis_obj = get_or_build_analysis(
+        employee, {**report, 'fingerprint': fingerprint},
+        requested_by=request.user, language=language, force=force,
+    )
+    try:
+        since_id = int(request.GET.get('since') or 0)
+    except ValueError:
+        since_id = 0
+    if analysis_obj and since_id and analysis_obj.id <= since_id:
+        analysis_obj = None
+
+    profile = getattr(employee, 'profile', None)
+    avatar_url = None
+    try:
+        if profile and profile.image and profile.image.name and profile.image.name != 'default.jpg':
+            avatar_url = profile.image.url
+    except Exception:
+        avatar_url = None
+
+    payload = {
+        'employee': {
+            'id': employee.id,
+            'full_name': employee.get_full_name() or employee.username,
+            'department': getattr(getattr(profile, 'department', None), 'name', '') if profile else '',
+            'avatar_url': avatar_url,
+        },
+        'report': report,
+    }
+
+    if analysis_obj:
+        payload.update({
+            'status': 'completed',
+            'source': analysis_obj.source,
+            'analysis_id': analysis_obj.id,
+            'generated_at': timezone.localtime(analysis_obj.created_at).strftime('%Y-%m-%d %H:%M'),
+            'analysis': analysis_obj.result,
+        })
+        return JsonResponse(payload)
+
+    if request.GET.get('fallback') == '1':
+        payload.update({
+            'status': 'completed',
+            'source': 'rules',
+            'generated_at': timezone.localtime().strftime('%Y-%m-%d %H:%M'),
+            'analysis': build_rule_based_analysis(report, language),
+        })
+        return JsonResponse(payload)
+
+    # Paleidžiame AI užduotį (tik vieną kartą tiems patiems duomenims)
+    lock_key = f'burnout_ai_pending:{employee.id}:{fingerprint}:{language}'
+    if force or cache.add(lock_key, True, timeout=150):
+        if force:
+            cache.set(lock_key, True, timeout=150)
+        try:
+            async_task(
+                'feedbackas.services.burnout_signals.run_burnout_ai_analysis_task',
+                employee_id=employee.id,
+                requested_by_id=request.user.id,
+                language=language,
+            )
+        except Exception as e:
+            cache.delete(lock_key)
+            logger.error(f'Failed to dispatch burnout AI analysis: {e}')
+            payload.update({
+                'status': 'completed',
+                'source': 'rules',
+                'generated_at': timezone.localtime().strftime('%Y-%m-%d %H:%M'),
+                'analysis': build_rule_based_analysis(report, language),
+            })
+            return JsonResponse(payload)
+
+    payload['status'] = 'processing'
+    return JsonResponse(payload)
 
 
 @login_required

@@ -559,6 +559,10 @@ class RiskAnalysisService:
             ).select_related('user', 'user__profile', 'department', 'department__parent').order_by('created_at'):
                 latest_surveys_map[s.user_id] = s
 
+        # Kolegų įvertinimuose pažymėti perdegimo signalai (raktiniai žodžiai / komentarai)
+        from .burnout_signals import summarize_for_users, can_view_employee_signals
+        peer_signals_map = summarize_for_users(all_dept_user_ids) if all_dept_user_ids else {}
+
         # 3. Analizuojame kiekvieną skyrių
         department_risks = []
         early_alerts = []
@@ -685,6 +689,8 @@ class RiskAnalysisService:
                     'latest_stress': active_survey.stress_level if active_survey else None,
                     'latest_energy': active_survey.energy_level if active_survey else None,
                     'latest_workload': active_survey.workload_level if active_survey else None,
+                    'peer_signals': peer_signals_map.get(u.id),
+                    'can_view_peer_signals': bool(requesting_user) and can_view_employee_signals(requesting_user, u),
                 })
 
             def _emp_sort_key(e):
@@ -694,6 +700,26 @@ class RiskAnalysisService:
                 return (-rf, -sc, -mgr, e['full_name'].lower())
 
             dept_employees.sort(key=_emp_sort_key)
+
+            # Įspėjimas apie kolegų įvertinimuose pastebėtus perdegimo signalus
+            peer_alert_emps = [
+                e for e in dept_employees
+                if e.get('can_view_peer_signals') and (e.get('peer_signals') or {}).get('needs_attention')
+            ]
+            if peer_alert_emps:
+                has_high = any(e['peer_signals']['level'] == 'high' for e in peer_alert_emps)
+                early_alerts.append({
+                    'id': f'ps_{dept.id}',
+                    'level': 'critical' if has_high else 'warning',
+                    'title': _('Kolegos pastebi perdegimo požymius'),
+                    'message': _('%(dept)s skyriuje kolegų įvertinimuose kartojasi perdegimo signalai: %(names)s.') % {
+                        'dept': dept.name,
+                        'names': ', '.join(e['full_name'] for e in peer_alert_emps[:3]) + ('…' if len(peer_alert_emps) > 3 else ''),
+                    },
+                    'department_name': dept.name,
+                    'recommended_action': _('Atidarykite AI perdegimo analizę darbuotojų lentelėje ir suplanuokite 1-on-1 pokalbį'),
+                    'action_plan_id': 'action_burnout',
+                })
 
             if has_quorum and dept_surveys:
                 dept_metrics = cls._calculate_metrics(surveys=dept_surveys)

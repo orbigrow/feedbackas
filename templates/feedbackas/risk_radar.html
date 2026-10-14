@@ -864,6 +864,7 @@
                                                         <th class="py-2.5 px-3">{% trans "Išėjimo rizika" %}</th>
                                                         <th class="py-2.5 px-3">{% trans "Pripažinimas" %}</th>
                                                         <th class="py-2.5 px-3">{% trans "Būsena & Trigeris" %}</th>
+                                                        <th class="py-2.5 px-3 text-right">{% trans "Veiksmai" %}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody class="divide-y divide-slate-100">
@@ -1000,6 +1001,49 @@
                                                             <div class="text-[10px] text-slate-400">({% trans "ankstesni įrašai" %})</div>
                                                             {% endif %}
                                                         </td>
+
+                                                        <!-- Veiksmai: 1-on-1 Temos & AI Perdegimo analizė -->
+                                                        <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                                                            <div class="inline-flex items-center justify-end gap-1.5">
+                                                                <button type="button"
+                                                                        onclick="openActionPlanModal('{{ emp.action_plan_id }}', '{{ emp.full_name|escapejs }}')"
+                                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-xl text-xs font-bold transition cursor-pointer border border-violet-100 shadow-2xs"
+                                                                        title="{% trans '1-on-1 temos ir veiksmų planas šiam darbuotojui' %}">
+                                                                    <i data-lucide="message-square" class="w-3.5 h-3.5 text-violet-600"></i>
+                                                                    <span>{% trans "1-on-1 Temos" %}</span>
+                                                                </button>
+
+                                                                {% if emp.can_view_peer_signals %}
+                                                                <button type="button"
+                                                                        onclick="openBurnoutSignalsModal('{% url 'employee_burnout_signals' emp.user_id %}', '{{ emp.full_name|escapejs }}')"
+                                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer group/bbtn
+                                                                        {% if emp.peer_signals.level == 'high' %}
+                                                                            bg-rose-100/90 text-rose-800 border border-rose-300 hover:bg-rose-200 ring-2 ring-rose-400/30 animate-pulse
+                                                                        {% elif emp.peer_signals.level == 'medium' %}
+                                                                            bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200
+                                                                        {% elif emp.peer_signals.level == 'low' %}
+                                                                            bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200
+                                                                        {% else %}
+                                                                            bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100
+                                                                        {% endif %}"
+                                                                        title="{% trans 'AI analizė: kolegų pastebėti perdegimo signalai (raktiniai žodžiai ir komentarai)' %}">
+                                                                    <i data-lucide="sparkles" class="w-3.5 h-3.5 shrink-0 transition-transform group-hover/bbtn:scale-110
+                                                                        {% if emp.peer_signals.level == 'high' %}text-rose-600
+                                                                        {% elif emp.peer_signals.level == 'medium' %}text-amber-600
+                                                                        {% else %}text-violet-600{% endif %}"></i>
+                                                                    <span>{% trans "AI Analizė" %}</span>
+                                                                    {% if emp.peer_signals.flagged %}
+                                                                    <span class="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full text-[10px] font-black leading-none
+                                                                        {% if emp.peer_signals.level == 'high' %}bg-rose-600 text-white
+                                                                        {% elif emp.peer_signals.level == 'medium' %}bg-amber-600 text-white
+                                                                        {% else %}bg-slate-600 text-white{% endif %}">
+                                                                        {{ emp.peer_signals.flagged }}
+                                                                    </span>
+                                                                    {% endif %}
+                                                                </button>
+                                                                {% endif %}
+                                                            </div>
+                                                        </td>
                                                     </tr>
                                                     {% endfor %}
                                                 </tbody>
@@ -1082,7 +1126,219 @@
     </div>
 </div>
 
+<!-- 7. AI Perdegimo Signalų Modalas (Burnout Signals Modal) -->
+<div id="burnoutSignalsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200/90 flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
+
+        <!-- Modalo Antraštė -->
+        <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4 sticky top-0 bg-white/95 backdrop-blur-md z-10">
+            <div class="flex items-center gap-3 min-w-0">
+                <div id="bsmAvatarContainer" class="shrink-0">
+                    <div id="bsmAvatarFallback" class="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
+                        ??
+                    </div>
+                    <img id="bsmAvatarImg" src="" alt="" class="w-11 h-11 rounded-2xl object-cover border border-slate-200 hidden shadow-xs">
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h3 id="bsmEmployeeName" class="text-base sm:text-lg font-extrabold text-slate-900 truncate"></h3>
+                        <span id="bsmLevelBadge" class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider"></span>
+                        <span id="bsmTrajectoryBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full text-slate-600 bg-slate-100"></span>
+                    </div>
+                    <p class="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                        <span id="bsmEmployeeDept" class="truncate font-medium"></span>
+                        <span class="text-slate-300">•</span>
+                        <span>{% trans "AI kolegų įvertinimų analizė" %}</span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" id="bsmRefreshBtn" onclick="refreshBurnoutSignalsAnalysis()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition cursor-pointer shadow-2xs"
+                        title="{% trans 'Perskaičiuoti analizę iš naujo su AI' %}">
+                    <i data-lucide="refresh-cw" id="bsmRefreshIcon" class="w-3.5 h-3.5 text-violet-600"></i>
+                    <span class="hidden sm:inline">{% trans "Atnaujinti su AI" %}</span>
+                </button>
+                <button type="button" onclick="closeBurnoutSignalsModal()"
+                        class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modalo Kūnas -->
+        <div class="p-5 sm:p-7 space-y-6 flex-1">
+
+            <!-- 1 Būsena: Loading (AI vykdo analizę) -->
+            <div id="bsmLoading" class="py-14 flex flex-col items-center justify-center text-center space-y-4">
+                <div class="relative flex items-center justify-center">
+                    <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-violet-500/20 to-indigo-500/20 animate-pulse flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-8 h-8 text-violet-600 animate-spin" style="animation-duration: 3s;"></i>
+                    </div>
+                    <div class="absolute inset-0 rounded-3xl border-2 border-violet-500/40 border-t-transparent animate-spin"></div>
+                </div>
+                <div class="space-y-1 max-w-sm">
+                    <h4 class="text-sm font-bold text-slate-800">{% trans "Dirbtinis intelektas analizuoja atsiliepimus..." %}</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        {% trans "Sisteminami kolegų pažymėti raktiniai žodžiai, nuovargio/krūvio komentarai ir vertinama perdegimo rizika." %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- 2 Būsena: Klaida -->
+            <div id="bsmError" class="hidden p-6 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-3">
+                <i data-lucide="alert-triangle" class="w-8 h-8 text-rose-500 mx-auto"></i>
+                <div class="space-y-1">
+                    <h4 class="text-sm font-bold text-rose-900">{% trans "Nepavyko atlikti analizės" %}</h4>
+                    <p id="bsmErrorMessage" class="text-xs text-rose-700"></p>
+                </div>
+                <button type="button" onclick="fetchBurnoutSignals(currentBurnoutUrl, false, true)"
+                        class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition">
+                    {% trans "Bandyti dar kartą (taisyklių pagrindu)" %}
+                </button>
+            </div>
+
+            <!-- 3 Būsena: Pilnas Turinys -->
+            <div id="bsmContent" class="space-y-6 hidden">
+
+                <!-- Hero: AI Išvada ir Rizikos Balas -->
+                <div id="bsmHeroCard" class="p-5 sm:p-6 rounded-3xl border transition-all">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="space-y-2 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/80 shadow-2xs text-slate-700">
+                                    {% trans "AI Išvada" %}
+                                </span>
+                                <span id="bsmMetaInfo" class="text-[11px] text-slate-500 font-medium"></span>
+                            </div>
+                            <h4 id="bsmHeadline" class="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug"></h4>
+                            <p id="bsmSummary" class="text-xs sm:text-sm text-slate-600 leading-relaxed"></p>
+                        </div>
+                        <div class="shrink-0 p-4 rounded-2xl bg-white/90 border border-slate-200/70 shadow-xs text-center min-w-[130px]">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{% trans "Rizikos balas" %}</div>
+                            <div class="flex items-baseline justify-center gap-0.5 my-1">
+                                <span id="bsmRiskScore" class="text-3xl font-black text-slate-900">--</span>
+                                <span class="text-sm font-bold text-slate-400">/100</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                <div id="bsmRiskBar" class="h-1.5 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                            </div>
+                            <div id="bsmRiskLabel" class="text-[10px] font-bold mt-1 text-slate-600"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3 Statistikos Kortelės -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 space-y-1">
+                        <div class="text-[11px] font-medium text-slate-500">{% trans "Įvertinimai su signalais" %}</div>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="bsmStatRatio" class="text-lg font-black text-slate-800">0/0</span>
+                            <span id="bsmStatPct" class="text-xs font-bold text-slate-500">(0%)</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400">{% trans "per paskutines 180 d." %}</div>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 space-y-1">
+                        <div class="text-[11px] font-medium text-slate-500">{% trans "Signalus pažymėję kolegos" %}</div>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="bsmStatEvaluators" class="text-lg font-black text-slate-800">0</span>
+                            <span class="text-xs font-medium text-slate-500">{% trans "skirtingi vertintojai" %}</span>
+                        </div>
+                        <div id="bsmStatRecentEvaluators" class="text-[10px] text-slate-400"></div>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 space-y-1">
+                        <div class="text-[11px] font-medium text-slate-500">{% trans "Signalų trajektorija" %}</div>
+                        <div id="bsmStatTrendText" class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                            <span>--</span>
+                        </div>
+                        <div id="bsmStatTrendDetail" class="text-[10px] text-slate-400"></div>
+                    </div>
+                </div>
+
+                <!-- Dažniausi Perdegimo Raktiniai Žodžiai -->
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                            <i data-lucide="tag" class="w-3.5 h-3.5 text-amber-600"></i>
+                            <span>{% trans "Kolegų pažymėti perdegimo raktiniai žodžiai" %}</span>
+                        </h5>
+                        <span id="bsmKeywordsCount" class="text-[11px] text-slate-400"></span>
+                    </div>
+                    <div id="bsmKeywordsContainer" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Kolegų Komentarų Ištraukos su Signalais -->
+                <div id="bsmCommentsSection" class="space-y-2.5">
+                    <h5 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-indigo-600"></i>
+                        <span>{% trans "Ištraukos iš kolegų komentarų su signalais" %}</span>
+                    </h5>
+                    <div id="bsmCommentsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Mėnesių Dinamikos Juosta -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-500 font-semibold">
+                        <span>{% trans "Signalų dinamika per 6 mėnesius" %}</span>
+                        <span class="text-[10px] text-slate-400">{% trans "(signalai / visi įvertinimai)" %}</span>
+                    </div>
+                    <div id="bsmTimelineGrid" class="grid grid-cols-6 gap-2"></div>
+                </div>
+
+                <!-- Rekomendacijos Vadovui -->
+                <div class="space-y-3 p-5 rounded-3xl bg-emerald-50/60 border border-emerald-100">
+                    <h5 class="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                        <span>{% trans "Rekomenduojami veiksmai vadovui" %}</span>
+                    </h5>
+                    <div id="bsmRecommendationsList" class="space-y-2"></div>
+                </div>
+
+                <!-- Klausimai 1-on-1 Pokalbiui -->
+                <div id="bsmConversationSection" class="space-y-3 p-5 rounded-3xl bg-violet-50/60 border border-violet-100">
+                    <div class="flex items-center justify-between gap-3">
+                        <h5 class="text-xs font-bold uppercase tracking-wider text-violet-950 flex items-center gap-2">
+                            <i data-lucide="help-circle" class="w-4 h-4 text-violet-600"></i>
+                            <span>{% trans "Klausimai 1-on-1 pokalbiui (empatiškas pradėjimas)" %}</span>
+                        </h5>
+                        <button type="button" onclick="copyBurnoutQuestionsToClipboard()" id="bsmCopyBtn"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-violet-200 text-violet-700 hover:bg-violet-100/50 text-[11px] font-bold transition shadow-2xs cursor-pointer">
+                            <i data-lucide="copy" class="w-3 h-3"></i>
+                            <span>{% trans "Kopijuoti klausimus" %}</span>
+                        </button>
+                    </div>
+                    <div id="bsmConversationList" class="space-y-2"></div>
+                </div>
+
+                <!-- Apsauginiai Veiksniai (jei yra) -->
+                <div id="bsmProtectiveSection" class="space-y-2 hidden p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                    <h5 class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-600"></i>
+                        <span>{% trans "Pastebėti apsauginiai veiksniai / stiprybės" %}</span>
+                    </h5>
+                    <div id="bsmProtectiveList" class="space-y-1.5 text-xs text-slate-700"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Modalo Poraštė -->
+        <div class="p-4 sm:p-5 border-t border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 rounded-b-3xl">
+            <div class="text-[11px] text-slate-400">
+                {% trans "AI analizė remiasi kolegų pateiktais atsiliepimais. Tai nėra medicininė diagnozė." %}
+            </div>
+            <button type="button" onclick="closeBurnoutSignalsModal()"
+                    class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer">
+                {% trans "Uždaryti" %}
+            </button>
+        </div>
+
+    </div>
+</div>
+
 <script>
+
     document.addEventListener('DOMContentLoaded', () => {
         if (window.lucide) {
             lucide.createIcons();
@@ -1336,10 +1592,424 @@
 
     // Uždarymas spaudžiant ESC arba fone
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeActionPlanModal();
+        if (e.key === 'Escape') {
+            closeActionPlanModal();
+            closeBurnoutSignalsModal();
+        }
     });
     document.getElementById('actionPlanModal')?.addEventListener('click', (e) => {
         if (e.target.id === 'actionPlanModal') closeActionPlanModal();
     });
+    document.getElementById('burnoutSignalsModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'burnoutSignalsModal') closeBurnoutSignalsModal();
+    });
+
+    // ==========================================
+    // AI Perdegimo Signalų Modalo Valdymas
+    // ==========================================
+    let currentBurnoutUrl = null;
+    let currentAnalysisId = 0;
+    let currentBurnoutQuestions = [];
+    let burnoutPollTimer = null;
+    let burnoutPollAttempts = 0;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function openBurnoutSignalsModal(url, employeeName) {
+        currentBurnoutUrl = url;
+        currentAnalysisId = 0;
+        currentBurnoutQuestions = [];
+        if (burnoutPollTimer) {
+            clearTimeout(burnoutPollTimer);
+            burnoutPollTimer = null;
+        }
+
+        const modal = document.getElementById('burnoutSignalsModal');
+        const loading = document.getElementById('bsmLoading');
+        const content = document.getElementById('bsmContent');
+        const errorBox = document.getElementById('bsmError');
+
+        document.getElementById('bsmEmployeeName').textContent = employeeName || '{% trans "Darbuotojas" %}';
+        document.getElementById('bsmEmployeeDept').textContent = '';
+        document.getElementById('bsmLevelBadge').textContent = '';
+        document.getElementById('bsmLevelBadge').className = 'hidden';
+        document.getElementById('bsmTrajectoryBadge').textContent = '';
+        document.getElementById('bsmTrajectoryBadge').className = 'hidden';
+
+        loading.classList.remove('hidden');
+        content.classList.add('hidden');
+        errorBox.classList.add('hidden');
+        modal.classList.remove('hidden');
+
+        if (window.lucide) lucide.createIcons();
+        fetchBurnoutSignals(url);
+    }
+
+    function closeBurnoutSignalsModal() {
+        const modal = document.getElementById('burnoutSignalsModal');
+        if (modal) modal.classList.add('hidden');
+        if (burnoutPollTimer) {
+            clearTimeout(burnoutPollTimer);
+            burnoutPollTimer = null;
+        }
+    }
+
+    function refreshBurnoutSignalsAnalysis() {
+        if (!currentBurnoutUrl) return;
+        const icon = document.getElementById('bsmRefreshIcon');
+        if (icon) icon.classList.add('animate-spin');
+        fetchBurnoutSignals(currentBurnoutUrl, true);
+    }
+
+    function fetchBurnoutSignals(url, isRefresh = false, fallback = false) {
+        if (burnoutPollTimer) {
+            clearTimeout(burnoutPollTimer);
+            burnoutPollTimer = null;
+        }
+
+        const loading = document.getElementById('bsmLoading');
+        const content = document.getElementById('bsmContent');
+        const errorBox = document.getElementById('bsmError');
+
+        if (isRefresh) {
+            loading.classList.remove('hidden');
+            content.classList.add('hidden');
+            errorBox.classList.add('hidden');
+            burnoutPollAttempts = 0;
+        }
+
+        let fetchUrl = url;
+        const options = {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        };
+
+        if (isRefresh) {
+            options.method = 'POST';
+            options.headers['X-CSRFToken'] = getCookie('csrftoken') || '';
+        } else {
+            options.method = 'GET';
+            const params = new URLSearchParams();
+            if (fallback) params.append('fallback', '1');
+            if (currentAnalysisId) params.append('since', currentAnalysisId);
+            const qs = params.toString();
+            if (qs) {
+                fetchUrl += (fetchUrl.includes('?') ? '&' : '?') + qs;
+            }
+        }
+
+        fetch(fetchUrl, options)
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(errData => {
+                        throw new Error(errData.error || `HTTP ${res.status}`);
+                    }).catch(e => {
+                        throw new Error(e.message || `HTTP ${res.status}`);
+                    });
+                }
+                return res.json();
+            })
+            .then(data => {
+                const refreshIcon = document.getElementById('bsmRefreshIcon');
+                if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+
+                if (data.status === 'processing') {
+                    burnoutPollAttempts++;
+                    if (burnoutPollAttempts > 25) {
+                        // Jei AI užtruko per ilgai, paimame taisyklėmis grįstą rezultatą
+                        fetchBurnoutSignals(url, false, true);
+                        return;
+                    }
+                    burnoutPollTimer = setTimeout(() => {
+                        fetchBurnoutSignals(url, false, false);
+                    }, 2500);
+                } else if (data.status === 'completed') {
+                    renderBurnoutSignals(data);
+                } else {
+                    throw new Error(data.error || '{% trans "Nežinoma klaida" %}');
+                }
+            })
+            .catch(err => {
+                const refreshIcon = document.getElementById('bsmRefreshIcon');
+                if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+                loading.classList.add('hidden');
+                content.classList.add('hidden');
+                errorBox.classList.remove('hidden');
+                document.getElementById('bsmErrorMessage').textContent = err.message || '{% trans "Nepavyko užkrauti perdegimo analizės duomenų." %}';
+                if (window.lucide) lucide.createIcons();
+            });
+    }
+
+    function renderBurnoutSignals(data) {
+        const loading = document.getElementById('bsmLoading');
+        const content = document.getElementById('bsmContent');
+        const errorBox = document.getElementById('bsmError');
+
+        loading.classList.add('hidden');
+        errorBox.classList.add('hidden');
+        content.classList.remove('hidden');
+
+        const emp = data.employee || {};
+        const rep = data.report || {};
+        const ana = data.analysis || {};
+        currentAnalysisId = data.analysis_id || 0;
+
+        // 1. Darbuotojo info
+        document.getElementById('bsmEmployeeName').textContent = emp.full_name || '{% trans "Darbuotojas" %}';
+        document.getElementById('bsmEmployeeDept').textContent = emp.department || '';
+
+        const fallback = document.getElementById('bsmAvatarFallback');
+        const img = document.getElementById('bsmAvatarImg');
+        if (emp.avatar_url) {
+            img.src = emp.avatar_url;
+            img.alt = emp.full_name || '';
+            img.classList.remove('hidden');
+            fallback.classList.add('hidden');
+        } else {
+            const parts = (emp.full_name || '').trim().split(/\s+/);
+            const initials = parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : (parts[0] ? parts[0].substring(0, 2).toUpperCase() : '??');
+            fallback.textContent = initials;
+            fallback.classList.remove('hidden');
+            img.classList.add('hidden');
+        }
+
+        // 2. Rizikos lygio badge & stilius
+        const riskLevel = (ana.risk_level || rep.level || 'low').toLowerCase();
+        const levelBadge = document.getElementById('bsmLevelBadge');
+        levelBadge.classList.remove('hidden');
+
+        const levelConfig = {
+            critical: {
+                label: '{% trans "Kritinė perdegimo rizika" %}',
+                badgeClass: 'bg-rose-600 text-white shadow-xs',
+                heroClass: 'bg-gradient-to-br from-rose-50 via-white to-rose-50/50 border-rose-200',
+                barClass: 'bg-rose-600',
+                labelClass: 'text-rose-700',
+            },
+            high: {
+                label: '{% trans "Aukšta perdegimo rizika" %}',
+                badgeClass: 'bg-rose-500 text-white shadow-xs',
+                heroClass: 'bg-gradient-to-br from-rose-50/70 via-white to-amber-50/40 border-rose-200',
+                barClass: 'bg-rose-500',
+                labelClass: 'text-rose-700',
+            },
+            medium: {
+                label: '{% trans "Vidutinė perdegimo rizika" %}',
+                badgeClass: 'bg-amber-500 text-white shadow-xs',
+                heroClass: 'bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 border-amber-200',
+                barClass: 'bg-amber-500',
+                labelClass: 'text-amber-800',
+            },
+            low: {
+                label: '{% trans "Žema perdegimo rizika" %}',
+                badgeClass: 'bg-emerald-600 text-white shadow-xs',
+                heroClass: 'bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/30 border-emerald-200',
+                barClass: 'bg-emerald-600',
+                labelClass: 'text-emerald-800',
+            },
+            none: {
+                label: '{% trans "Perdegimo signalų nerasta" %}',
+                badgeClass: 'bg-slate-700 text-white shadow-xs',
+                heroClass: 'bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 border-slate-200',
+                barClass: 'bg-emerald-500',
+                labelClass: 'text-slate-700',
+            }
+        };
+
+        const cfg = levelConfig[riskLevel] || levelConfig.low;
+        levelBadge.textContent = cfg.label;
+        levelBadge.className = `text-[11px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${cfg.badgeClass}`;
+
+        // Trajektorija
+        const trajectory = (ana.trajectory || rep.trend || 'stable').toLowerCase();
+        const trajBadge = document.getElementById('bsmTrajectoryBadge');
+        trajBadge.classList.remove('hidden');
+        if (trajectory === 'worsening') {
+            trajBadge.textContent = '↗ {% trans "Rizika auganti" %}';
+            trajBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200';
+        } else if (trajectory === 'improving') {
+            trajBadge.textContent = '↘ {% trans "Situacija gerėjanti" %}';
+            trajBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200';
+        } else {
+            trajBadge.textContent = '→ {% trans "Stabili būsena" %}';
+            trajBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200';
+        }
+
+        // Hero kortelė
+        const heroCard = document.getElementById('bsmHeroCard');
+        heroCard.className = `p-5 sm:p-6 rounded-3xl border transition-all ${cfg.heroClass}`;
+
+        document.getElementById('bsmHeadline').textContent = ana.headline || '{% trans "Atlikta kolegų įvertinimų perdegimo analizė" %}';
+        document.getElementById('bsmSummary').textContent = ana.summary || '';
+
+        const srcText = data.source === 'ai' ? '{% trans "Dirbtinis intelektas (AI)" %}' : '{% trans "Taisyklių analitika" %}';
+        document.getElementById('bsmMetaInfo').textContent = `${data.generated_at || ''} • ${srcText}`;
+
+        const score = typeof ana.risk_score === 'number' ? ana.risk_score : 20;
+        document.getElementById('bsmRiskScore').textContent = score;
+        const bar = document.getElementById('bsmRiskBar');
+        bar.style.width = score + '%';
+        bar.className = `h-1.5 rounded-full transition-all duration-500 ${cfg.barClass}`;
+        const rLabel = document.getElementById('bsmRiskLabel');
+        rLabel.textContent = cfg.label;
+        rLabel.className = `text-[10px] font-bold mt-1 ${cfg.labelClass}`;
+
+        // 3. Statistikos kortelės
+        const total = rep.total_feedbacks || 0;
+        const flagged = rep.flagged_feedbacks || 0;
+        const pct = rep.flagged_ratio_pct || 0;
+        document.getElementById('bsmStatRatio').textContent = `${flagged}/${total}`;
+        document.getElementById('bsmStatPct').textContent = `(${pct}%)`;
+
+        document.getElementById('bsmStatEvaluators').textContent = rep.distinct_evaluators_flagging || 0;
+        const recentEval = rep.distinct_recent_evaluators || 0;
+        document.getElementById('bsmStatRecentEvaluators').textContent = recentEval > 0 ? `(${recentEval} {% trans "per paskutines 60 d." %})` : '';
+
+        const trendTextEl = document.getElementById('bsmStatTrendText');
+        const trendDetailEl = document.getElementById('bsmStatTrendDetail');
+        if (trajectory === 'worsening') {
+            trendTextEl.innerHTML = `<span class="text-rose-700 font-black">↗ {% trans "Rizika auga" %}</span>`;
+        } else if (trajectory === 'improving') {
+            trendTextEl.innerHTML = `<span class="text-emerald-700 font-black">↘ {% trans "Rizika mažėja" %}</span>`;
+        } else {
+            trendTextEl.innerHTML = `<span class="text-slate-700 font-black">→ {% trans "Stabili dinamika" %}</span>`;
+        }
+        trendDetailEl.textContent = `{% trans "Naujesni:" %} ${rep.recent_flagged_ratio_pct || 0}% • {% trans "Senesni:" %} ${rep.older_flagged_ratio_pct || 0}%`;
+
+        // 4. Raktiniai žodžiai
+        const kwContainer = document.getElementById('bsmKeywordsContainer');
+        kwContainer.innerHTML = '';
+        const topKeywords = rep.top_keywords || [];
+        document.getElementById('bsmKeywordsCount').textContent = topKeywords.length ? `(${topKeywords.length})` : '';
+        if (topKeywords.length > 0) {
+            topKeywords.forEach(k => {
+                const chip = document.createElement('span');
+                const isStrong = k.strength === 'strong';
+                chip.className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border transition ${
+                    isStrong ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'
+                }`;
+                chip.innerHTML = `<span>${k.keyword}</span><span class="px-1.5 py-0.2 rounded-full text-[10px] font-black ${isStrong ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-800'}">×${k.count}</span>`;
+                kwContainer.appendChild(chip);
+            });
+        } else {
+            kwContainer.innerHTML = `<span class="text-xs text-slate-400 italic">{% trans "Perdegimo raktinių žodžių nepažymėta." %}</span>`;
+        }
+
+        // 5. Komentarų ištraukos su signalais
+        const commentsSec = document.getElementById('bsmCommentsSection');
+        const commentsList = document.getElementById('bsmCommentsList');
+        commentsList.innerHTML = '';
+        const flaggedItems = (rep.flagged_items || []).filter(it => it.comment_excerpt);
+        if (flaggedItems.length > 0) {
+            commentsSec.classList.remove('hidden');
+            flaggedItems.forEach(it => {
+                const card = document.createElement('div');
+                card.className = 'p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1 text-xs text-slate-700';
+                const kwTags = (it.signal_keywords || []).map(k => `<span class="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">${k}</span>`).join(' ');
+                card.innerHTML = `
+                    <div class="flex items-center justify-between text-[11px] text-slate-400">
+                        <span class="font-bold text-slate-600">${it.evaluator} (${it.date})</span>
+                        <div class="flex items-center gap-1">${kwTags}</div>
+                    </div>
+                    <p class="text-slate-800 leading-relaxed italic">„${it.comment_excerpt}“</p>
+                `;
+                commentsList.appendChild(card);
+            });
+        } else {
+            commentsSec.classList.add('hidden');
+        }
+
+        // 6. 6 mėnesių dinamika
+        const timelineGrid = document.getElementById('bsmTimelineGrid');
+        timelineGrid.innerHTML = '';
+        const timeline = rep.timeline || [];
+        timeline.forEach(m => {
+            const col = document.createElement('div');
+            const hasSignals = m.flagged > 0;
+            col.className = `p-2 rounded-xl text-center border text-[11px] ${
+                hasSignals ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-slate-50/60 border-slate-100 text-slate-600'
+            }`;
+            col.innerHTML = `
+                <div class="font-bold text-[10px] text-slate-400">${m.label.substring(5)} mėn.</div>
+                <div class="font-extrabold text-xs my-0.5 ${hasSignals ? 'text-amber-800' : 'text-slate-700'}">${m.flagged}/${m.total}</div>
+                <div class="text-[9px] text-slate-400">${m.total > 0 ? Math.round(100 * m.flagged / m.total) + '%' : '—'}</div>
+            `;
+            timelineGrid.appendChild(col);
+        });
+
+        // 7. Rekomendacijos vadovui
+        const recList = document.getElementById('bsmRecommendationsList');
+        recList.innerHTML = '';
+        (ana.recommendations || []).forEach(r => {
+            const row = document.createElement('div');
+            row.className = 'flex items-start gap-2.5 text-xs text-emerald-950 leading-relaxed';
+            row.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"></i><span>${r}</span>`;
+            recList.appendChild(row);
+        });
+
+        // 8. Klausimai 1-on-1 pokalbiui
+        const convList = document.getElementById('bsmConversationList');
+        convList.innerHTML = '';
+        currentBurnoutQuestions = ana.conversation_starters || [];
+        if (currentBurnoutQuestions.length > 0) {
+            document.getElementById('bsmConversationSection').classList.remove('hidden');
+            currentBurnoutQuestions.forEach((q, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-start gap-2.5 p-3 rounded-2xl bg-white/90 border border-violet-100 text-xs text-violet-950 leading-relaxed';
+                row.innerHTML = `<span class="w-5 h-5 rounded-lg bg-violet-100 text-violet-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">${idx + 1}</span><span>${q}</span>`;
+                convList.appendChild(row);
+            });
+        } else {
+            document.getElementById('bsmConversationSection').classList.add('hidden');
+        }
+
+        // 9. Apsauginiai veiksniai
+        const protSec = document.getElementById('bsmProtectiveSection');
+        const protList = document.getElementById('bsmProtectiveList');
+        protList.innerHTML = '';
+        const protective = ana.protective_factors || [];
+        if (protective.length > 0) {
+            protSec.classList.remove('hidden');
+            protective.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-2 text-slate-700';
+                item.innerHTML = `<i data-lucide="shield" class="w-3.5 h-3.5 text-blue-500 shrink-0"></i><span>${p}</span>`;
+                protList.appendChild(item);
+            });
+        } else {
+            protSec.classList.add('hidden');
+        }
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function copyBurnoutQuestionsToClipboard() {
+        if (!currentBurnoutQuestions || !currentBurnoutQuestions.length) return;
+        const text = currentBurnoutQuestions.map((q, idx) => `${idx + 1}. ${q}`).join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('bsmCopyBtn');
+            const original = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="check" class="w-3 h-3 text-emerald-600"></i><span class="text-emerald-700">{% trans "Nukopijuota!" %}</span>`;
+            if (window.lucide) lucide.createIcons();
+            setTimeout(() => {
+                btn.innerHTML = original;
+                if (window.lucide) lucide.createIcons();
+            }, 2000);
+        });
+    }
 </script>
 {% endblock %}

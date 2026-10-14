@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 {% load static %}
+{% load burnout_tags %}
 
 {% block title %}{% trans "Kolegos Apklausa - Orbigrow.lt" %}{% endblock %}
 
@@ -496,12 +497,20 @@ input[type='range']::-moz-range-thumb {
         const neutralKeywords = ['Tylus', 'Ramus', 'Individualistas', 'Analitikas', 'Stebėtojas', 'Vykdytojas', 'Planuotojas', 'Struktūruotas', 'Formalus', 'Neformalus', 'Praktiškas', 'Teoretikas', 'Atsargus', 'Racionalus', 'Intravertas', 'Ekstravertas', 'Realistas', 'Pragmmatikas', 'Diplomatas', 'Kritikas', 'Svajotojas', 'Logiškas', 'Emocionalus', 'Konservatyvus', 'Liberalus', 'Tiesioginis', 'Netiesioginis', 'Detalus', 'Apibendrinantis', 'Koncepualus'];
         const negativeKeywords = ['Vėlavimas', 'Neatsakingumas', 'Pasyvumas', 'Konfliktiškumas', 'Arogancija', 'Klaidų slėpimas', 'Neorganizuotumas', 'Nekokybiškas darbas', 'Stresas', 'Negatyvumas', 'Nepasitikėjimas', 'Kritikos nepriėmimas', 'Dėmesio stoka', 'Bendradarbiavimo stoka', 'Lėtas darbas', 'Nedraugiškumas', 'Chaotiškumas', 'Uždarumas', 'Pesimizmas', 'Abejingumas', 'Išsiblaškymas', 'Paviršutiniškumas', 'Neapdairumas', 'Neryžtingumas', 'Užsispyrimas', 'Ignoravimas', 'Manipuliavimas', 'Pesimizmas', 'Skubotumas', 'Neetiškas elgesys', 'Nepagarba', 'Apatija', 'Neigiamas požiūris', 'Komunikacijos stoka', 'Negebėjimas priimti sprendimų'];
 
+        {% if burnout_signals_enabled %}
+        const burnoutKeywords = {% burnout_keywords_json %};
+        {% else %}
+        const burnoutKeywords = [];
+        {% endif %}
+
         const allKeywordEls = [];
 
         function getKeywordColors(keyword) {
             const lowerK = keyword.toLowerCase();
             if (positiveKeywords.some(k => k.toLowerCase() === lowerK)) {
                 return { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', hoverBg: 'hover:bg-emerald-200', btnText: 'text-emerald-600', btnHover: 'hover:text-emerald-900' };
+            } else if (burnoutKeywords.some(k => k.toLowerCase() === lowerK)) {
+                return { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200', hoverBg: 'hover:bg-amber-200', btnText: 'text-amber-600', btnHover: 'hover:text-amber-900' };
             } else if (negativeKeywords.some(k => k.toLowerCase() === lowerK)) {
                 return { bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-200', hoverBg: 'hover:bg-rose-200', btnText: 'text-rose-600', btnHover: 'hover:text-rose-900' };
             } else {
@@ -580,9 +589,31 @@ input[type='range']::-moz-range-thumb {
             keywordCloud.appendChild(el);
         }
 
+        function addCloudHeading(title, icon, colorClass, description) {
+            const wrap = document.createElement('div');
+            wrap.className = 'w-full pt-3 first:pt-0';
+            wrap.innerHTML = `
+                <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider ${colorClass}">
+                    <i data-lucide="${icon}" class="w-3.5 h-3.5"></i><span>${title}</span>
+                </div>
+                ${description ? `<p class="text-[11px] text-slate-500 mt-1 leading-snug">${description}</p>` : ''}`;
+            keywordCloud.appendChild(wrap);
+        }
+
+        addCloudHeading('{% trans "Stiprybės" %}', 'thumbs-up', 'text-emerald-700');
         positiveKeywords.forEach(k => createKeywordEl(k, 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'));
+        addCloudHeading('{% trans "Darbo stilius" %}', 'shapes', 'text-slate-500');
         neutralKeywords.forEach(k => createKeywordEl(k, 'bg-slate-50 text-slate-700 hover:bg-slate-100'));
+        addCloudHeading('{% trans "Tobulintinos sritys" %}', 'trending-up', 'text-rose-700');
         negativeKeywords.forEach(k => createKeywordEl(k, 'bg-rose-50 text-rose-700 hover:bg-rose-100'));
+        {% if burnout_signals_enabled %}
+        addCloudHeading(
+            '{% trans "Perdegimo signalai" %}', 'battery-low', 'text-amber-700',
+            '{% trans "Pažymėkite, jei pastebite, kad kolega gali artėti prie perdegimo. Tai ne kritika – tai padės vadovui laiku pasirūpinti kolega." %}'
+        );
+        burnoutKeywords.forEach(k => createKeywordEl(k, 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200/70'));
+        {% endif %}
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: keywordCloud });
 
         openKeywordModalBtn.addEventListener('click', () => {
             syncKeywordCloud();
