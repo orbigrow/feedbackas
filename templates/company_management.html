@@ -1,366 +1,199 @@
 {% extends 'base.html' %}
-{% load i18n static user_tags %}
+{% load i18n static %}
 
 {% block title %}{% trans "Įmonės Valdymas - Orbigrow.lt" %}{% endblock %}
 
 {% block content %}
 <script src="https://unpkg.com/lucide@0.460.0" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
 
-<main class="flex-1 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900 pb-16">
+<main class="flex-1 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900 pb-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8">
 
-        <!-- Top Notification Banner (Toast) -->
-        <div id="toast-notification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-            <div class="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center space-x-3 border border-slate-700">
-                <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <i data-lucide="check" class="w-4 h-4"></i>
-                </div>
-                <span id="toast-message" class="text-sm font-medium">{% trans "Pakeitimai išsaugoti." %}</span>
-            </div>
-        </div>
-
-        <!-- Page Header -->
-        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div>
-                <div class="flex items-center space-x-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    <i data-lucide="building" class="w-4 h-4 text-slate-500"></i>
-                    <span>{{ company_name }}</span>
-                </div>
-                <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">{% trans "Įmonės struktūra ir hierarchija" %}</h1>
-                <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Patogiai valdykite skyrių hierarchiją, poskyrius ir priskirkite darbuotojus." %}</p>
+                <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">{{ company_name }} {% trans "struktūra" %}</h1>
+                <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Valdykite komandas, skyrių hierarchiją ir priskirkite darbuotojus." %}</p>
             </div>
-            
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-                <button type="button" onclick="openAddDeptModal('', '{% trans "Naujas pagrindinis skyrius" %}')"
-                    class="w-full sm:w-auto justify-center bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2 text-sm sm:text-base cursor-pointer">
-                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
-                    <span>{% trans "Naujas skyrius" %}</span>
-                </button>
-            </div>
+            <button type="button" onclick="openAddRootDeptModal()"
+                class="w-full sm:w-auto justify-center bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2 text-sm sm:text-base cursor-pointer">
+                <i data-lucide="plus" class="w-4 h-4"></i> {% trans "Naujas padalinys" %}
+            </button>
         </header>
 
-        <!-- KPI / Stats Summary Bar -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
-            <!-- Total Departments -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{% trans "Skyriai" %}</span>
-                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                        <i data-lucide="sitemap" class="w-4 h-4"></i>
-                    </div>
-                </div>
-                <div class="text-2xl font-extrabold text-slate-800" id="stat-total-depts">{{ stats.total_depts }}</div>
-                <div class="text-xs text-slate-400 mt-0.5">
-                    <span>{{ stats.root_depts }} {% trans "pagrindiniai skyriai" %}</span>
-                </div>
-            </div>
-
-            <!-- Total Employees -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{% trans "Darbuotojai" %}</span>
-                    <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
-                        <i data-lucide="users" class="w-4 h-4"></i>
-                    </div>
-                </div>
-                <div class="text-2xl font-extrabold text-slate-800" id="stat-total-users">{{ stats.total_users }}</div>
-                <div class="text-xs text-slate-400 mt-0.5">
-                    <span>{% trans "Iš viso įmonėje" %}</span>
-                </div>
-            </div>
-
-            <!-- Assigned Employees -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{% trans "Priskirti" %}</span>
-                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                        <i data-lucide="check-circle" class="w-4 h-4"></i>
-                    </div>
-                </div>
-                <div class="text-2xl font-extrabold text-emerald-600" id="stat-assigned-users">{{ stats.assigned_users }}</div>
-                <div class="text-xs text-slate-400 mt-0.5">
-                    <span>{% trans "Priskirti padaliniams" %}</span>
-                </div>
-            </div>
-
-            <!-- Unassigned Employees (Clickable filter) -->
-            <div onclick="setEmployeeFilter('unassigned')" class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs cursor-pointer hover:border-amber-300 hover:shadow-sm transition-all group">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-amber-700">{% trans "Nepriskirti" %}</span>
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                        <i data-lucide="alert-circle" class="w-4 h-4"></i>
-                    </div>
-                </div>
-                <div class="text-2xl font-extrabold {% if stats.unassigned_users > 0 %}text-amber-600{% else %}text-slate-800{% endif %}" id="stat-unassigned-users">{{ stats.unassigned_users }}</div>
-                <div class="text-xs text-amber-600 font-medium mt-0.5 flex items-center gap-1">
-                    <span>{% trans "Rodyti sąrašą" %}</span>
-                    <i data-lucide="arrow-right" class="w-3 h-3 group-hover:translate-x-0.5 transition-transform"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main 2-Column Workspace -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+        <!-- Main Content Grid (2 columns: 2/3 and 1/3) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <!-- Left: Organizational Tree (7 cols) -->
-            <div class="lg:col-span-7 bg-white rounded-3xl shadow-xs border border-slate-200/80 p-5 sm:p-7">
-                
-                <!-- Tree Controls Header -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-100">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                            <i data-lucide="git-fork" class="w-5 h-5"></i>
+            <!-- Left: Organizational Tree (2 cols) -->
+            <div class="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-8">
+                <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                            <i data-lucide="sitemap" class="w-5 h-5"></i>
                         </div>
                         <div>
-                            <h2 class="text-lg sm:text-xl font-bold text-slate-800">{% trans "Padalinių hierarchija" %}</h2>
-                            <p class="text-xs text-slate-400">{% trans "Tėviniai skyriai ir jų poskyriai" %}</p>
+                            <h2 class="text-xl font-bold text-slate-800">{% trans "Organizacinis Medis" %}</h2>
+                            <p class="text-xs text-slate-400">{% trans "Skyriai ir jų poskyriai" %}</p>
                         </div>
                     </div>
-
-                    <!-- Expand / Collapse All Buttons -->
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="expandAllNodes()"
-                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 transition-colors flex items-center gap-1"
-                            title="{% trans "Išskleisti visą medį" %}">
-                            <i data-lucide="chevrons-down" class="w-3.5 h-3.5"></i>
-                            <span>{% trans "Išskleisti viską" %}</span>
-                        </button>
-                        <button type="button" onclick="collapseAllNodes()"
-                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
-                            title="{% trans "Suskleisti visas šakas" %}">
-                            <i data-lucide="chevrons-up" class="w-3.5 h-3.5"></i>
-                            <span>{% trans "Suskleisti" %}</span>
-                        </button>
-                    </div>
                 </div>
 
-                <!-- Tree Search input -->
-                <div class="relative mb-6">
-                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-                    <input type="text" id="tree-search-input" oninput="filterTreeNodes(this.value)"
-                        placeholder="{% trans "Ieškoti padalinio pagal pavadinimą..." %}"
-                        class="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-slate-400">
-                    <button type="button" id="tree-search-clear" onclick="clearTreeSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                </div>
-
-                <!-- Tree Root List -->
                 {% if root_departments %}
-                <ul class="space-y-4" id="main-org-tree">
+                <ul class="space-y-4" id="department-tree-root">
                     {% for dept in root_departments %}
-                    {% include "includes/department_node.html" with node=dept level=0 %}
+                    {% include "includes/department_node.html" with node=dept %}
                     {% endfor %}
                 </ul>
                 {% else %}
-                <div class="text-center py-16 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                    <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <i data-lucide="folder-plus" class="w-8 h-8"></i>
+                <div class="text-center py-12">
+                    <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="folder-tree" class="w-8 h-8 text-slate-300"></i>
                     </div>
-                    <h3 class="text-base font-bold text-slate-800 mb-1">{% trans "Struktūra dar nesukurta" %}</h3>
-                    <p class="text-xs text-slate-500 max-w-sm mx-auto mb-5">{% trans "Pradėkite sukurdami pirmąjį įmonės pagrindinį skyrių (pvz., Administracija, Pardavimai ar IT)." %}</p>
-                    <button type="button" onclick="openAddDeptModal('', '{% trans "Naujas pagrindinis skyrius" %}')"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition">
-                        <i data-lucide="plus" class="w-4 h-4"></i>
-                        {% trans "Sukurti pirmąjį skyrių" %}
-                    </button>
+                    <p class="text-slate-500 font-medium italic">{% trans "Struktūra dar nesukurta." %}</p>
                 </div>
                 {% endif %}
             </div>
 
-            <!-- Right: Employee Assignment Center (5 cols) -->
-            <div class="lg:col-span-5 bg-white rounded-3xl shadow-xs border border-slate-200/80 p-5 sm:p-7 sticky top-6">
-                
-                <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
-                            <i data-lucide="user-check" class="w-5 h-5"></i>
+            <!-- Right: Employee Assignment (1 col) -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-8 h-fit">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                            <i data-lucide="users" class="w-5 h-5"></i>
                         </div>
                         <div>
-                            <h2 class="text-lg sm:text-xl font-bold text-slate-800">{% trans "Darbuotojų priskyrimas" %}</h2>
-                            <p class="text-xs text-slate-400">{% trans "Greitas priskyrimas padaliniams" %}</p>
+                            <h2 class="text-xl font-bold text-slate-800">{% trans "Darbuotojų Priskyrimas" %}</h2>
+                            <p class="text-xs text-slate-400">{% trans "Iš viso darbuotojų:" %} {{ company_users|length }}</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Employee Search & Filter Bar -->
-                <div class="space-y-3 mb-5">
-                    <!-- Search Input -->
-                    <div class="relative">
-                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-                        <input type="text" id="employee-search-input" oninput="filterEmployeeList()"
-                            placeholder="{% trans "Ieškoti darbuotojo pagal vardą ar el. paštą..." %}"
-                            class="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all placeholder:text-slate-400">
-                        <button type="button" id="employee-search-clear" onclick="clearEmployeeSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <i data-lucide="x" class="w-4 h-4"></i>
+                <!-- Search and Filters -->
+                <div class="mb-4 space-y-2">
+                    <input type="text" id="employee-search" oninput="filterEmployeeCards()"
+                        placeholder="{% trans "Ieškoti darbuotojo..." %}"
+                        class="w-full text-xs sm:text-sm px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all">
+                    
+                    <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold">
+                        <button type="button" onclick="setFilter('all')" id="filter-btn-all"
+                            class="flex-1 py-1 text-center rounded-lg bg-white text-slate-800 shadow-xs">
+                            {% trans "Visi" %} ({{ company_users|length }})
                         </button>
-                    </div>
-
-                    <!-- Filter Tabs -->
-                    <div class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
-                        <button type="button" onclick="setEmployeeFilter('all')" id="filter-btn-all"
-                            class="flex-1 py-1.5 text-xs font-bold rounded-lg text-center transition-all bg-white text-slate-800 shadow-xs">
-                            {% trans "Visi" %} (<span id="count-filter-all">{{ company_users|length }}</span>)
-                        </button>
-                        <button type="button" onclick="setEmployeeFilter('unassigned')" id="filter-btn-unassigned"
-                            class="flex-1 py-1.5 text-xs font-bold rounded-lg text-center transition-all text-slate-500 hover:text-slate-800">
-                            {% trans "Nepriskirti" %} (<span id="count-filter-unassigned">{{ stats.unassigned_users }}</span>)
-                        </button>
-                        <button type="button" onclick="setEmployeeFilter('assigned')" id="filter-btn-assigned"
-                            class="flex-1 py-1.5 text-xs font-bold rounded-lg text-center transition-all text-slate-500 hover:text-slate-800">
-                            {% trans "Priskirti" %} (<span id="count-filter-assigned">{{ stats.assigned_users }}</span>)
+                        <button type="button" onclick="setFilter('unassigned')" id="filter-btn-unassigned"
+                            class="flex-1 py-1 text-center rounded-lg text-slate-500 hover:text-slate-800">
+                            {% trans "Nepriskirti" %}
                         </button>
                     </div>
                 </div>
-
-                <!-- Employee Cards List -->
-                <div class="space-y-3 max-h-[640px] overflow-y-auto pr-1.5 custom-scrollbar" id="employee-cards-container">
+                
+                <div class="space-y-3 max-h-[600px] overflow-y-auto pr-1.5 custom-scrollbar" id="employee-list-container">
                     {% for u in company_users %}
-                    <div class="employee-card p-3.5 bg-slate-50/70 rounded-2xl border border-slate-200/80 hover:border-slate-300 transition-all"
-                        id="user-card-{{ u.id }}"
-                        data-user-id="{{ u.id }}"
-                        data-user-name="{{ u.get_full_name|lower }}"
-                        data-user-email="{{ u.email|lower }}"
-                        data-assigned="{% if u.profile.department_id %}true{% else %}false{% endif %}"
-                        data-dept-id="{{ u.profile.department_id|default:'' }}">
+                    <form method="POST" action="{% url 'assign_to_department' %}"
+                        class="employee-card p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors"
+                        data-name="{{ u.get_full_name|lower }}"
+                        data-email="{{ u.email|lower }}"
+                        data-has-dept="{% if u.profile.department_id %}true{% else %}false{% endif %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="user_id" value="{{ u.id }}">
                         
-                        <!-- Employee Info Row -->
-                        <div class="flex items-center justify-between mb-2.5">
-                            <div class="flex items-center space-x-2.5 min-w-0 flex-1 mr-2">
-                                <div class="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-teal-700 font-bold text-xs shadow-2xs shrink-0">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-3 min-w-0 flex-1 mr-2">
+                                <div class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-teal-600 font-bold text-sm shadow-sm shrink-0">
                                     {{ u.first_name|first|upper }}{{ u.last_name|first|upper }}
                                 </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-xs sm:text-sm font-bold text-slate-800 truncate">{{ u.get_full_name|default:u.username }}</p>
-                                    <p class="text-[11px] text-slate-400 truncate">{{ u.email }}</p>
+                                <div class="overflow-hidden min-w-0 flex-1">
+                                    <p class="text-[14px] font-bold text-slate-800 truncate">{{ u.get_full_name }}</p>
+                                    <p class="text-[12px] text-slate-500 truncate">{{ u.email }}</p>
                                 </div>
                             </div>
-
-                            <!-- Current Department Badge -->
-                            <span id="user-dept-badge-{{ u.id }}" class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md {% if u.profile.department %}bg-emerald-50 text-emerald-700 border border-emerald-100{% else %}bg-amber-50 text-amber-700 border border-amber-100{% endif %}">
-                                {% if u.profile.department %}{{ u.profile.department.name }}{% else %}{% trans "Nepriskirtas" %}{% endif %}
+                            {% if u.profile.department %}
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0 truncate max-w-[110px]" title="{{ u.profile.department.name }}">
+                                {{ u.profile.department.name }}
                             </span>
+                            {% else %}
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100 shrink-0">
+                                {% trans "Nepriskirtas" %}
+                            </span>
+                            {% endif %}
                         </div>
 
-                        <!-- Department Selection Form -->
-                        <form method="POST" action="{% url 'assign_to_department' %}" onsubmit="handleAssignSubmit(event, '{{ u.id }}')" class="flex items-center gap-2">
-                            {% csrf_token %}
-                            <input type="hidden" name="user_id" value="{{ u.id }}">
-                            <div class="relative flex-1">
-                                <select name="department_id" id="user-select-{{ u.id }}" onchange="handleSelectChange('{{ u.id }}')"
-                                    class="w-full text-xs font-medium text-slate-700 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:outline-none appearance-none bg-white">
-                                    <option value="" {% if not u.profile.department_id %}selected{% endif %}>
-                                        {% trans "— Nepriskirtas —" %}
-                                    </option>
-                                    {% for dept in hierarchical_departments %}
+                        <div class="flex flex-col gap-2">
+                            <div class="relative">
+                                <select name="department_id"
+                                    class="w-full text-[13px] font-medium text-slate-700 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:outline-none appearance-none bg-white">
+                                    <option value="">{% trans "— Nepriskirtas —" %}</option>
+                                    {% for dept in all_departments %}
                                     <option value="{{ dept.id }}" {% if u.profile.department_id == dept.id %}selected{% endif %}>
-                                        {{ dept.hierarchy_indent }}{{ dept.name }}
+                                        {% if dept.hierarchy_indent %}{{ dept.hierarchy_indent }}{% endif %}{{ dept.name }}
                                     </option>
                                     {% endfor %}
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
                                 </div>
                             </div>
-                            <button type="submit" id="save-btn-{{ u.id }}"
-                                class="shrink-0 text-xs text-white bg-slate-900 hover:bg-slate-800 px-3 py-2 rounded-xl font-bold transition flex items-center justify-center gap-1 shadow-2xs">
-                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                                <span class="hidden sm:inline">{% trans "Išsaugoti" %}</span>
+                            <button type="submit"
+                                class="w-full text-[13px] text-white bg-slate-900 hover:bg-slate-800 px-3 py-2 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i> {% trans "Išsaugoti" %}
                             </button>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                     {% empty %}
-                    <div class="text-center py-10 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                        <i data-lucide="users" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i>
-                        <p class="text-xs font-bold text-slate-500">{% trans "Įmonėje nėra darbuotojų." %}</p>
+                    <div class="text-center py-8">
+                        <i data-lucide="users" class="w-12 h-12 text-slate-300 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-[14px] font-bold text-slate-500">{% trans "Įmonėje nėra darbuotojų." %}</p>
                     </div>
                     {% endfor %}
-                </div>
-
-                <!-- Empty search results notice -->
-                <div id="no-employees-match" class="hidden text-center py-8 bg-slate-50 rounded-2xl border border-slate-200/60 mt-3">
-                    <p class="text-xs text-slate-500 font-medium">{% trans "Pagal paiešką darbuotojų nerasta." %}</p>
                 </div>
             </div>
         </div>
     </div>
 </main>
 
-<!-- Modal 1: Add Department / Sub-department -->
-<div id="add-dept-modal" class="fixed inset-0 bg-black/40 backdrop-blur-xs overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center p-4">
-    <div class="relative max-w-md w-full shadow-2xl rounded-3xl bg-white overflow-hidden p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
-        
-        <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <i data-lucide="folder-plus" class="w-5 h-5"></i>
-                </div>
-                <div>
-                    <h3 id="add-modal-title" class="text-lg font-bold text-slate-900">{% trans "Naujas padalinys" %}</h3>
-                    <p id="add-modal-subtitle" class="text-xs text-slate-400">{% trans "Sukurkite naują skyrių ar poskyrį" %}</p>
-                </div>
-            </div>
-            <button type="button" onclick="closeAddDeptModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+<!-- Modal: Add Department / Sub-department -->
+<div id="add-dept-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center p-4">
+    <div class="relative max-w-md w-full shadow-2xl rounded-[32px] bg-white overflow-hidden p-8 animate-in fade-in zoom-in duration-200">
+        <div class="flex items-center justify-center w-16 h-16 rounded-full bg-teal-50 text-teal-600 mx-auto mb-4">
+            <i data-lucide="folder-plus" class="w-8 h-8"></i>
         </div>
-
-        <form method="POST" action="{% url 'company_management' %}" class="space-y-4">
+        <div class="text-center mb-6">
+            <h3 id="modal-heading" class="text-2xl font-extrabold text-slate-900">{% trans "Naujas Padalinys" %}</h3>
+            <p id="modal-subheading" class="text-sm font-medium text-slate-500 mt-1">{% trans "Įveskite padalinio informaciją" %}</p>
+        </div>
+        
+        <form method="POST" action="{% url 'company_management' %}" class="text-left space-y-4">
             {% csrf_token %}
             
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    {% trans "Pavadinimas" %} <span class="text-rose-500">*</span>
-                </label>
-                <input type="text" name="name" id="add-dept-name" required
-                    placeholder="{% trans "Pvz.: Pardavimų skyrius, IT pagalba..." %}"
-                    class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    {% trans "Tėvinis padalinys" %}
-                </label>
-                <div class="relative">
-                    <select name="parent" id="add-dept-parent"
-                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
-                        <option value="">{% trans "— Pagrindinis skyrius (nėra tėvinio) —" %}</option>
-                        {% for dept in hierarchical_departments %}
-                        <option value="{{ dept.id }}">{{ dept.hierarchy_indent }}{{ dept.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </div>
-                </div>
-                <p class="text-[11px] text-slate-400 mt-1">{% trans "Palikite tuščią, jei tai pagrindinio lygio skyrius." %}</p>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    {% trans "Vadovas" %}
-                </label>
-                <div class="relative">
-                    <select name="manager" id="add-dept-manager"
-                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
-                        <option value="">{% trans "— Nėra paskirto vadovo —" %}</option>
-                        {% for u in company_users %}
-                        <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </div>
+            <div class="space-y-1">
+                <label class="block text-[14px] font-bold text-slate-800">{% trans "Pavadinimas" %}</label>
+                <div class="custom-django-field">
+                    {{ form.name }}
                 </div>
             </div>
-
-            <div class="flex items-center justify-end gap-3 pt-5 border-t border-slate-100">
+            
+            <div class="space-y-1">
+                <label class="block text-[14px] font-bold text-slate-800">
+                    {% trans "Tėvinis padalinys" %} <span class="text-slate-400 font-normal text-xs">({% trans "neprivaloma" %})</span>
+                </label>
+                <div class="custom-django-field" id="parent-field-wrap">
+                    {{ form.parent }}
+                </div>
+            </div>
+            
+            <div class="space-y-1">
+                <label class="block text-[14px] font-bold text-slate-800">{% trans "Vadovas" %}</label>
+                <div class="custom-django-field">
+                    {{ form.manager }}
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
                 <button type="button" onclick="closeAddDeptModal()"
-                    class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs sm:text-sm hover:bg-slate-200 transition-colors">
+                    class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors">
                     {% trans "Atšaukti" %}
                 </button>
                 <button type="submit"
-                    class="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl text-xs sm:text-sm hover:bg-slate-800 shadow-sm transition-colors">
+                    class="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 shadow-sm transition-colors">
                     {% trans "Sukurti" %}
                 </button>
             </div>
@@ -368,478 +201,25 @@
     </div>
 </div>
 
-<!-- Modal 2: Edit Department Inline -->
-<div id="edit-dept-modal" class="fixed inset-0 bg-black/40 backdrop-blur-xs overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center p-4">
-    <div class="relative max-w-md w-full shadow-2xl rounded-3xl bg-white overflow-hidden p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
-        
-        <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-                    <i data-lucide="edit-3" class="w-5 h-5"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-slate-900">{% trans "Redaguoti padalinį" %}</h3>
-                    <p class="text-xs text-slate-400" id="edit-modal-sub">{% trans "Atnaujinkite padalinio informaciją" %}</p>
-                </div>
-            </div>
-            <button type="button" onclick="closeEditDeptModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-        </div>
-
-        <form id="edit-dept-form" method="POST" action="" class="space-y-4">
-            {% csrf_token %}
-            
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    {% trans "Pavadinimas" %} <span class="text-rose-500">*</span>
-                </label>
-                <input type="text" name="name" id="edit-dept-name" required
-                    class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    {% trans "Tėvinis padalinys" %}
-                </label>
-                <div class="relative">
-                    <select name="parent" id="edit-dept-parent"
-                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none">
-                        <option value="">{% trans "— Pagrindinis skyrius (nėra tėvinio) —" %}</option>
-                        {% for dept in hierarchical_departments %}
-                        <option value="{{ dept.id }}" data-dept-id="{{ dept.id }}">{{ dept.hierarchy_indent }}{{ dept.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    {% trans "Vadovas" %}
-                </label>
-                <div class="relative">
-                    <select name="manager" id="edit-dept-manager"
-                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none">
-                        <option value="">{% trans "— Nėra paskirto vadovo —" %}</option>
-                        {% for u in company_users %}
-                        <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex items-center justify-end gap-3 pt-5 border-t border-slate-100">
-                <button type="button" onclick="closeEditDeptModal()"
-                    class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs sm:text-sm hover:bg-slate-200 transition-colors">
-                    {% trans "Atšaukti" %}
-                </button>
-                <button type="submit"
-                    class="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl text-xs sm:text-sm hover:bg-slate-800 shadow-sm transition-colors">
-                    {% trans "Išsaugoti pakeitimus" %}
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    let activeEmployeeFilter = 'all';
-
-    document.addEventListener('DOMContentLoaded', () => {
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    });
-
-    // Toast notification helper
-    function showToast(message) {
-        const toast = document.getElementById('toast-notification');
-        const msgEl = document.getElementById('toast-message');
-        if (!toast || !msgEl) return;
-        msgEl.textContent = message;
-        toast.classList.remove('translate-y-20', 'opacity-0');
-        setTimeout(() => {
-            toast.classList.add('translate-y-20', 'opacity-0');
-        }, 3000);
-    }
-
-    // Modal controllers
-    function openAddDeptModal(parentId = '', parentName = '') {
-        const modal = document.getElementById('add-dept-modal');
-        const parentSelect = document.getElementById('add-dept-parent');
-        const titleEl = document.getElementById('add-modal-title');
-        const subTitleEl = document.getElementById('add-modal-subtitle');
-        const nameInput = document.getElementById('add-dept-name');
-
-        if (parentId) {
-            titleEl.textContent = "{% trans "Naujas poskyris" %}";
-            subTitleEl.textContent = `{% trans "Tėvinis skyrius:" %} ${parentName}`;
-            parentSelect.value = parentId;
-        } else {
-            titleEl.textContent = "{% trans "Naujas pagrindinis skyrius" %}";
-            subTitleEl.textContent = "{% trans "Sukurkite aukščiausio lygio padalinį" %}";
-            parentSelect.value = '';
-        }
-
-        nameInput.value = '';
-        modal.classList.remove('hidden');
-        nameInput.focus();
-    }
-
-    function closeAddDeptModal() {
-        document.getElementById('add-dept-modal').classList.add('hidden');
-    }
-
-    function openEditDeptModal(deptId, editUrl, deptName, parentId, managerId) {
-        const modal = document.getElementById('edit-dept-modal');
-        const form = document.getElementById('edit-dept-form');
-        const nameInput = document.getElementById('edit-dept-name');
-        const parentSelect = document.getElementById('edit-dept-parent');
-        const managerSelect = document.getElementById('edit-dept-manager');
-        const subTitle = document.getElementById('edit-modal-sub');
-
-        form.action = editUrl;
-        nameInput.value = deptName;
-        parentSelect.value = parentId || '';
-        managerSelect.value = managerId || '';
-        subTitle.textContent = deptName;
-
-        // Prevent selecting self as parent
-        Array.from(parentSelect.options).forEach(opt => {
-            opt.disabled = (opt.value === String(deptId));
-        });
-
-        modal.classList.remove('hidden');
-        nameInput.focus();
-    }
-
-    function closeEditDeptModal() {
-        document.getElementById('edit-dept-modal').classList.add('hidden');
-    }
-
-    // Tree Node Toggle
-    function toggleDeptNode(deptId) {
-        const children = document.getElementById(`children-${deptId}`);
-        const arrow = document.getElementById(`arrow-${deptId}`);
-        if (!children) return;
-
-        const isHidden = children.classList.toggle('hidden');
-        if (arrow) {
-            if (isHidden) {
-                arrow.classList.add('-rotate-90');
-            } else {
-                arrow.classList.remove('-rotate-90');
-            }
-        }
-    }
-
-    function toggleDeptMembers(deptId) {
-        const membersBlock = document.getElementById(`dept-members-${deptId}`);
-        if (!membersBlock) return;
-        membersBlock.classList.toggle('hidden');
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    }
-
-    function expandAllNodes() {
-        document.querySelectorAll('.dept-children-list').forEach(el => el.classList.remove('hidden'));
-        document.querySelectorAll('.dept-toggle-btn i').forEach(arrow => arrow.classList.remove('-rotate-90'));
-    }
-
-    function collapseAllNodes() {
-        document.querySelectorAll('.dept-children-list').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.dept-toggle-btn i').forEach(arrow => arrow.classList.add('-rotate-90'));
-    }
-
-    // Tree Search Filter
-    function filterTreeNodes(query) {
-        const q = (query || '').trim().toLowerCase();
-        const clearBtn = document.getElementById('tree-search-clear');
-        if (clearBtn) {
-            clearBtn.classList.toggle('hidden', q.length === 0);
-        }
-
-        const nodes = document.querySelectorAll('.dept-tree-node');
-        if (!q) {
-            nodes.forEach(n => {
-                n.classList.remove('opacity-30', 'ring-2', 'ring-indigo-400', 'rounded-2xl');
-            });
-            return;
-        }
-
-        // Expand all when searching
-        expandAllNodes();
-
-        nodes.forEach(n => {
-            const name = n.getAttribute('data-dept-name') || '';
-            const matches = name.includes(q);
-            if (matches) {
-                n.classList.remove('opacity-30');
-                const card = n.querySelector(':scope > div');
-                if (card) {
-                    card.classList.add('ring-2', 'ring-indigo-500');
-                }
-            } else {
-                n.classList.add('opacity-30');
-                const card = n.querySelector(':scope > div');
-                if (card) {
-                    card.classList.remove('ring-2', 'ring-indigo-500');
-                }
-            }
-        });
-    }
-
-    function clearTreeSearch() {
-        const input = document.getElementById('tree-search-input');
-        if (input) {
-            input.value = '';
-            filterTreeNodes('');
-        }
-    }
-
-    // Employee List Filtering
-    function setEmployeeFilter(filter) {
-        activeEmployeeFilter = filter;
-        
-        const btnAll = document.getElementById('filter-btn-all');
-        const btnUnassigned = document.getElementById('filter-btn-unassigned');
-        const btnAssigned = document.getElementById('filter-btn-assigned');
-
-        [btnAll, btnUnassigned, btnAssigned].forEach(b => {
-            b.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-center transition-all text-slate-500 hover:text-slate-800";
-        });
-
-        if (filter === 'all') {
-            btnAll.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-center transition-all bg-white text-slate-800 shadow-xs";
-        } else if (filter === 'unassigned') {
-            btnUnassigned.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-center transition-all bg-white text-amber-700 shadow-xs";
-        } else if (filter === 'assigned') {
-            btnAssigned.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-center transition-all bg-white text-emerald-700 shadow-xs";
-        }
-
-        filterEmployeeList();
-    }
-
-    function filterEmployeeList() {
-        const searchInput = document.getElementById('employee-search-input');
-        const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
-        const clearBtn = document.getElementById('employee-search-clear');
-        if (clearBtn) {
-            clearBtn.classList.toggle('hidden', q.length === 0);
-        }
-
-        const cards = document.querySelectorAll('.employee-card');
-        let visibleCount = 0;
-
-        cards.forEach(card => {
-            const isAssigned = card.getAttribute('data-assigned') === 'true';
-            const name = card.getAttribute('data-user-name') || '';
-            const email = card.getAttribute('data-user-email') || '';
-
-            let matchesFilter = true;
-            if (activeEmployeeFilter === 'unassigned' && isAssigned) matchesFilter = false;
-            if (activeEmployeeFilter === 'assigned' && !isAssigned) matchesFilter = false;
-
-            let matchesQuery = true;
-            if (q) {
-                matchesQuery = name.includes(q) || email.includes(q);
-            }
-
-            if (matchesFilter && matchesQuery) {
-                card.classList.remove('hidden');
-                visibleCount++;
-            } else {
-                card.classList.add('hidden');
-            }
-        });
-
-        const noMatchEl = document.getElementById('no-employees-match');
-        if (noMatchEl) {
-            noMatchEl.classList.toggle('hidden', visibleCount > 0);
-        }
-    }
-
-    function clearEmployeeSearch() {
-        const input = document.getElementById('employee-search-input');
-        if (input) {
-            input.value = '';
-            filterEmployeeList();
-        }
-    }
-
-    // Quick select change - auto saves via AJAX
-    function handleSelectChange(userId) {
-        const form = document.querySelector(`#user-card-${userId} form`);
-        if (form) {
-            submitAssignAjax(form, userId);
-        }
-    }
-
-    function handleAssignSubmit(e, userId) {
-        e.preventDefault();
-        submitAssignAjax(e.target, userId);
-    }
-
-    function submitAssignAjax(form, userId) {
-        const formData = new FormData(form);
-        const saveBtn = document.getElementById(`save-btn-${userId}`);
-        const card = document.getElementById(`user-card-${userId}`);
-        const badge = document.getElementById(`user-dept-badge-${userId}`);
-
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>`;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'ok') {
-                const isAssigned = !!data.department_id;
-                card.setAttribute('data-assigned', isAssigned ? 'true' : 'false');
-                card.setAttribute('data-dept-id', data.department_id || '');
-
-                if (badge) {
-                    badge.textContent = data.department_name;
-                    if (isAssigned) {
-                        badge.className = "shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100";
-                    } else {
-                        badge.className = "shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100";
-                    }
-                }
-
-                // Update badge counts in tree if element exists
-                if (data.department_id) {
-                    const treeBadge = document.getElementById(`badge-count-${data.department_id}`);
-                    if (treeBadge && typeof data.new_dept_members_count !== 'undefined') {
-                        treeBadge.textContent = data.new_dept_members_count;
-                    }
-                }
-                if (data.old_dept_id) {
-                    const oldTreeBadge = document.getElementById(`badge-count-${data.old_dept_id}`);
-                    if (oldTreeBadge && typeof data.old_dept_members_count !== 'undefined') {
-                        oldTreeBadge.textContent = data.old_dept_members_count;
-                    }
-                }
-
-                // Re-evaluate KPI counts
-                refreshKPIStats();
-
-                // If active filter is unassigned and user now assigned, re-filter
-                if (activeEmployeeFilter === 'unassigned' && isAssigned) {
-                    filterEmployeeList();
-                }
-
-                showToast(`{% trans "Darbuotojas" %} ${data.user_name} -> ${data.department_name}`);
-            }
-        })
-        .catch(err => {
-            console.error('Assign error:', err);
-            form.submit(); // fallback to standard submit
-        })
-        .finally(() => {
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">{% trans "Išsaugoti" %}</span>`;
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-        });
-    }
-
-    // Quick unassign from inside department tree
-    function quickUnassignUser(userId, userName, deptId) {
-        if (!confirm(`{% trans "Ar tikrai norite atjungti darbuotoją" %} ${userName} {% trans "iš šio padalinio?" %}`)) {
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('user_id', userId);
-        formData.append('department_id', '');
-        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-        fetch("{% url 'assign_to_department' %}", {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'ok') {
-                // Update dropdown on right
-                const select = document.getElementById(`user-select-${userId}`);
-                if (select) select.value = '';
-                const card = document.getElementById(`user-card-${userId}`);
-                if (card) {
-                    card.setAttribute('data-assigned', 'false');
-                    card.setAttribute('data-dept-id', '');
-                }
-                const badge = document.getElementById(`user-dept-badge-${userId}`);
-                if (badge) {
-                    badge.textContent = "{% trans "Nepriskirtas" %}";
-                    badge.className = "shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100";
-                }
-
-                // Update tree badge
-                const treeBadge = document.getElementById(`badge-count-${deptId}`);
-                if (treeBadge && typeof data.old_dept_members_count !== 'undefined') {
-                    treeBadge.textContent = data.old_dept_members_count;
-                }
-
-                // Reload or hide element
-                location.reload();
-            }
-        })
-        .catch(err => {
-            console.error('Unassign error:', err);
-            location.reload();
-        });
-    }
-
-    function refreshKPIStats() {
-        const allCards = document.querySelectorAll('.employee-card');
-        let unassigned = 0;
-        let assigned = 0;
-
-        allCards.forEach(c => {
-            if (c.getAttribute('data-assigned') === 'true') {
-                assigned++;
-            } else {
-                unassigned++;
-            }
-        });
-
-        const statAssigned = document.getElementById('stat-assigned-users');
-        const statUnassigned = document.getElementById('stat-unassigned-users');
-        const countFilterUnassigned = document.getElementById('count-filter-unassigned');
-        const countFilterAssigned = document.getElementById('count-filter-assigned');
-
-        if (statAssigned) statAssigned.textContent = assigned;
-        if (statUnassigned) {
-            statUnassigned.textContent = unassigned;
-            statUnassigned.className = unassigned > 0 ? "text-2xl font-extrabold text-amber-600" : "text-2xl font-extrabold text-slate-800";
-        }
-        if (countFilterUnassigned) countFilterUnassigned.textContent = unassigned;
-        if (countFilterAssigned) countFilterAssigned.textContent = assigned;
-    }
-</script>
-
 <style>
+    .custom-django-field input[type="text"],
+    .custom-django-field select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        color: #334155;
+        transition: all 0.2s;
+    }
+    .custom-django-field input[type="text"]:focus,
+    .custom-django-field select:focus {
+        outline: none;
+        border-color: #0f766e;
+        ring: 2px solid #0f766e;
+        background-color: white;
+    }
     .custom-scrollbar::-webkit-scrollbar {
         width: 6px;
     }
@@ -855,4 +235,98 @@
         background: #94a3b8;
     }
 </style>
+
+<script>
+    let currentFilter = 'all';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+
+    function openAddRootDeptModal() {
+        const modal = document.getElementById('add-dept-modal');
+        const heading = document.getElementById('modal-heading');
+        const subheading = document.getElementById('modal-subheading');
+        const parentSelect = document.querySelector('#parent-field-wrap select');
+        
+        heading.textContent = "{% trans "Naujas Padalinys" %}";
+        subheading.textContent = "{% trans "Sukurti pagrindinį skyrių" %}";
+        if (parentSelect) {
+            parentSelect.value = '';
+        }
+        modal.classList.remove('hidden');
+    }
+
+    function openAddSubDeptModal(parentId, parentName) {
+        const modal = document.getElementById('add-dept-modal');
+        const heading = document.getElementById('modal-heading');
+        const subheading = document.getElementById('modal-subheading');
+        const parentSelect = document.querySelector('#parent-field-wrap select');
+
+        heading.textContent = "{% trans "Naujas Poskyris" %}";
+        subheading.textContent = `{% trans "Tėvinis padalinys:" %} ${parentName}`;
+        if (parentSelect) {
+            parentSelect.value = parentId;
+        }
+        modal.classList.remove('hidden');
+    }
+
+    function closeAddDeptModal() {
+        document.getElementById('add-dept-modal').classList.add('hidden');
+    }
+
+    function toggleMembersList(deptId) {
+        const list = document.getElementById(`members-list-${deptId}`);
+        if (!list) return;
+        list.classList.toggle('hidden');
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        const btnAll = document.getElementById('filter-btn-all');
+        const btnUnassigned = document.getElementById('filter-btn-unassigned');
+
+        if (filter === 'all') {
+            btnAll.className = "flex-1 py-1 text-center rounded-lg bg-white text-slate-800 shadow-xs";
+            btnUnassigned.className = "flex-1 py-1 text-center rounded-lg text-slate-500 hover:text-slate-800";
+        } else {
+            btnUnassigned.className = "flex-1 py-1 text-center rounded-lg bg-white text-slate-800 shadow-xs";
+            btnAll.className = "flex-1 py-1 text-center rounded-lg text-slate-500 hover:text-slate-800";
+        }
+        filterEmployeeCards();
+    }
+
+    function filterEmployeeCards() {
+        const searchInput = document.getElementById('employee-search');
+        const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+        const cards = document.querySelectorAll('.employee-card');
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name') || '';
+            const email = card.getAttribute('data-email') || '';
+            const hasDept = card.getAttribute('data-has-dept') === 'true';
+
+            let matchesFilter = true;
+            if (currentFilter === 'unassigned' && hasDept) {
+                matchesFilter = false;
+            }
+
+            let matchesSearch = true;
+            if (query) {
+                matchesSearch = name.includes(query) || email.includes(query);
+            }
+
+            if (matchesFilter && matchesSearch) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+    }
+</script>
 {% endblock %}
