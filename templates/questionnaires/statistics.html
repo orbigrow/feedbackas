@@ -88,8 +88,7 @@
                 <h3 class="text-xl font-bold text-text-main mb-6">{% trans "Kolegų Paminėti Raktiniai Žodžiai" %}</h3>
                 <div class="flex flex-wrap gap-2">
                     {% for keyword in all_keywords %}
-                    <span class="px-3 py-1 bg-bg-secondary text-primary rounded-full text-sm font-medium">{{ keyword
-                        }}</span>
+                    <span class="px-3 py-1 bg-bg-secondary text-primary rounded-full text-sm font-medium">{{ keyword }}</span>
                     {% empty %}
                     <span class="text-sm text-text-muted">{% trans "Kol kas nėra raktinių žodžių." %}</span>
                     {% endfor %}

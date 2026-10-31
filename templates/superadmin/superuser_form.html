@@ -42,11 +42,7 @@
                 <div>
                     <label for="email" class="block text-sm font-medium text-text-main mb-1">El. paštas (Prisijungimo
                         vardas)</label>
-                    <input type="email" name="email" id="email" required {% if superuser %}value="{{ superuser.email }}"
-                        readonly class="w-full px-4 py-2 border border-gray-300 bg-bg-secondary rounded-lg text-text-muted" {%
-                        else
-                        %}class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-purple-500 transition-colors"
-                        {% endif %}>
+                    <input type="email" name="email" id="email" required {% if superuser %}value="{{ superuser.email }}" readonly class="w-full px-4 py-2 border border-gray-300 bg-bg-secondary rounded-lg text-text-muted" {% else %}class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-purple-500 transition-colors"{% endif %}>
                     {% if superuser %}
                     <p class="text-xs text-text-muted mt-1">Sukurto vartotojo el. paštas (prisijungimo vardas) negali būti
                         keičiamas.</p>

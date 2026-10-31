@@ -16,65 +16,48 @@
     <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">
-                {% if is_viewing_self %}
-                {% trans "Mano rezultatai" %}
-                {% else %}
-                {{ target_user.get_full_name }} — {% trans "Rezultatai" %}
-                {% endif %}
+                {% if is_viewing_self %}{% trans "Mano rezultatai" %}{% else %}{{ target_user.get_full_name }} — {% trans "Rezultatai" %}{% endif %}
             </h1>
             <p class="text-slate-500 mt-1 text-sm sm:text-base">
-                {% if is_viewing_self %}
-                {% trans "Jūsų asmeninio tobulėjimo suvestinė." %}
-                {% else %}
-                {% trans "Darbuotojo asmeninio tobulėjimo suvestinė." %}{% if target_user.profile.department %} ({{
-                target_user.profile.department.name }}){% endif %}
-                {% endif %}
+                {% if is_viewing_self %}{% trans "Jūsų asmeninio tobulėjimo suvestinė." %}{% else %}{% trans "Darbuotojo asmeninio tobulėjimo suvestinė." %}{% if target_user.profile.department %} ({{ target_user.profile.department.name }}){% endif %}{% endif %}
             </p>
         </div>
 
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                    {% if viewable_employees and viewable_employees|length > 0 %}
-                    <form method="GET" action="" class="inline-flex items-center gap-2">
-                        <input type="hidden" name="period" value="{{ current_period }}">
-                        <label for="user-select"
-                            class="text-xs sm:text-sm font-semibold text-slate-600 flex-shrink-0">{% trans
-                            "Darbuotojas:" %}</label>
-                        <select id="user-select" name="user_id" onchange="this.form.submit()"
-                            class="w-full sm:w-auto bg-white border border-slate-200 text-slate-800 text-xs sm:text-sm font-medium rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all">
-                            <option value="{{ request.user.id }}" {% if is_viewing_self %}selected{% endif %}>
-                                {% trans "Mano rezultatai" %} ({{ request.user.get_full_name }})
-                            </option>
-                            {% for emp in viewable_employees %}
-                            {% if emp.id != request.user.id %}
-                            <option value="{{ emp.id }}" {% if not is_viewing_self and target_user.id==emp.id
-                                %}selected{% endif %}>
-                                {{ emp.get_full_name }}{% if emp.profile.department %} ({{ emp.profile.department.name
-                                }}){% endif %}
-                            </option>
-                            {% endif %}
-                            {% endfor %}
-                        </select>
-                    </form>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            {% if viewable_employees and viewable_employees|length > 0 %}
+            <form method="GET" action="" class="inline-flex items-center gap-2">
+                <input type="hidden" name="period" value="{{ current_period }}">
+                <label for="user-select" class="text-xs sm:text-sm font-semibold text-slate-600 flex-shrink-0">{% trans "Darbuotojas:" %}</label>
+                <select id="user-select" name="user_id" onchange="this.form.submit()"
+                    class="w-full sm:w-auto bg-white border border-slate-200 text-slate-800 text-xs sm:text-sm font-medium rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all">
+                    <option value="{{ request.user.id }}" {% if is_viewing_self %}selected{% endif %}>
+                        {% trans "Mano rezultatai" %} ({{ request.user.get_full_name }})
+                    </option>
+                    {% for emp in viewable_employees %}
+                    {% if emp.id != request.user.id %}
+                    <option value="{{ emp.id }}" {% if not is_viewing_self and target_user.id == emp.id %}selected{% endif %}>
+                        {{ emp.get_full_name }}{% if emp.profile.department %} ({{ emp.profile.department.name }}){% endif %}
+                    </option>
                     {% endif %}
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
 
-                    <!-- Laikotarpio pasirinkimas -->
-                    <div class="overflow-x-auto max-w-full pb-1 sm:pb-0">
-                        <div class="inline-flex bg-slate-200/50 rounded-xl p-1.5 shadow-inner min-w-max">
-                            <a href="?period=all{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
-                                class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'all' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{%
-                                trans "Visi" %}</a>
-                            <a href="?period=month{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
-                                class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'month' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{%
-                                trans "Mėnuo" %}</a>
-                            <a href="?period=quarter{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
-                                class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'quarter' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{%
-                                trans "Ketvirtis" %}</a>
-                            <a href="?period=year{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
-                                class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'year' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{%
-                                trans "Metai" %}</a>
-                        </div>
-                    </div>
+            <!-- Laikotarpio pasirinkimas -->
+            <div class="overflow-x-auto max-w-full pb-1 sm:pb-0">
+                <div class="inline-flex bg-slate-200/50 rounded-xl p-1.5 shadow-inner min-w-max">
+                    <a href="?period=all{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
+                        class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'all' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Visi" %}</a>
+                    <a href="?period=month{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
+                        class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'month' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Mėnuo" %}</a>
+                    <a href="?period=quarter{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
+                        class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'quarter' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Ketvirtis" %}</a>
+                    <a href="?period=year{% if not is_viewing_self %}&user_id={{ target_user.id }}{% endif %}"
+                        class="px-3.5 sm:px-5 py-2 text-xs sm:text-sm font-bold {% if current_period == 'year' %}text-slate-800 bg-white shadow-sm{% else %}text-slate-500 hover:text-slate-700{% endif %} rounded-lg transition-all">{% trans "Metai" %}</a>
                 </div>
+            </div>
+        </div>
     </header>
 
     <!-- Turinys -->
@@ -132,18 +115,17 @@
                     {% empty %}
                     <div class="w-full text-center py-10">
                         <i data-lucide="tag" class="w-8 h-8 text-slate-200 mx-auto mb-3"></i>
-                        <span class="text-sm font-medium text-slate-500">{% trans "Kol kas nėra raktinių žodžių."
-                            %}</span>
+                        <span class="text-sm font-medium text-slate-500">{% trans "Kol kas nėra raktinių žodžių." %}</span>
                     </div>
                     {% endfor %}
                 </div>
             </div>
         </div>
 
-        <!-- 3. Kokybiniai Atsiliepimai ({% trans "Stiprybės" %} ir Tobulėjimas) -->
+        <!-- 3. Kokybiniai Atsiliepimai (Stiprybės ir Tobulėjimas) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            <!-- {% trans "Stiprybės" %} -->
+            <!-- Stiprybės -->
             <div class="bg-white border border-slate-100 shadow-sm rounded-3xl p-8 relative overflow-hidden">
                 <div class="absolute -right-6 -top-6 w-32 h-32 bg-green-50 rounded-full blur-3xl opacity-60"></div>
 
@@ -216,8 +198,7 @@
                     <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                         <i data-lucide="database" class="w-8 h-8 text-slate-300"></i>
                     </div>
-                    <p class="text-center font-semibold text-slate-500">{% trans "Nepakanka istorinių duomenų grafikui
-                        atvaizduoti." %}</p>
+                    <p class="text-center font-semibold text-slate-500">{% trans "Nepakanka istorinių duomenų grafikui atvaizduoti." %}</p>
                 </div>
             </div>
 
@@ -287,7 +268,7 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: '{% trans 'Įvertinimas' %}' ,
+                            label: '{% trans "Įvertinimas" %}',
                             data: scores,
                             borderColor: '#0d9488', // teal-600
                             backgroundColor: 'rgba(13, 148, 136, 0.1)',
@@ -337,7 +318,7 @@
                                         return projects[context[0].dataIndex] + ' (' + context[0].label + ')';
                                     },
                                     label: function (context) {
-                                        return '{% trans 'Vertinimas: ' %} ' + context.raw + ' / 4';
+                                        return '{% trans "Vertinimas: " %} ' + context.raw + ' / 4';
                                     }
                                 }
                             }
