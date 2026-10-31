@@ -457,6 +457,7 @@ def build_hierarchical_departments(departments):
         dept.hierarchy_path = " / ".join(current_path)
         dept.is_root_department = (level == 0)
         dept.has_sub_departments = len(children_map.get(dept.id, [])) > 0
+        dept.hierarchy_indent = "— " * level
 
         ordered.append(dept)
         for child in children_map.get(dept.id, []):

@@ -1,61 +1,183 @@
-{% load i18n %}
-<li class="relative">
-    <div class="flex items-center p-4 border border-slate-200 rounded-2xl bg-white hover:shadow-md hover:border-slate-300 transition-all">
-        <div class="mr-4 w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
-            <i data-lucide="network" class="w-5 h-5"></i>
-        </div>
+{% load i18n static user_tags %}
+<li class="relative dept-tree-node" data-dept-id="{{ node.id }}" data-dept-name="{{ node.name|lower }}" data-level="{{ level|default:0 }}">
+    <!-- Department Card -->
+    <div class="group relative rounded-2xl border transition-all duration-200 bg-white shadow-sm hover:shadow-md {% if level and level > 0 %}border-slate-200/85 hover:border-slate-300{% else %}border-slate-200 hover:border-indigo-200 ring-1 ring-slate-100{% endif %}">
+        
+        <div class="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+            
+            <!-- Left: Toggle arrow + Icon + Info -->
+            <div class="flex items-start sm:items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                
+                <!-- Collapse/Expand Arrow (if has sub-departments or members) -->
+                <button type="button" 
+                    onclick="toggleDeptNode('{{ node.id }}')"
+                    class="dept-toggle-btn mt-1 sm:mt-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+                    title="{% trans "Išskleisti / suskleisti" %}">
+                    <i data-lucide="chevron-down" id="arrow-{{ node.id }}" class="w-4 h-4 transition-transform duration-200 {% if level and level > 0 and not forloop.first %}rotate-0{% endif %}"></i>
+                </button>
 
-        <div class="flex-1">
-            <h3 class="font-bold text-slate-800">{{ node.name }}</h3>
-            {% if node.manager %}
-            <p class="text-xs text-slate-500 mt-0.5">{% trans "Vadovas:" %} <span class="font-bold text-slate-700">
-                    {% if node.manager.first_name or node.manager.last_name %}
-                    {{ node.manager.first_name }} {{ node.manager.last_name }}
+                <!-- Department Icon based on level -->
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 {% if level and level > 0 %}bg-sky-50 text-sky-600 border border-sky-100{% else %}bg-indigo-50 text-indigo-600 border border-indigo-100{% endif %}">
+                    {% if level and level > 0 %}
+                    <i data-lucide="git-branch" class="w-5 h-5"></i>
                     {% else %}
-                    {{ node.manager.username }}
+                    <i data-lucide="building-2" class="w-5 h-5"></i>
                     {% endif %}
-                </span></p>
-            {% else %}
-            <p class="text-[11px] text-slate-400 font-medium italic mt-0.5">{% trans "Nėra paskirto vadovo" %}</p>
-            {% endif %}
+                </div>
+
+                <!-- Department Details -->
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-base sm:text-lg font-bold text-slate-900 truncate">{{ node.name }}</h3>
+                        {% if level and level > 0 %}
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-100">
+                            {% trans "Poskyris" %}
+                        </span>
+                        {% else %}
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            {% trans "Skyrius" %}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Manager info -->
+                    <div class="flex items-center gap-1.5 mt-1 text-xs sm:text-sm">
+                        {% if node.manager %}
+                        <span class="inline-flex items-center gap-1 text-amber-600 font-medium">
+                            <i data-lucide="crown" class="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0"></i>
+                            <span class="text-slate-500">{% trans "Vadovas:" %}</span>
+                            <span class="font-semibold text-slate-800">{{ node.manager.get_full_name|default:node.manager.username }}</span>
+                        </span>
+                        {% else %}
+                        <span class="text-slate-400 italic text-xs flex items-center gap-1">
+                            <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
+                            {% trans "Nėra paskirto vadovo" %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Badges & Action Buttons -->
+            <div class="flex items-center flex-wrap sm:flex-nowrap gap-2 sm:gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 justify-between sm:justify-end">
+                
+                <!-- Sub-departments badge -->
+                {% if node.sub_departments.all %}
+                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200/60" title="{% trans "Poskyrių skaičius" %}">
+                    <i data-lucide="folder-tree" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>{{ node.sub_departments.all|length }}</span>
+                </span>
+                {% endif %}
+
+                <!-- Members Toggle Button -->
+                <button type="button"
+                    onclick="toggleDeptMembers('{{ node.id }}')"
+                    class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl border transition-colors {% if node.members.all %}bg-teal-50/70 border-teal-200 text-teal-700 hover:bg-teal-100{% else %}bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100{% endif %}"
+                    title="{% trans "Peržiūrėti darbuotojus" %}">
+                    <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                    <span id="badge-count-{{ node.id }}">{{ node.members.all|length }}</span>
+                    <span class="hidden sm:inline">{% trans "nariai" %}</span>
+                </button>
+
+                <!-- Actions Group -->
+                <div class="flex items-center gap-1 pl-1">
+                    <!-- + Add Sub-department button -->
+                    <button type="button"
+                        onclick="openAddDeptModal('{{ node.id }}', '{{ node.name|escapejs }}')"
+                        class="p-2 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 transition-colors"
+                        title="{% trans "Pridėti poskyrį šiam padaliniui" %}">
+                        <i data-lucide="folder-plus" class="w-4 h-4"></i>
+                    </button>
+
+                    <!-- Edit button (Modal) -->
+                    {% if request.user.is_superuser %}
+                    <a href="{% url 'superadmin_edit_department' node.company.id node.id %}"
+                        class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 transition-colors"
+                        title="{% trans "Redaguoti padalinį" %}">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </a>
+                    {% else %}
+                    <button type="button"
+                        onclick="openEditDeptModal('{{ node.id }}', '{% url 'company_edit_department' node.id %}', '{{ node.name|escapejs }}', '{{ node.parent_id|default:'' }}', '{{ node.manager_id|default:'' }}')"
+                        class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 transition-colors"
+                        title="{% trans "Redaguoti padalinį" %}">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </button>
+                    {% endif %}
+
+                    <!-- Delete button -->
+                    {% if request.user.is_superuser %}
+                    <form action="{% url 'superadmin_delete_department' node.company.id node.id %}" method="post"
+                        onsubmit="return confirm('{% trans "Ar tikrai norite ištrinti padalinį" %} &quot;{{ node.name|escapejs }}&quot;? {% trans "Visi sub-padaliniai taip pat bus ištrinti." %}');" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors" title="{% trans "Ištrinti" %}">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                    {% elif request.user.profile.is_company_admin %}
+                    <form action="{% url 'company_delete_department' node.id %}" method="post"
+                        onsubmit="return confirm('{% trans "Ar tikrai norite ištrinti padalinį" %} &quot;{{ node.name|escapejs }}&quot;? {% trans "Visi sub-padaliniai taip pat bus ištrinti." %}');" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors" title="{% trans "Ištrinti" %}">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
-        <div class="flex items-center space-x-1.5 ml-2">
-            <span class="mr-2 bg-slate-50 border border-slate-100 text-slate-600 text-[11px] font-bold px-2.5 py-1 rounded-lg">
-                {{ node.members.count }} {% trans "nariai" %}
-            </span>
-            {% if request.user.is_superuser %}
-            <a href="{% url 'superadmin_edit_department' node.company.id node.id %}"
-                class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors" title="{% trans "Redaguoti" %}">
-                <i data-lucide="edit-2" class="w-4 h-4"></i>
-            </a>
-            <form action="{% url 'superadmin_delete_department' node.company.id node.id %}" method="post"
-                onsubmit="return confirm('{% trans "Ar tikrai norite ištrinti padalinį" %} &quot;{{ node.name }}&quot;? {% trans "Visi sub-padaliniai taip pat bus ištrinti." %}');" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="{% trans "Ištrinti" %}">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-            </form>
-            {% elif request.user.profile.is_company_admin %}
-            <a href="{% url 'company_edit_department' node.id %}"
-                class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-colors" title="{% trans "Redaguoti" %}">
-                <i data-lucide="edit-2" class="w-4 h-4"></i>
-            </a>
-            <form action="{% url 'company_delete_department' node.id %}" method="post"
-                onsubmit="return confirm('{% trans "Ar tikrai norite ištrinti padalinį" %} &quot;{{ node.name }}&quot;? {% trans "Visi sub-padaliniai taip pat bus ištrinti." %}');" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="{% trans "Ištrinti" %}">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-            </form>
+        <!-- Expanded Members Section (toggleable) -->
+        <div id="dept-members-{{ node.id }}" class="hidden border-t border-slate-100 bg-slate-50/70 p-4 rounded-b-2xl animate-in fade-in duration-200">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <i data-lucide="users" class="w-3.5 h-3.5 text-teal-600"></i>
+                    {% trans "Padalinio darbuotojai" %} ({{ node.members.all|length }})
+                </span>
+                <span class="text-xs text-slate-400">{% trans "Priskirti / keisti galite dešinėje esančiame sąraše" %}</span>
+            </div>
+
+            {% if node.members.all %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5" id="members-list-{{ node.id }}">
+                {% for member_profile in node.members.all %}
+                <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors group/item">
+                    <div class="flex items-center space-x-2.5 min-w-0 flex-1">
+                        <div class="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
+                            {{ member_profile.user.first_name|first|upper }}{{ member_profile.user.last_name|first|upper }}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-bold text-slate-800 truncate">
+                                {{ member_profile.user.get_full_name|default:member_profile.user.username }}
+                                {% if node.manager_id == member_profile.user.id %}
+                                <span class="text-[10px] text-amber-600 font-medium">👑</span>
+                                {% endif %}
+                            </p>
+                            <p class="text-[11px] text-slate-400 truncate">{{ member_profile.user.email }}</p>
+                        </div>
+                    </div>
+                    <!-- Quick unassign button -->
+                    <button type="button"
+                        onclick="quickUnassignUser('{{ member_profile.user.id }}', '{{ member_profile.user.get_full_name|escapejs }}', '{{ node.id }}')"
+                        class="opacity-60 group-hover/item:opacity-100 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        title="{% trans "Atjungti iš šio padalinio" %}">
+                        <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="py-4 text-center text-slate-400 text-xs italic bg-white rounded-xl border border-dashed border-slate-200">
+                {% trans "Šiame padalinyje darbuotojų nėra. Priskirkite darbuotojus iš dešinės skilties." %}
+            </div>
             {% endif %}
         </div>
     </div>
 
+    <!-- Children Sub-departments (collapsible) -->
     {% if node.sub_departments.all %}
-    <ul class="ml-10 mt-3 space-y-3 border-l-2 border-slate-100 pl-6">
+    <ul id="children-{{ node.id }}" class="dept-children-list ml-4 sm:ml-8 mt-3 space-y-3 border-l-2 border-indigo-200/60 pl-3 sm:pl-6 relative">
         {% for child in node.sub_departments.all %}
-        {% include "includes/department_node.html" with node=child %}
+        {% include "includes/department_node.html" with node=child level=level|default:0|add:1 %}
         {% endfor %}
     </ul>
     {% endif %}

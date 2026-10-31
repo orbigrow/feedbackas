@@ -2655,26 +2655,68 @@ def company_management(request):
                 manager_profile = department.manager.profile
                 manager_profile.department = department
                 manager_profile.save()
+            from django.contrib import messages
+            messages.success(request, f'Padalinys „{department.name}“ sėkmingai sukurtas.')
             return redirect('company_management')
     else:
         form = DepartmentForm(user)
 
-    # Gauname tik šaknijinius departamentus (kurie neturi tėvo)
-    # Vaikus gausime template su rekursija arba prefetch_related
-    root_departments = Department.objects.filter(company=user_company, parent__isnull=True).prefetch_related('sub_departments')
+    from .services.risk_service import build_hierarchical_departments
+
+    # Visi įmonės departamentai hierarchine tvarka (dropdown'ams ir sąrašams)
+    all_depts_raw = (
+        Department.objects.filter(company=user_company)
+        .select_related('manager', 'parent', 'company')
+        .prefetch_related('members__user')
+        .order_by('name')
+    )
+    hierarchical_departments = build_hierarchical_departments(all_depts_raw)
+
+    # Šakniniai departamentai su pilnais prefetch medžio vaizdavimui
+    root_departments = (
+        Department.objects.filter(company=user_company, parent__isnull=True)
+        .select_related('manager', 'company')
+        .prefetch_related(
+            'members__user',
+            'sub_departments__manager',
+            'sub_departments__company',
+            'sub_departments__members__user',
+            'sub_departments__sub_departments__manager',
+            'sub_departments__sub_departments__company',
+            'sub_departments__sub_departments__members__user',
+            'sub_departments__sub_departments__sub_departments__manager',
+            'sub_departments__sub_departments__sub_departments__company',
+            'sub_departments__sub_departments__sub_departments__members__user',
+        )
+        .order_by('name')
+    )
     
     # Gauname visus įmonės darbuotojus, kad galėtume juos priskirti arba perpriskirti
-    company_users = User.objects.filter(profile__company_link=user_company).select_related('profile__department').order_by('first_name', 'last_name')
+    company_users = (
+        User.objects.filter(profile__company_link=user_company, is_active=True)
+        .select_related('profile__department', 'profile')
+        .order_by('first_name', 'last_name')
+    )
 
-    # All departments for the assignment dropdown
-    all_departments = Department.objects.filter(company=user_company).order_by('name')
+    total_depts_count = all_depts_raw.count()
+    unassigned_users_count = company_users.filter(profile__department__isnull=True).count()
+    assigned_users_count = company_users.filter(profile__department__isnull=False).count()
+    total_users_count = company_users.count()
 
     context = {
         'root_departments': root_departments,
         'form': form,
         'company_users': company_users,
         'company_name': user_company.name,
-        'all_departments': all_departments,
+        'all_departments': hierarchical_departments,
+        'hierarchical_departments': hierarchical_departments,
+        'stats': {
+            'total_depts': total_depts_count,
+            'root_depts': root_departments.count(),
+            'total_users': total_users_count,
+            'assigned_users': assigned_users_count,
+            'unassigned_users': unassigned_users_count,
+        }
     }
     return render(request, 'company_management.html', context)
 
@@ -2685,6 +2727,8 @@ def assign_to_department(request):
         
         # Saugumas: Patikrinimas ar vartotojas turi teises
         if not user.is_superuser and not getattr(user.profile, 'is_company_admin', False):
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', ''):
+                return JsonResponse({'status': 'error', 'message': 'Neturite teisių atlikti šio veiksmo.'}, status=403)
             from django.contrib import messages
             messages.error(request, 'Neturite teisių atlikti šio veiksmo.')
             return redirect('home')
@@ -2695,14 +2739,30 @@ def assign_to_department(request):
             target_user = get_object_or_404(User, id=user_id)
             user_company = request.user.profile.company_link
             if target_user.profile.company_link == user_company:
+                old_dept = target_user.profile.department
+                new_dept = None
                 if department_id:
-                    department = get_object_or_404(Department, id=department_id)
-                    if department.company == user_company:
-                        target_user.profile.department = department
+                    new_dept = get_object_or_404(Department, id=department_id)
+                    if new_dept.company == user_company:
+                        target_user.profile.department = new_dept
                         target_user.profile.save()
+                    else:
+                        new_dept = None
                 else:
                     target_user.profile.department = None
                     target_user.profile.save()
+
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', ''):
+                    return JsonResponse({
+                        'status': 'ok',
+                        'user_id': target_user.id,
+                        'user_name': target_user.get_full_name() or target_user.username,
+                        'department_id': new_dept.id if new_dept else None,
+                        'department_name': new_dept.name if new_dept else 'Nepriskirtas',
+                        'old_dept_id': old_dept.id if old_dept else None,
+                        'new_dept_members_count': new_dept.members.count() if new_dept else 0,
+                        'old_dept_members_count': old_dept.members.count() if old_dept else 0,
+                    })
     return redirect('company_management')
 
 @login_required

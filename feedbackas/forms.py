@@ -99,9 +99,13 @@ class DepartmentForm(forms.ModelForm):
         profile = getattr(user, 'profile', None)
         company_link = profile.company_link if profile else None
 
+        self.fields['parent'].empty_label = "— Pagrindinis skyrius (nėra tėvinio) —"
+        self.fields['manager'].empty_label = "— Nėra paskirto vadovo —"
+
         if company_link:
             self.fields['parent'].queryset = Department.objects.filter(company=company_link)
-            self.fields['manager'].queryset = User.objects.filter(profile__company_link=company_link)
+            self.fields['manager'].queryset = User.objects.filter(profile__company_link=company_link).order_by('first_name', 'last_name')
+            self.fields['manager'].label_from_instance = lambda obj: obj.get_full_name() or obj.email
 
 class BasePageDescriptionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
