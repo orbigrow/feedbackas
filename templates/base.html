@@ -4,18 +4,19 @@
 <html lang="lt" data-theme="light">
 
 <head>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://www.google-analytics.com https://analytics.google.com; upgrade-insecure-requests; base-uri 'self'; object-src 'none'; default-src 'self'; img-src 'self' data: https://flagcdn.com https://www.transparenttextures.com https://placehold.co https://www.google-analytics.com https://analytics.google.com; font-src 'self' https://fonts.gstatic.com data: https://cdnjs.cloudflare.com; frame-src 'self'; form-action 'self'; frame-ancestors 'none';">
+    <meta http-equiv="Content-Security-Policy"
+        content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://www.google-analytics.com https://analytics.google.com; upgrade-insecure-requests; base-uri 'self'; object-src 'none'; default-src 'self'; img-src 'self' data: https://flagcdn.com https://www.transparenttextures.com https://placehold.co https://www.google-analytics.com https://analytics.google.com; font-src 'self' https://fonts.gstatic.com data: https://cdnjs.cloudflare.com; frame-src 'self'; form-action 'self'; frame-ancestors 'none';">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% trans "Orbigrow.lt" %}{% endblock %}</title>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-L8KWNPPX9Y"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
 
-      gtag('config', 'G-L8KWNPPX9Y');
+        gtag('config', 'G-L8KWNPPX9Y');
     </script>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
     <link rel="icon" type="image/png" href="{% static 'images/fav.png' %}">
@@ -26,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         // Prevent flash: apply theme BEFORE first paint
-        (function() {
+        (function () {
             var t = localStorage.getItem('theme');
             if (t === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
@@ -62,7 +63,7 @@
             if (backdrop) {
                 backdrop.classList.remove('opacity-100');
                 backdrop.classList.add('opacity-0');
-                setTimeout(function() {
+                setTimeout(function () {
                     if (drawer && !drawer.classList.contains('is-open')) {
                         backdrop.classList.add('hidden');
                         backdrop.style.display = 'none';
@@ -75,7 +76,7 @@
             if (e && e.stopPropagation) e.stopPropagation();
             if (_drawerToggleDebounce) return;
             _drawerToggleDebounce = true;
-            setTimeout(function() { _drawerToggleDebounce = false; }, 120);
+            setTimeout(function () { _drawerToggleDebounce = false; }, 120);
 
             var drawer = document.getElementById('mobile-drawer');
             if (!drawer) return;
@@ -94,22 +95,30 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+
         #mobile-drawer {
             transform: translateX(-100%);
             transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
             will-change: transform;
         }
+
         #mobile-drawer.is-open {
             transform: translateX(0) !important;
         }
+
         /* Smooth theme transition */
         html[data-theme] body,
         html[data-theme] body * {
             transition: background-color 0.3s ease, color 0.15s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
-        {% block style %}
-        {% endblock %}
+            {
+            % block style %
+        }
+
+            {
+            % endblock %
+        }
     </style>
 </head>
 
@@ -118,7 +127,8 @@
     {% if request.session.impersonator_id %}
     <div class="bg-red-600 text-white px-4 py-2 text-center text-sm font-medium relative z-50">
         <div class="flex items-center justify-center space-x-4">
-            <span>{% trans "Jūs peržiūrite sistemą kaip" %} <strong>{{ user.get_full_name|default:user.email }}</strong></span>
+            <span>{% trans "Jūs peržiūrite sistemą kaip" %} <strong>{{ user.get_full_name|default:user.email
+                    }}</strong></span>
             <a href="{% url 'stop_impersonation' %}"
                 class="bg-bg-main text-red-600 px-3 py-1 rounded hover:bg-red-50 transition-colors text-xs font-bold uppercase">
                 {% trans "Grįžti į Superadmin" %}
@@ -147,7 +157,8 @@
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'home' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
                     </svg>
                     <span>{% trans "Pagrindinis" %}</span>
                 </a>
@@ -156,13 +167,17 @@
                     <div class="flex items-center space-x-3 min-w-0">
                         <svg class="w-6 h-6 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                             stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.336a3.75 3.75 0 0 1 1.3 0c.94.12 1.708.743 2.052 1.543a.75.75 0 0 0 .634.416 3.377 3.377 0 0 1 3.165 3.377v11.082a3.377 3.377 0 0 1-3.377 3.377H8.876a3.377 3.377 0 0 1-3.377-3.377V8.672a3.377 3.377 0 0 1 3.165-3.377.75.75 0 0 0 .634-.416 3.75 3.75 0 0 1 2.052-1.543Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 13.5H12M9 16.5H12M15 13.5H15.008V13.508H15V13.5ZM15 16.5H15.008V16.508H15V16.5ZM15 10.5H15.008V10.508H15V10.5ZM9 10.5H12" />
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M11.35 3.336a3.75 3.75 0 0 1 1.3 0c.94.12 1.708.743 2.052 1.543a.75.75 0 0 0 .634.416 3.377 3.377 0 0 1 3.165 3.377v11.082a3.377 3.377 0 0 1-3.377 3.377H8.876a3.377 3.377 0 0 1-3.377-3.377V8.672a3.377 3.377 0 0 1 3.165-3.377.75.75 0 0 0 .634-.416 3.75 3.75 0 0 1 2.052-1.543Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M9 13.5H12M9 16.5H12M15 13.5H15.008V13.508H15V13.5ZM15 16.5H15.008V16.508H15V16.5ZM15 10.5H15.008V10.508H15V10.5ZM9 10.5H12" />
                         </svg>
                         <span class="truncate">{% trans "Mano Užduotys" %}</span>
                     </div>
                     {% if pending_tasks_count > 0 %}
-                    <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-amber-500 rounded-full animate-pulse shadow-sm" title="{% trans 'Laukia pildymo' %}">
+                    <span
+                        class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-amber-500 rounded-full animate-pulse shadow-sm"
+                        title="{% trans 'Laukia pildymo' %}">
                         {{ pending_tasks_count }}
                     </span>
                     {% endif %}
@@ -171,7 +186,8 @@
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'team_members_list' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
                     </svg>
                     <span>{% trans "Mano Komanda" %}</span>
                 </a>
@@ -180,7 +196,8 @@
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'questionnaires_list' or request.resolver_match.url_name == 'create_questionnaire' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                     </svg>
                     <span>{% trans "Individuali forma" %}</span>
                 </a>
@@ -202,16 +219,18 @@
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'results' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
                     </svg>
                     <span>{% trans "Rezultatai" %}</span>
                 </a>
-                {% if user.managed_departments.exists or user.is_superuser %}
+                {% if user.managed_departments.exists or user.is_superuser or user.profile.is_company_admin %}
                 <a href="{% url 'team_statistics' %}"
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'team_statistics' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
                     </svg>
                     <span>{% trans "Komandos statistika" %}</span>
                 </a>
@@ -221,7 +240,8 @@
                 <a href="{% url 'burnout_survey' %}"
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name in 'burnout_survey,burnout_survey_success' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                     </svg>
                     <span>{% trans "Savijautos anketa" %}</span>
                 </a>
@@ -229,7 +249,8 @@
                 <a href="{% url 'team_risk_radar' %}"
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if request.resolver_match.url_name == 'team_risk_radar' %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
                     </svg>
                     <span>{% trans "Rizikos radaras" %}</span>
                 </a>
@@ -280,7 +301,8 @@
                     class="flex items-center space-x-3 px-4 py-2 rounded-lg {% if 'superadmin_descriptions' in request.resolver_match.url_name %}text-white bg-primary{% else %}text-text-muted hover:bg-bg-secondary hover:text-primary{% endif %} font-medium">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                     <span>{% trans "Aprašymai" %}</span>
                 </a>
@@ -301,18 +323,23 @@
                         <div class="flex items-center space-x-2 mt-0.5">
                             <a href="{% url 'logout' %}"
                                 class="flex items-center space-x-1 text-xs text-primary hover:text-purple-700 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
                                 </svg>
                                 <span>{% trans "Atsijungti" %}</span>
                             </a>
                             {% if not user.is_superuser %}
                             <span class="text-slate-300 dark:text-slate-700 text-xs">•</span>
-                            <a href="{% url 'home' %}?start_tour=1" onclick="if(window.location.pathname.startsWith('/home')||window.location.pathname==='/'){ if(window.startOnboardingTour){ window.startOnboardingTour(); return false; } }"
-                               class="flex items-center space-x-1 text-xs text-slate-500 hover:text-primary transition-colors cursor-pointer"
-                               title="{% trans 'Peržiūrėti svetainės turą iš naujo' %}">
-                                <svg class="w-3.5 h-3.5 text-primary/70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            <a href="{% url 'home' %}?start_tour=1"
+                                onclick="if(window.location.pathname.startsWith('/home')||window.location.pathname==='/'){ if(window.startOnboardingTour){ window.startOnboardingTour(); return false; } }"
+                                class="flex items-center space-x-1 text-xs text-slate-500 hover:text-primary transition-colors cursor-pointer"
+                                title="{% trans 'Peržiūrėti svetainės turą iš naujo' %}">
+                                <svg class="w-3.5 h-3.5 text-primary/70" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                 </svg>
                                 <span>{% trans "Kartoti turą" %}</span>
                             </a>
@@ -325,22 +352,30 @@
                     <form action="{% url 'set_language' %}" method="post" class="flex items-center space-x-2">
                         {% csrf_token %}
                         <input name="next" type="hidden" value="{{ request.get_full_path }}">
-                        <button type="submit" name="language" value="lt" class="flex items-center p-1 rounded-md {% if LANGUAGE_CODE == 'lt' %}bg-bg-secondary{% else %}hover:bg-bg-secondary opacity-50 hover:opacity-100{% endif %}">
+                        <button type="submit" name="language" value="lt"
+                            class="flex items-center p-1 rounded-md {% if LANGUAGE_CODE == 'lt' %}bg-bg-secondary{% else %}hover:bg-bg-secondary opacity-50 hover:opacity-100{% endif %}">
                             <img src="https://flagcdn.com/lt.svg" class="w-6 h-4 rounded-sm" alt="Lietuvių">
                         </button>
-                        <button type="submit" name="language" value="en" class="flex items-center p-1 rounded-md {% if LANGUAGE_CODE == 'en' %}bg-bg-secondary{% else %}hover:bg-bg-secondary opacity-50 hover:opacity-100{% endif %}">
+                        <button type="submit" name="language" value="en"
+                            class="flex items-center p-1 rounded-md {% if LANGUAGE_CODE == 'en' %}bg-bg-secondary{% else %}hover:bg-bg-secondary opacity-50 hover:opacity-100{% endif %}">
                             <img src="https://flagcdn.com/gb.svg" class="w-6 h-4 rounded-sm" alt="English">
                         </button>
                     </form>
                     {% endif %}
-                    <button id="theme-toggle" onclick="toggleTheme()" class="p-2 rounded-lg hover:bg-bg-secondary text-text-muted transition-colors" title="Perjungti temą">
+                    <button id="theme-toggle" onclick="toggleTheme()"
+                        class="p-2 rounded-lg hover:bg-bg-secondary text-text-muted transition-colors"
+                        title="Perjungti temą">
                         <!-- Sun icon (shown in dark mode) -->
-                        <svg id="icon-sun" class="w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+                        <svg id="icon-sun" class="w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
                         </svg>
                         <!-- Moon icon (shown in light mode) -->
-                        <svg id="icon-moon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+                        <svg id="icon-moon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
                         </svg>
                     </button>
                 </div>
@@ -360,8 +395,8 @@
             function updateThemeIcons(theme) {
                 var suns = [document.getElementById('icon-sun'), document.getElementById('mobile-icon-sun')];
                 var moons = [document.getElementById('icon-moon'), document.getElementById('mobile-icon-moon')];
-                
-                suns.forEach(function(sun) {
+
+                suns.forEach(function (sun) {
                     if (!sun) return;
                     if (theme === 'dark') {
                         sun.classList.remove('hidden');
@@ -370,7 +405,7 @@
                     }
                 });
 
-                moons.forEach(function(moon) {
+                moons.forEach(function (moon) {
                     if (!moon) return;
                     if (theme === 'dark') {
                         moon.classList.add('hidden');
@@ -381,7 +416,7 @@
 
                 // Update logos
                 var logos = document.querySelectorAll('img[alt="Orbigrow.lt"]');
-                logos.forEach(function(img) {
+                logos.forEach(function (img) {
                     if (theme === 'dark') {
                         img.src = "{% static 'images/logo_dark.png' %}";
                     } else {
@@ -391,10 +426,10 @@
             }
 
             // Initialize icons on load and bind menu buttons
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 updateThemeIcons(document.documentElement.getAttribute('data-theme') || 'light');
 
-                document.addEventListener('click', function(e) {
+                document.addEventListener('click', function (e) {
                     var drawer = document.getElementById('mobile-drawer');
 
                     // If close button clicked
@@ -420,7 +455,7 @@
                     }
                 });
 
-                document.addEventListener('keydown', function(e) {
+                document.addEventListener('keydown', function (e) {
                     if (e.key === 'Escape' || e.keyCode === 27) {
                         closeMobileDrawer();
                     }
@@ -430,22 +465,28 @@
 
         <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
             <!-- Global Mobile Top Bar (Always visible on mobile) -->
-            <header class="md:hidden fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-4 bg-bg-main/95 backdrop-blur-md border-b border-gray-200/80 dark:border-slate-800 shadow-xs">
+            <header
+                class="md:hidden fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-4 bg-bg-main/95 backdrop-blur-md border-b border-gray-200/80 dark:border-slate-800 shadow-xs">
                 <div class="flex items-center space-x-3">
-                    <button type="button" onclick="toggleMobileDrawer()" 
-                        class="p-2 -ml-2 text-text-muted hover:text-text-main hover:bg-bg-secondary rounded-xl transition-colors focus:outline-none" 
+                    <button type="button" onclick="toggleMobileDrawer()"
+                        class="p-2 -ml-2 text-text-muted hover:text-text-main hover:bg-bg-secondary rounded-xl transition-colors focus:outline-none"
                         aria-label="{% trans 'Meniu' %}">
-                        <svg class="w-6 h-6 text-text-main" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        <svg class="w-6 h-6 text-text-main" fill="none" viewBox="0 0 24 24" stroke-width="1.75"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                         </svg>
                     </button>
-                    <a href="{% if user.is_superuser %}{% url 'superadmin_dashboard' %}{% else %}{% url 'home' %}{% endif %}" class="flex items-center">
+                    <a href="{% if user.is_superuser %}{% url 'superadmin_dashboard' %}{% else %}{% url 'home' %}{% endif %}"
+                        class="flex items-center">
                         <img src="{% static 'images/logo.png' %}" alt="Orbigrow.lt" class="h-7 w-auto object-contain">
                     </a>
                 </div>
                 <div class="flex items-center space-x-2">
                     {% if user.is_authenticated %}
-                    <a href="{% url 'profile' %}" class="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border border-gray-200 hover:opacity-90 transition" title="{{ request.user.get_full_name|default:request.user.username }}">
+                    <a href="{% url 'profile' %}"
+                        class="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border border-gray-200 hover:opacity-90 transition"
+                        title="{{ request.user.get_full_name|default:request.user.username }}">
                         <img class="w-full h-full object-cover" src="{{ user|user_avatar }}" alt="Profilis">
                     </a>
                     {% endif %}

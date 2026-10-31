@@ -9,8 +9,8 @@
 <!-- 2. Pagrindinis Turinys -->
 <main class="flex-1 overflow-y-auto bg-bg-secondary">
 
-        <!-- Turinys -->
-        <div class="p-4 sm:p-6 md:p-8">
+    <!-- Turinys -->
+    <div class="p-4 sm:p-6 md:p-8">
 
         <h1 class="text-2xl sm:text-3xl font-bold text-text-main mb-4 sm:mb-6">
             {% trans "Komandos nariai" %}
@@ -26,16 +26,20 @@
                 <div class="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-bg-secondary transition"
                     onclick="var el=document.getElementById('dept-{{ block.department.id }}');el.classList.toggle('hidden');this.querySelector('.dept-arrow').classList.toggle('rotate-180')">
                     <div class="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1 mr-2">
-                        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-bg-secondary flex items-center justify-center shrink-0">
-                            <svg class="w-5 h-5 sm:w-6 sm:h-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <div
+                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-bg-secondary flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6 text-primary" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                             </svg>
                         </div>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-base sm:text-lg font-bold text-text-main truncate">{{ block.department.name }}</h3>
-                            <p class="text-xs sm:text-sm text-text-muted truncate">{% if block.department.manager %}{% trans "Vadovas" %}: {{ block.department.manager.get_full_name }}{% endif %} · {{ block.member_count }} {% trans "nariai" %}
+                            <h3 class="text-base sm:text-lg font-bold text-text-main truncate">{{ block.department.name
+                                }}</h3>
+                            <p class="text-xs sm:text-sm text-text-muted truncate">{% if block.department.manager %}{%
+                                trans "Vadovas" %}: {{ block.department.manager.get_full_name }}{% endif %} · {{
+                                block.member_count }} {% trans "nariai" %}
                             </p>
                         </div>
                     </div>
@@ -61,10 +65,10 @@
                         <div class="p-4 hover:bg-bg-secondary transition">
                             <div class="flex items-center space-x-3">
                                 <img class="w-10 h-10 rounded-full shrink-0 object-cover border border-slate-100"
-                                    src="{{ member|user_avatar }}"
-                                    alt="{{ member.get_full_name }}">
+                                    src="{{ member|user_avatar }}" alt="{{ member.get_full_name }}">
                                 <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-semibold text-text-main truncate">{{ member.get_full_name }}</p>
+                                    <p class="text-sm font-semibold text-text-main truncate">{{ member.get_full_name }}
+                                    </p>
                                     <p class="text-xs text-text-muted truncate">{{ member.email }}</p>
                                 </div>
                             </div>
@@ -72,7 +76,8 @@
                                 <div class="flex items-center space-x-1.5">
                                     <span class="text-xs font-medium text-text-muted">{% trans "Reitingas" %}:</span>
                                     {% if member.average_rating %}
-                                    <span class="text-xs font-bold text-text-main px-2 py-0.5 rounded bg-primary/10 text-primary">
+                                    <span
+                                        class="text-xs font-bold text-text-main px-2 py-0.5 rounded bg-primary/10 text-primary">
                                         {{ member.average_rating|floatformat:2 }}
                                     </span>
                                     {% else %}
@@ -81,7 +86,8 @@
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
                                     <a href="{% url 'team_member_detail' member.id %}"
-                                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-primary bg-bg-secondary border border-purple-200 rounded-lg hover:bg-bg-secondary transition">{% trans "Rezultatai" %}</a>
+                                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-primary bg-bg-secondary border border-purple-200 rounded-lg hover:bg-bg-secondary transition">{%
+                                        trans "Rezultatai" %}</a>
                                     {% if member.id in pending_requests_map %}
                                     <a href="{% url 'fill_feedback' pending_requests_map|get_item:member.id %}"
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition animate-pulse">
@@ -90,7 +96,8 @@
                                     </a>
                                     {% else %}
                                     <a href="{% url 'send_feedback' user_id=member.id %}"
-                                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition">{% trans "Vertinti" %}</a>
+                                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition">{%
+                                        trans "Vertinti" %}</a>
                                     {% endif %}
                                 </div>
                             </div>
@@ -111,7 +118,8 @@
                                         {% trans "Darbuotojas" %}</th>
                                     <th class="px-6 py-3 text-center text-xs font-semibold text-text-muted uppercase">
                                         {% trans "Reitingas" %}</th>
-                                    <th class="px-6 py-3 text-center text-xs font-semibold text-text-muted uppercase">{% trans "Veiksmai" %}
+                                    <th class="px-6 py-3 text-center text-xs font-semibold text-text-muted uppercase">{%
+                                        trans "Veiksmai" %}
                                     </th>
                                 </tr>
                             </thead>
@@ -121,10 +129,10 @@
                                     <td class="px-6 py-4">
                                         <div class="flex items-center space-x-3">
                                             <img class="w-10 h-10 rounded-full shrink-0 object-cover border border-slate-100"
-                                                src="{{ member|user_avatar }}"
-                                                alt="{{ member.get_full_name }}">
+                                                src="{{ member|user_avatar }}" alt="{{ member.get_full_name }}">
                                             <div>
-                                                <p class="text-sm font-medium text-text-main">{{ member.get_full_name }}</p>
+                                                <p class="text-sm font-medium text-text-main">{{ member.get_full_name }}
+                                                </p>
                                                 <p class="text-xs text-text-muted">{{ member.email }}</p>
                                             </div>
                                         </div>
@@ -136,7 +144,8 @@
                                                 <div class="bg-primary h-2 rounded-full"
                                                     style="width: {% widthratio member.average_rating 4 100 %}%"></div>
                                             </div>
-                                            <span class="text-sm font-bold text-text-main">{{ member.average_rating|floatformat:2 }}</span>
+                                            <span class="text-sm font-bold text-text-main">{{
+                                                member.average_rating|floatformat:2 }}</span>
                                         </div>
                                         {% else %}
                                         <span class="text-sm text-text-muted">—</span>
@@ -145,7 +154,8 @@
                                     <td class="px-6 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
                                             <a href="{% url 'team_member_detail' member.id %}"
-                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-primary bg-bg-secondary border border-purple-200 rounded-lg hover:bg-bg-secondary transition">{% trans "Rezultatai" %}</a>
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-primary bg-bg-secondary border border-purple-200 rounded-lg hover:bg-bg-secondary transition">{%
+                                                trans "Rezultatai" %}</a>
                                             {% if member.id in pending_requests_map %}
                                             <a href="{% url 'fill_feedback' pending_requests_map|get_item:member.id %}"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition animate-pulse">
@@ -154,14 +164,16 @@
                                             </a>
                                             {% else %}
                                             <a href="{% url 'send_feedback' user_id=member.id %}"
-                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition">{% trans "Vertinti" %}</a>
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition">{%
+                                                trans "Vertinti" %}</a>
                                             {% endif %}
                                         </div>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="3" class="px-6 py-4 text-center text-text-muted">{% trans "Nėra narių." %}</td>
+                                    <td colspan="3" class="px-6 py-4 text-center text-text-muted">{% trans "Nėra narių."
+                                        %}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -179,20 +191,22 @@
             <div
                 class="bg-bg-main rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
                 <div class="p-6 flex flex-col items-center text-center flex-grow">
-                    <div>
-                        <img class="w-24 h-24 rounded-full object-cover mb-4 border-4 border-purple-50 shadow-sm"
-                            src="{{ member|user_avatar }}"
-                            alt="{{ member.first_name }} {{ member.last_name }}">
-                    </div>
-                    <h3 class="text-lg font-bold text-text-main">{{ member.first_name }} {{ member.last_name }}</h3>
+                            href="{% url 'team_member_detail' member.id %}" class="block group">
+                        <img class="w-24 h-24 rounded-full object-cover mb-4 border-4 border-purple-50 shadow-sm group-hover:opacity-90 transition-opacity"
+                            src="{{ member|user_avatar }}" alt="{{ member.first_name }} {{ member.last_name }}">
+                    </a>
+                    <a href="{% url 'team_member_detail' member.id %}" class="hover:underline">
+                        <h3 class="text-lg font-bold text-text-main">{{ member.first_name }} {{ member.last_name }}</h3>
+                    </a>
                     <p class="text-sm text-primary font-medium mb-2">
                         {% if member.profile.company_link %}
-                            {{ member.profile.company_link.name }}
+                        {{ member.profile.company_link.name }}
                         {% else %}
-                            {% trans "-- Pozicija --" %}
+                        {% trans "-- Pozicija --" %}
                         {% endif %}
                     </p>
-                    <span class="px-3 py-1 text-xs font-semibold text-text-muted bg-bg-secondary rounded-full mb-4">{{ member.profile.department.name|default:"—" }}</span>
+                    <span class="px-3 py-1 text-xs font-semibold text-text-muted bg-bg-secondary rounded-full mb-4">{{
+                        member.profile.department.name|default:"—" }}</span>
 
                     <div class="w-full bg-gray-200 rounded-full h-2.5 mb-1 relative">
                         {% if member.average_rating %}
@@ -202,10 +216,15 @@
                         <div class="bg-gray-300 h-2.5 rounded-full" style="width: 0%"></div>
                         {% endif %}
                     </div>
-                    <p class="text-xs text-text-muted w-full text-right">{% trans "Reitingas" %}: {{ member.average_rating|default:"N/A"|floatformat:2 }}/4</p>
+                    <p class="text-xs text-text-muted w-full text-right">{% trans "Reitingas" %}: {{
+                        member.average_rating|default:"N/A"|floatformat:2 }}/4</p>
                 </div>
-                <div class="bg-bg-secondary p-4 border-t flex justify-center space-x-2">
-                    {% if member.id != user.id %}
+                    <div class="bg-bg-secondary p-4 border-t flex items-center justify-center gap-2">
+                        {% if member.id != user.id %}
+                        <a href="{% url 'team_member_detail' member.id %}"
+                            class="flex-1 text-center py-2 text-sm font-medium text-primary bg-white border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
+                            {% trans "Rezultatai" %}
+                        </a>
                         {% if member.id in pending_requests_map %}
                         <a href="{% url 'fill_feedback' pending_requests_map|get_item:member.id %}"
                             class="flex-1 flex items-center justify-center gap-1.5 text-center py-2 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition animate-pulse">
@@ -218,22 +237,22 @@
                             {% trans "Vertinti" %}
                         </a>
                         {% endif %}
-                    {% else %}
-                    <span
-                        class="flex-1 text-center py-2 text-sm text-text-muted bg-gray-200 rounded-lg cursor-not-allowed">
-                        {% trans "Jūs" %}
-                    </span>
-                    {% endif %}
+                        {% else %}
+                        <span
+                            class="flex-1 text-center py-2 text-sm text-text-muted bg-gray-200 rounded-lg cursor-not-allowed">
+                            {% trans "Jūs" %}
+                        </span>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-            {% empty %}
-            <div class="col-span-full text-center py-10">
-                <p class="text-text-muted">{% trans "Jūsų komandoje narių nerasta." %}</p>
-            </div>
-            {% endfor %}
+                {% empty %}
+                <div class="col-span-full text-center py-10">
+                    <p class="text-text-muted">{% trans "Jūsų komandoje narių nerasta." %}</p>
+                </div>
+                {% endfor %}
 
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
-    </div>
 </main>
 {% endblock %}

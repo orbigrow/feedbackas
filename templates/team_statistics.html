@@ -4,25 +4,35 @@
 {% block title %}{% trans "Komandos Statistika - Orbigrow.lt" %}{% endblock %}
 
 {% block content %}
-<script src="https://unpkg.com/lucide@0.460.0" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.460.0"
+    integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge"
+    crossorigin="anonymous"></script>
 
 <main class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto bg-[#f8fafc] font-sans text-slate-900 pb-10">
     <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">
-                {% trans "Komandos statistika" %} — {{ department.name }}
+                {% trans "Komandos statistika" %} — {% if department %}{{ department.name }}{% else %}{% trans "Visa
+                įmonė" %}{% endif %}
             </h1>
-            <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Bendra komandos kompetencijų ir aktyvumo apžvalga" %}</p>
+            <p class="text-slate-500 mt-1 text-sm sm:text-base">{% trans "Bendra komandos kompetencijų ir aktyvumo
+                apžvalga" %}</p>
         </div>
-        {% if managed_departments.count > 1 or managed_departments|length > 1 %}
+        {% if managed_departments.count > 1 or managed_departments|length > 1 or is_admin %}
         <div class="flex items-center gap-3 w-full sm:w-auto">
             <form method="GET" action="" class="w-full sm:w-auto inline-flex items-center gap-2">
-                <label for="dept-select" class="text-xs sm:text-sm font-semibold text-slate-600 flex-shrink-0">{% trans "Padalinys:" %}</label>
+                <label for="dept-select" class="text-xs sm:text-sm font-semibold text-slate-600 flex-shrink-0">{% trans
+                    "Padalinys:" %}</label>
                 <select id="dept-select" name="department_id" onchange="this.form.submit()"
                     class="w-full sm:w-auto bg-white border border-slate-200 text-slate-800 text-xs sm:text-sm font-medium rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all">
+                    {% if is_admin %}
+                    <option value="all" {% if not department or selected_dept_id=='all' %}selected{% endif %}>
+                        {% trans "Visa įmonė (Visi padaliniai)" %}
+                    </option>
+                    {% endif %}
                     {% for d in managed_departments %}
-                    <option value="{{ d.id }}" {% if d.id == department.id %}selected{% endif %}>
-                        {{ d.name }}{% if d.company %} ({{ d.company.name }}){% endif %}
+                    <option value="{{ d.id }}" {% if department and d.id==department.id %}selected{% endif %}>
+                        {{ d.name }}{% if user.is_superuser and d.company %} ({{ d.company.name }}){% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -34,39 +44,47 @@
     <div class="space-y-8">
         <!-- 1. Summary Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 relative overflow-hidden group hover:border-slate-200 transition-all">
-                <div class="absolute -right-6 -top-6 w-24 h-24 bg-teal-50 rounded-full opacity-50 blur-2xl group-hover:bg-teal-100 transition-colors"></div>
+            <div
+                class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 relative overflow-hidden group hover:border-slate-200 transition-all">
+                <div
+                    class="absolute -right-6 -top-6 w-24 h-24 bg-teal-50 rounded-full opacity-50 blur-2xl group-hover:bg-teal-100 transition-colors">
+                </div>
                 <div class="flex items-center gap-3 mb-4 relative z-10">
                     <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl">
                         <i data-lucide="star" class="w-5 h-5"></i>
                     </div>
-                    <p class="text-slate-500 font-bold text-[13px] uppercase tracking-wide">{% trans "Komandos vidurkis" %}</p>
+                    <p class="text-slate-500 font-bold text-[13px] uppercase tracking-wide">{% trans "Komandos vidurkis"
+                        %}</p>
                 </div>
                 <div class="flex items-end gap-2 relative z-10">
                     <h2 class="text-5xl font-extrabold text-slate-900 tracking-tight">{{ team_avg_rating }}</h2>
                     <p class="text-[14px] font-medium text-slate-400 mb-1.5">{% trans "iš 4" %}</p>
                 </div>
             </div>
-            
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 relative overflow-hidden group hover:border-slate-200 transition-all">
+
+            <div
+                class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 relative overflow-hidden group hover:border-slate-200 transition-all">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
                         <i data-lucide="users" class="w-5 h-5"></i>
                     </div>
-                    <p class="text-slate-500 font-bold text-[13px] uppercase tracking-wide">{% trans "Narių skaičius" %}</p>
+                    <p class="text-slate-500 font-bold text-[13px] uppercase tracking-wide">{% trans "Narių skaičius" %}
+                    </p>
                 </div>
                 <div class="flex items-end gap-2">
                     <h2 class="text-5xl font-extrabold text-blue-600 tracking-tight">{{ team_member_count }}</h2>
                     <p class="text-[14px] font-medium text-slate-400 mb-1.5">{% trans "nariai" %}</p>
                 </div>
             </div>
-            
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 relative overflow-hidden group hover:border-slate-200 transition-all">
+
+            <div
+                class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 relative overflow-hidden group hover:border-slate-200 transition-all">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="p-2.5 bg-rose-50 text-rose-600 rounded-xl">
                         <i data-lucide="message-square" class="w-5 h-5"></i>
                     </div>
-                    <p class="text-slate-500 font-bold text-[13px] uppercase tracking-wide">{% trans "Gauta atsiliepimų" %}</p>
+                    <p class="text-slate-500 font-bold text-[13px] uppercase tracking-wide">{% trans "Gauta atsiliepimų"
+                        %}</p>
                 </div>
                 <div class="flex items-end gap-2">
                     <h2 class="text-5xl font-extrabold text-rose-600 tracking-tight">{{ team_feedback_count }}</h2>
@@ -83,17 +101,20 @@
                 </div>
                 <h3 class="text-xl font-bold text-slate-800">{% trans "Komandos Kompetencijos" %}</h3>
             </div>
-            
+
             <div class="space-y-6">
                 {% for comp in competencies %}
                 <div class="cursor-pointer hover:bg-slate-50 transition-colors p-3 -mx-3 rounded-2xl group"
                     onclick="openCompetencyModal('{{ comp.name }}')">
                     <div class="flex justify-between mb-2 items-center">
-                        <span class="text-[15px] font-bold text-slate-700 group-hover:text-teal-700 flex items-center gap-2 transition-colors">
+                        <span
+                            class="text-[15px] font-bold text-slate-700 group-hover:text-teal-700 flex items-center gap-2 transition-colors">
                             {{ comp.name }}
-                            <i data-lucide="external-link" class="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            <i data-lucide="external-link"
+                                class="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </span>
-                        <span class="text-[15px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg">{{ comp.score }}<span class="text-teal-400 text-xs">/4</span></span>
+                        <span class="text-[15px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg">{{
+                            comp.score }}<span class="text-teal-400 text-xs">/4</span></span>
                     </div>
                     <div class="w-full bg-slate-100 rounded-full h-3.5 shadow-inner overflow-hidden">
                         <div class="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-teal-400 to-teal-500 relative"
@@ -105,7 +126,8 @@
                 {% empty %}
                 <div class="text-center py-8">
                     <i data-lucide="bar-chart-3" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
-                    <p class="text-slate-500 font-medium">{% trans "Nėra pakankamai duomenų kompetencijoms rodyti." %}</p>
+                    <p class="text-slate-500 font-medium">{% trans "Nėra pakankamai duomenų kompetencijoms rodyti." %}
+                    </p>
                 </div>
                 {% endfor %}
             </div>
@@ -123,37 +145,47 @@
                 <table class="w-full min-w-[500px]">
                     <thead class="bg-slate-50/50">
                         <tr>
-                            <th class="px-8 py-4 text-left text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th
+                                class="px-8 py-4 text-left text-[12px] font-bold text-slate-400 uppercase tracking-wider">
                                 {% trans "Darbuotojas" %}</th>
-                            <th class="px-8 py-4 text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th
+                                class="px-8 py-4 text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
                                 {% trans "Atsiliepimų" %}</th>
-                            <th class="px-8 py-4 text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th
+                                class="px-8 py-4 text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
                                 {% trans "Vidurkis" %}</th>
-                            <th class="px-8 py-4 text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th
+                                class="px-8 py-4 text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
                                 {% trans "Lygis" %}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         {% for ms in member_stats %}
                         <tr class="hover:bg-slate-50 transition-colors cursor-pointer group"
-                            data-url="{% url 'team_member_detail' ms.user.id %}" onclick="window.location.href=this.dataset.url">
+                            data-url="{% url 'team_member_detail' ms.user.id %}"
+                            onclick="window.location.href=this.dataset.url">
                             <td class="px-8 py-5">
                                 <div class="flex items-center space-x-4">
                                     {% if ms.user|has_avatar %}
-                                    <img src="{{ ms.user|user_avatar }}" alt="{{ ms.user.get_full_name }}" class="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm shrink-0">
+                                    <img src="{{ ms.user|user_avatar }}" alt="{{ ms.user.get_full_name }}"
+                                        class="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm shrink-0">
                                     {% else %}
-                                    <div class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-teal-600 font-bold text-sm shadow-sm group-hover:border-teal-200 transition-colors shrink-0">
+                                    <div
+                                        class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-teal-600 font-bold text-sm shadow-sm group-hover:border-teal-200 transition-colors shrink-0">
                                         {{ ms.user.first_name|first|upper }}{{ ms.user.last_name|first|upper }}
                                     </div>
                                     {% endif %}
                                     <div>
-                                        <p class="text-[15px] font-bold text-slate-800 group-hover:text-teal-700 transition-colors">{{ ms.user.get_full_name }}</p>
+                                        <p
+                                            class="text-[15px] font-bold text-slate-800 group-hover:text-teal-700 transition-colors">
+                                            {{ ms.user.get_full_name }}</p>
                                         <p class="text-[13px] font-medium text-slate-500">{{ ms.user.email }}</p>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-8 py-5 text-center">
-                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-[14px] font-bold text-slate-600 group-hover:bg-slate-200 transition-colors">
+                                <span
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-[14px] font-bold text-slate-600 group-hover:bg-slate-200 transition-colors">
                                     {{ ms.feedback_count }}
                                 </span>
                             </td>
@@ -169,23 +201,27 @@
                             </td>
                             <td class="px-8 py-5 text-center">
                                 {% if ms.avg_rating %}
-                                    {% if ms.avg_rating >= 3.5 %}
-                                    <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-teal-50 text-teal-700 border border-teal-100">
-                                        {% trans "Pavyzdys" %}
-                                    </span>
-                                    {% elif ms.avg_rating >= 2.5 %}
-                                    <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-sky-50 text-sky-700 border border-sky-100">
-                                        {% trans "Varo" %}
-                                    </span>
-                                    {% elif ms.avg_rating >= 1.5 %}
-                                    <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
-                                        {% trans "Daro" %}
-                                    </span>
-                                    {% else %}
-                                    <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                        {% trans "Mokosi" %}
-                                    </span>
-                                    {% endif %}
+                                {% if ms.avg_rating >= 3.5 %}
+                                <span
+                                    class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-teal-50 text-teal-700 border border-teal-100">
+                                    {% trans "Pavyzdys" %}
+                                </span>
+                                {% elif ms.avg_rating >= 2.5 %}
+                                <span
+                                    class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-sky-50 text-sky-700 border border-sky-100">
+                                    {% trans "Varo" %}
+                                </span>
+                                {% elif ms.avg_rating >= 1.5 %}
+                                <span
+                                    class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                                    {% trans "Daro" %}
+                                </span>
+                                {% else %}
+                                <span
+                                    class="inline-flex items-center px-3 py-1.5 rounded-xl text-[12px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                    {% trans "Mokosi" %}
+                                </span>
+                                {% endif %}
                                 {% else %}
                                 <span class="text-[14px] font-bold text-slate-300">—</span>
                                 {% endif %}
@@ -195,7 +231,8 @@
                         <tr>
                             <td colspan="4" class="px-8 py-12 text-center">
                                 <i data-lucide="users" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
-                                <p class="text-[15px] font-medium text-slate-500">{% trans "Komandoje kol kas nėra narių su atsiliepimais." %}</p>
+                                <p class="text-[15px] font-medium text-slate-500">{% trans "Komandoje kol kas nėra narių
+                                    su atsiliepimais." %}</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -207,14 +244,19 @@
     </div>
 
     <!-- Competency Trend Modal -->
-    <div id="competencyModal" class="fixed inset-0 overflow-y-auto bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[9999] hidden" onclick="if(event.target === this) closeCompetencyModal()">
-        <div class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in duration-300 border border-white/20">
+    <div id="competencyModal"
+        class="fixed inset-0 overflow-y-auto bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[9999] hidden"
+        onclick="if(event.target === this) closeCompetencyModal()">
+        <div
+            class="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in duration-300 border border-white/20">
             <div class="px-8 pt-8 pb-4 flex justify-between items-center">
                 <h3 class="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
-                    <div class="p-2 bg-teal-50 rounded-xl"><i data-lucide="line-chart" class="w-6 h-6 text-teal-600"></i></div>
+                    <div class="p-2 bg-teal-50 rounded-xl"><i data-lucide="line-chart"
+                            class="w-6 h-6 text-teal-600"></i></div>
                     <span id="competencyModalTitle">{% trans "Komandos Kompetencijos Vertinimas" %}</span>
                 </h3>
-                <button type="button" onclick="closeCompetencyModal()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                <button type="button" onclick="closeCompetencyModal()"
+                    class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
@@ -227,12 +269,14 @@
                     <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                         <i data-lucide="database" class="w-8 h-8 text-slate-300"></i>
                     </div>
-                    <p class="text-center font-semibold text-slate-500">{% trans "Nepakanka istorinių duomenų grafikui atvaizduoti." %}</p>
+                    <p class="text-center font-semibold text-slate-500">{% trans "Nepakanka istorinių duomenų grafikui
+                        atvaizduoti." %}</p>
                 </div>
             </div>
-            
+
             <div class="p-8 flex justify-end gap-3 bg-slate-50/50 border-t border-slate-100">
-                <button type="button" onclick="closeCompetencyModal()" class="px-8 py-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-2xl font-bold text-[15px] transition-all">
+                <button type="button" onclick="closeCompetencyModal()"
+                    class="px-8 py-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-2xl font-bold text-[15px] transition-all">
                     {% trans "Uždaryti" %}
                 </button>
             </div>
@@ -240,7 +284,9 @@
     </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+    integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
+    crossorigin="anonymous"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof lucide !== 'undefined') {
@@ -266,7 +312,7 @@
             compChartInstance.destroy();
         }
 
-        const deptId = "{{ department.id|default:'' }}";
+        const deptId = "{{ department.id|default:'all' }}";
         const url = `/api/competency_trend/${encodeURIComponent(competencyName)}/?scope=team${deptId ? '&department_id=' + deptId : ''}`;
 
         fetch(url)
@@ -315,8 +361,8 @@
                             y: {
                                 min: 0,
                                 max: 5,
-                                ticks: { 
-                                    stepSize: 1, 
+                                ticks: {
+                                    stepSize: 1,
                                     font: { family: 'Inter, sans-serif' },
                                     color: isDark ? '#94a3b8' : '#64748b'
                                 },
@@ -324,7 +370,7 @@
                             },
                             x: {
                                 grid: { display: false },
-                                ticks: { 
+                                ticks: {
                                     font: { family: 'Inter, sans-serif' },
                                     color: isDark ? '#94a3b8' : '#64748b'
                                 }

@@ -1195,104 +1195,224 @@ def team_members_list(request):
     user = request.user
     team_members_qs = User.objects.none() 
 
+    # Paieškos logika
+    query = request.GET.get('q')
+
     try:
-        user_department = user.profile.department
-        user_company_link = user.profile.company_link
+        user_profile = getattr(user, 'profile', None)
+        user_department = getattr(user_profile, 'department', None)
+        user_company_link = getattr(user_profile, 'company_link', None)
+        is_company_admin = getattr(user_profile, 'is_company_admin', False) or user.is_superuser
         
-        # Check if user manages any department with sub-departments
-        managed_departments = Department.objects.filter(manager=user)
-        sub_departments = Department.objects.filter(parent__in=managed_departments)
-        
-        if sub_departments.exists():
-            # Hierarchical mode: show department blocks
-            department_blocks = []
-            
-            # Sub-departments loop optimization
-            for dept in sub_departments.select_related('manager').prefetch_related('members__user'):
-                members_qs = User.objects.filter(profile__department=dept).select_related('profile').annotate(
-                    average_rating=Avg('made_requests__feedback__rating')
-                )
-                
-                # Fetch department avg with a single database hit using filter instead of evaluating qs
-                dept_avg = Feedback.objects.filter(
-                    feedback_request__requester__profile__department=dept,
-                    feedback_request__status='completed'
-                ).aggregate(Avg('rating'))['rating__avg']
-                
-                department_blocks.append({
-                    'department': dept,
-                    'members': members_qs,
-                    'member_count': members_qs.count(),
-                    'avg_rating': round(dept_avg, 2) if dept_avg else None,
-                })
-            
-            # Also include direct members of the managed department (not in sub-depts)
-            for managed_dept in managed_departments:
-                direct_members = User.objects.filter(profile__department=managed_dept).exclude(id=user.id).select_related('profile').annotate(
-                    average_rating=Avg('made_requests__feedback__rating')
-                )
-                if direct_members.exists():
-                    direct_avg = Feedback.objects.filter(
-                        feedback_request__requester__profile__department=managed_dept,
+        # 1. Jei vartotojas yra įmonės administratorius (ar superuser):
+        if is_company_admin and user_company_link:
+            company_depts = Department.objects.filter(company=user_company_link).select_related('manager')
+            if company_depts.exists():
+                department_blocks = []
+                for dept in company_depts:
+                    members_qs = User.objects.filter(profile__department=dept).exclude(id=user.id).select_related('profile').annotate(
+                        average_rating=Avg('made_requests__feedback__rating')
+                    )
+                    if query:
+                        members_qs = members_qs.filter(
+                            Q(first_name__icontains=query) |
+                            Q(last_name__icontains=query) |
+                            Q(email__icontains=query)
+                        )
+                    dept_avg = Feedback.objects.filter(
+                        feedback_request__requester__profile__department=dept,
                         feedback_request__status='completed'
                     ).exclude(feedback_request__requester=user).aggregate(Avg('rating'))['rating__avg']
-                    
-                    department_blocks.insert(0, {
-                        'department': managed_dept,
-                        'members': direct_members,
-                        'member_count': direct_members.count(),
-                        'avg_rating': round(direct_avg, 2) if direct_avg else None,
+
+                    if members_qs.exists() or not query:
+                        department_blocks.append({
+                            'department': dept,
+                            'members': members_qs,
+                            'member_count': members_qs.count(),
+                            'avg_rating': round(dept_avg, 2) if dept_avg else None,
+                        })
+
+                # Darbuotojai be priskirto padalinio
+                unassigned_members = User.objects.filter(
+                    profile__company_link=user_company_link,
+                    profile__department__isnull=True
+                ).exclude(id=user.id).select_related('profile').annotate(
+                    average_rating=Avg('made_requests__feedback__rating')
+                )
+                if query:
+                    unassigned_members = unassigned_members.filter(
+                        Q(first_name__icontains=query) |
+                        Q(last_name__icontains=query) |
+                        Q(email__icontains=query)
+                    )
+                if unassigned_members.exists():
+                    unassigned_avg = Feedback.objects.filter(
+                        feedback_request__requester__in=unassigned_members,
+                        feedback_request__status='completed'
+                    ).aggregate(Avg('rating'))['rating__avg']
+
+                    class UnassignedDept:
+                        id = 'unassigned'
+                        name = _('Nepriskirti padaliniui')
+                        manager = None
+
+                    department_blocks.append({
+                        'department': UnassignedDept(),
+                        'members': unassigned_members,
+                        'member_count': unassigned_members.count(),
+                        'avg_rating': round(unassigned_avg, 2) if unassigned_avg else None,
                     })
-            
-            # Overall stats
-            all_members = User.objects.filter(
-                Q(profile__department__in=sub_departments) | 
-                Q(profile__department__in=managed_departments)
-            ).exclude(id=user.id)
-            overall_avg_rating = Feedback.objects.filter(
-                feedback_request__requester__in=all_members, 
-                feedback_request__status='completed'
-            ).aggregate(Avg('rating'))['rating__avg']
-            pending_feedback_count = FeedbackRequest.objects.filter(
-                requester__in=all_members, status='pending'
-            ).count()
-            
-            # Žodynas narių, kuriems vartotojas turi užpildyti laukiantį atsiliepimą (requester_id -> request_id)
-            pending_requests_qs = FeedbackRequest.objects.filter(
-                requested_to=user,
-                status='pending'
-            )
-            pending_requests_map = {fr.requester_id: fr.id for fr in pending_requests_qs}
-            pending_from_me_ids = set(pending_requests_map.keys())
-            
-            context = {
-                'has_sub_departments': True,
-                'department_blocks': department_blocks,
-                'team_members': all_members,
-                'search_query': None,
-                'overall_avg_rating': overall_avg_rating,
-                'pending_feedback_count': pending_feedback_count,
-                'pending_from_me_ids': pending_from_me_ids,
-                'pending_requests_map': pending_requests_map,
-            }
-            return render(request, 'feedbackas/team_members_list.html', context)
-        
-        # Flat mode: show single department members
-        if user_department:
-            team_members_qs = User.objects.filter(profile__department=user_department).exclude(id=user.id)
-        elif user_company_link:
-            team_members_qs = User.objects.filter(profile__company_link=user_company_link, profile__department__isnull=True).exclude(id=user.id)
+
+                all_members = User.objects.filter(profile__company_link=user_company_link).exclude(id=user.id)
+                if query:
+                    all_members = all_members.filter(
+                        Q(first_name__icontains=query) |
+                        Q(last_name__icontains=query) |
+                        Q(email__icontains=query)
+                    )
+                overall_avg_rating = Feedback.objects.filter(
+                    feedback_request__requester__in=all_members, 
+                    feedback_request__status='completed'
+                ).aggregate(Avg('rating'))['rating__avg']
+                pending_feedback_count = FeedbackRequest.objects.filter(
+                    requester__in=all_members, status='pending'
+                ).count()
+
+                pending_requests_qs = FeedbackRequest.objects.filter(
+                    requested_to=user,
+                    status='pending'
+                )
+                pending_requests_map = {fr.requester_id: fr.id for fr in pending_requests_qs}
+                pending_from_me_ids = set(pending_requests_map.keys())
+
+                context = {
+                    'has_sub_departments': True,
+                    'department_blocks': department_blocks,
+                    'team_members': all_members,
+                    'search_query': query,
+                    'overall_avg_rating': overall_avg_rating,
+                    'pending_feedback_count': pending_feedback_count,
+                    'pending_from_me_ids': pending_from_me_ids,
+                    'pending_requests_map': pending_requests_map,
+                }
+                return render(request, 'feedbackas/team_members_list.html', context)
+            else:
+                team_members_qs = User.objects.filter(profile__company_link=user_company_link).exclude(id=user.id)
         else:
-            team_members_qs = User.objects.filter(profile__company_link__isnull=True).exclude(id=user.id)
+            # 2. Įprasto vadovo arba darbuotojo rėžimas
+            # Check if user manages any department with sub-departments
+            managed_departments = Department.objects.filter(manager=user)
+            sub_departments = Department.objects.filter(parent__in=managed_departments)
+            
+            if sub_departments.exists():
+                # Hierarchical mode: show department blocks
+                department_blocks = []
+                
+                # Sub-departments loop optimization
+                for dept in sub_departments.select_related('manager').prefetch_related('members__user'):
+                    members_qs = User.objects.filter(profile__department=dept).select_related('profile').annotate(
+                        average_rating=Avg('made_requests__feedback__rating')
+                    )
+                    if query:
+                        members_qs = members_qs.filter(
+                            Q(first_name__icontains=query) |
+                            Q(last_name__icontains=query) |
+                            Q(email__icontains=query)
+                        )
+                    
+                    # Fetch department avg with a single database hit using filter instead of evaluating qs
+                    dept_avg = Feedback.objects.filter(
+                        feedback_request__requester__profile__department=dept,
+                        feedback_request__status='completed'
+                    ).aggregate(Avg('rating'))['rating__avg']
+                    
+                    if members_qs.exists() or not query:
+                        department_blocks.append({
+                            'department': dept,
+                            'members': members_qs,
+                            'member_count': members_qs.count(),
+                            'avg_rating': round(dept_avg, 2) if dept_avg else None,
+                        })
+                
+                # Also include direct members of the managed department (not in sub-depts)
+                for managed_dept in managed_departments:
+                    direct_members = User.objects.filter(profile__department=managed_dept).exclude(id=user.id).select_related('profile').annotate(
+                        average_rating=Avg('made_requests__feedback__rating')
+                    )
+                    if query:
+                        direct_members = direct_members.filter(
+                            Q(first_name__icontains=query) |
+                            Q(last_name__icontains=query) |
+                            Q(email__icontains=query)
+                        )
+                    if direct_members.exists() or not query:
+                        direct_avg = Feedback.objects.filter(
+                            feedback_request__requester__profile__department=managed_dept,
+                            feedback_request__status='completed'
+                        ).exclude(feedback_request__requester=user).aggregate(Avg('rating'))['rating__avg']
+                        
+                        department_blocks.insert(0, {
+                            'department': managed_dept,
+                            'members': direct_members,
+                            'member_count': direct_members.count(),
+                            'avg_rating': round(direct_avg, 2) if direct_avg else None,
+                        })
+                
+                # Overall stats
+                all_members = User.objects.filter(
+                    Q(profile__department__in=sub_departments) | 
+                    Q(profile__department__in=managed_departments)
+                ).exclude(id=user.id)
+                if query:
+                    all_members = all_members.filter(
+                        Q(first_name__icontains=query) |
+                        Q(last_name__icontains=query) |
+                        Q(email__icontains=query)
+                    )
+                overall_avg_rating = Feedback.objects.filter(
+                    feedback_request__requester__in=all_members, 
+                    feedback_request__status='completed'
+                ).aggregate(Avg('rating'))['rating__avg']
+                pending_feedback_count = FeedbackRequest.objects.filter(
+                    requester__in=all_members, status='pending'
+                ).count()
+                
+                # Žodynas narių, kuriems vartotojas turi užpildyti laukiantį atsiliepimą (requester_id -> request_id)
+                pending_requests_qs = FeedbackRequest.objects.filter(
+                    requested_to=user,
+                    status='pending'
+                )
+                pending_requests_map = {fr.requester_id: fr.id for fr in pending_requests_qs}
+                pending_from_me_ids = set(pending_requests_map.keys())
+                
+                context = {
+                    'has_sub_departments': True,
+                    'department_blocks': department_blocks,
+                    'team_members': all_members,
+                    'search_query': query,
+                    'overall_avg_rating': overall_avg_rating,
+                    'pending_feedback_count': pending_feedback_count,
+                    'pending_from_me_ids': pending_from_me_ids,
+                    'pending_requests_map': pending_requests_map,
+                }
+                return render(request, 'feedbackas/team_members_list.html', context)
+            
+            # Flat mode: show single department members
+            if user_department:
+                team_members_qs = User.objects.filter(profile__department=user_department).exclude(id=user.id)
+            elif user_company_link:
+                team_members_qs = User.objects.filter(profile__company_link=user_company_link, profile__department__isnull=True).exclude(id=user.id)
+            else:
+                team_members_qs = User.objects.filter(profile__company_link__isnull=True).exclude(id=user.id)
     except Profile.DoesNotExist:
         team_members_qs = User.objects.filter(profile__isnull=True).exclude(id=user.id)
 
     # Paieškos logika
-    query = request.GET.get('q')
     if query:
         team_members_qs = team_members_qs.filter(
             Q(first_name__icontains=query) |
-            Q(last_name__icontains=query)
+            Q(last_name__icontains=query) |
+            Q(email__icontains=query)
         )
 
     # Anotuojame su papildomais duomenimis
@@ -1594,16 +1714,86 @@ def get_feedback_data(request):
 def results(request):
     user = request.user
     period = request.GET.get('period', 'all')
-    stats = FeedbackAnalytics.get_user_stats(user, period=period)
+    user_id = request.GET.get('user_id')
+    
+    viewer_profile = getattr(user, 'profile', None)
+    is_company_admin = getattr(viewer_profile, 'is_company_admin', False)
+    is_admin = user.is_superuser or is_company_admin
+    company = getattr(viewer_profile, 'company_link', None) if viewer_profile else None
+    
+    # Build list of employees viewable by this user
+    viewable_employees = []
+    if user.is_superuser:
+        viewable_employees = User.objects.filter(is_active=True).select_related('profile', 'profile__department', 'profile__company_link').order_by('first_name', 'last_name')
+    elif is_company_admin and company:
+        viewable_employees = User.objects.filter(profile__company_link=company, is_active=True).select_related('profile', 'profile__department').order_by('first_name', 'last_name')
+    else:
+        # Check if department manager
+        managed_depts = Department.objects.filter(manager=user)
+        if managed_depts.exists():
+            def get_depts_and_children(depts):
+                res = list(depts)
+                to_check = list(depts)
+                while to_check:
+                    curr = to_check.pop()
+                    children = list(curr.sub_departments.all())
+                    res.extend(children)
+                    to_check.extend(children)
+                return res
+            all_managed = get_depts_and_children(managed_depts)
+            viewable_employees = User.objects.filter(profile__department__in=all_managed, is_active=True).select_related('profile', 'profile__department').order_by('first_name', 'last_name')
+
+    target_user = user
+    if user_id:
+        try:
+            uid = int(user_id)
+        except ValueError:
+            from .converters import HashIdConverter
+            try:
+                uid = HashIdConverter().to_python(user_id)
+            except Exception:
+                uid = None
+        if uid and uid != user.id:
+            candidate = User.objects.filter(id=uid).select_related('profile', 'profile__department', 'profile__company_link').first()
+            if candidate:
+                candidate_profile = getattr(candidate, 'profile', None)
+                is_authorized = False
+                if user.is_superuser:
+                    is_authorized = True
+                elif is_company_admin and viewer_profile and viewer_profile.company_link_id and viewer_profile.company_link_id == getattr(candidate_profile, 'company_link_id', None):
+                    is_authorized = True
+                elif candidate_profile and candidate_profile.manager_id == user.id:
+                    is_authorized = True
+                elif candidate_profile and candidate_profile.department:
+                    curr = candidate_profile.department
+                    while curr:
+                        if curr.manager_id == user.id:
+                            is_authorized = True
+                            break
+                        curr = curr.parent
+                
+                if is_authorized:
+                    target_user = candidate
+                else:
+                    from django.contrib import messages
+                    messages.error(request, _('Neturite teisės peržiūrėti šio darbuotojo rezultatų.'))
+
+    stats = FeedbackAnalytics.get_user_stats(target_user, period=period)
     
     company_name = ''
-    if hasattr(request.user, 'profile') and request.user.profile.company_link:
-        company_name = request.user.profile.company_link.name
+    target_profile = getattr(target_user, 'profile', None)
+    if target_profile and target_profile.company_link:
+        company_name = target_profile.company_link.name
+    elif company:
+        company_name = company.name
 
     context = {
         **stats,
         'company_name': company_name,
         'current_period': period,
+        'target_user': target_user,
+        'is_viewing_self': target_user == user,
+        'viewable_employees': viewable_employees,
     }
     
     return render(request, 'results.html', context)
@@ -1665,10 +1855,16 @@ def get_competency_trend(request, competency_name):
         target_user = get_object_or_404(User, id=uid)
         # Verify permissions
         is_authorized = False
+        user_profile = getattr(request.user, 'profile', None)
+        target_profile = getattr(target_user, 'profile', None)
         if request.user == target_user or request.user.is_superuser:
             is_authorized = True
+        elif user_profile and user_profile.is_company_admin and user_profile.company_link_id and user_profile.company_link_id == getattr(target_profile, 'company_link_id', None):
+            is_authorized = True
+        elif target_profile and target_profile.manager_id == request.user.id:
+            is_authorized = True
         else:
-            target_dept = target_user.profile.department if hasattr(target_user, 'profile') else None
+            target_dept = target_profile.department if target_profile else None
             if target_dept:
                 curr = target_dept
                 while curr:
@@ -1711,37 +1907,49 @@ def get_competency_trend(request, competency_name):
 
     # Case 2: Team level (from team_statistics)
     elif scope == 'team':
+        user_profile = getattr(request.user, 'profile', None)
+        is_company_admin = getattr(user_profile, 'is_company_admin', False)
+        is_admin = request.user.is_superuser or is_company_admin
+        company = getattr(user_profile, 'company_link', None) if user_profile else None
+
         if request.user.is_superuser:
+            if not company:
+                company = Company.objects.first()
             managed_departments = Department.objects.all().select_related('company', 'parent')
+        elif is_company_admin and company:
+            managed_departments = Department.objects.filter(company=company).select_related('company', 'parent')
         else:
             managed_departments = Department.objects.filter(manager=request.user).select_related('company', 'parent')
 
-        if not managed_departments.exists():
+        if not managed_departments.exists() and not (is_admin and company):
             return JsonResponse({'error': 'Unauthorized: Not a manager'}, status=403)
 
-        if department_id:
+        department = None
+        if department_id and department_id != 'all':
             try:
                 department = managed_departments.get(id=department_id)
             except (Department.DoesNotExist, ValueError):
                 department = managed_departments.first()
+        elif is_admin and (department_id == 'all' or not department_id):
+            department = None
         else:
             department = managed_departments.first()
 
-        if not department:
-            return JsonResponse({'error': 'Department not found'}, status=404)
+        if department:
+            def get_department_and_descendants(dept):
+                depts = [dept]
+                to_check = [dept]
+                while to_check:
+                    current = to_check.pop()
+                    children = list(current.sub_departments.all())
+                    depts.extend(children)
+                    to_check.extend(children)
+                return depts
 
-        def get_department_and_descendants(dept):
-            depts = [dept]
-            to_check = [dept]
-            while to_check:
-                current = to_check.pop()
-                children = list(current.sub_departments.all())
-                depts.extend(children)
-                to_check.extend(children)
-            return depts
-
-        all_depts = get_department_and_descendants(department)
-        team_members = User.objects.filter(profile__department__in=all_depts).exclude(id=request.user.id).distinct()
+            all_depts = get_department_and_descendants(department)
+            team_members = User.objects.filter(profile__department__in=all_depts).exclude(id=request.user.id).distinct()
+        else:
+            team_members = User.objects.filter(profile__company_link=company).exclude(id=request.user.id).distinct() if company else User.objects.none()
 
         feedbacks = Feedback.objects.filter(
             feedback_request__requester__in=team_members,
@@ -1770,10 +1978,11 @@ def get_competency_trend(request, competency_name):
             avg_score = round(sum(scores) / len(scores), 2)
             count = len(scores)
             count_label = 'atsiliepimas' if count == 1 else 'atsiliepimai'
+            team_label = _("Komandos vidurkis") if department else _("Įmonės vidurkis")
             trend_data.append({
                 'date': d_str,
                 'score': avg_score,
-                'project': f"Komandos vidurkis ({count} {count_label})",
+                'project': f"{team_label} ({count} {count_label})",
                 'count': count
             })
 
@@ -1814,40 +2023,61 @@ def get_competency_trend(request, competency_name):
 @login_required
 def team_statistics(request):
     user = request.user
+    user_profile = getattr(user, 'profile', None)
+    is_company_admin = getattr(user_profile, 'is_company_admin', False)
+    is_admin = user.is_superuser or is_company_admin
+    company = getattr(user_profile, 'company_link', None) if user_profile else None
     
-    # Find departments managed by this user (or all departments if superuser)
+    # Find departments managed by this user (or all departments if superuser / company admin)
     if user.is_superuser:
+        if not company:
+            company = Company.objects.first()
         managed_departments = Department.objects.all().select_related('company', 'parent')
+    elif is_company_admin and company:
+        managed_departments = Department.objects.filter(company=company).select_related('company', 'parent')
     else:
         managed_departments = Department.objects.filter(manager=user).select_related('company', 'parent')
 
-    if not managed_departments.exists():
+    if not managed_departments.exists() and not (is_admin and company):
         from django.contrib import messages as django_messages
         django_messages.warning(request, 'Jūs nesate jokio padalinio vadovas.')
         return redirect('home')
     
     dept_id = request.GET.get('department_id')
-    if dept_id:
+    department = None
+    team_members = None
+
+    if dept_id == 'all' and is_admin:
+        department = None
+        team_members = User.objects.filter(profile__company_link=company).exclude(id=user.id).distinct()
+    elif dept_id:
         try:
             department = managed_departments.get(id=dept_id)
         except (Department.DoesNotExist, ValueError):
             department = managed_departments.first()
     else:
-        department = managed_departments.first()
-    
-    # Recursively get this department and all its descendant sub-departments
-    def get_department_and_descendants(dept):
-        depts = [dept]
-        to_check = [dept]
-        while to_check:
-            current = to_check.pop()
-            children = list(current.sub_departments.all())
-            depts.extend(children)
-            to_check.extend(children)
-        return depts
+        if is_admin and not managed_departments.exists():
+            department = None
+            team_members = User.objects.filter(profile__company_link=company).exclude(id=user.id).distinct()
+        else:
+            department = managed_departments.first()
 
-    all_depts = get_department_and_descendants(department)
-    team_members = User.objects.filter(profile__department__in=all_depts).exclude(id=user.id).distinct()
+    if department:
+        # Recursively get this department and all its descendant sub-departments
+        def get_department_and_descendants(dept):
+            depts = [dept]
+            to_check = [dept]
+            while to_check:
+                current = to_check.pop()
+                children = list(current.sub_departments.all())
+                depts.extend(children)
+                to_check.extend(children)
+            return depts
+
+        all_depts = get_department_and_descendants(department)
+        team_members = User.objects.filter(profile__department__in=all_depts).exclude(id=user.id).distinct()
+    elif team_members is None:
+        team_members = User.objects.filter(profile__company_link=company).exclude(id=user.id).distinct() if company else User.objects.none()
     
     # Aggregate stats using TeamAnalytics service
     from .services import TeamAnalytics
@@ -1856,6 +2086,9 @@ def team_statistics(request):
     context = {
         'department': department,
         'managed_departments': managed_departments,
+        'selected_dept_id': dept_id or ('all' if is_admin and not department else ''),
+        'is_admin': is_admin,
+        'company': company,
         'member_stats': stats['member_stats'],
         'team_avg_rating': round(stats['team_avg_rating'], 2) if stats['team_avg_rating'] else 0,
         'team_feedback_count': stats['team_feedback_count'],
@@ -1911,32 +2144,31 @@ def team_risk_radar(request):
         return redirect('home')
 
     # 3. Nustatome analizuojamus skyrius pagal vadovo hierarchiją
-    # Vadovas (manager) GRIEŽTAI negali matyti aukščiau esančių (tėvinių) ar kitų vadovų skyrių.
-    # Net jei vartotojas turi is_company_admin, jei jis vadovauja konkretiems skyriams,
-    # jis mato TIK savo tiesioginius skyrius ir jų pavaldžius poskyrius žemyn.
-    direct_depts = list(Department.objects.filter(manager=user, company=company)) if company else []
-    if direct_depts:
-        seen_ids = set()
-        to_check = list(direct_depts)
-        for d in direct_depts:
-            seen_ids.add(d.id)
-
-        while to_check:
-            curr = to_check.pop(0)
-            children = list(Department.objects.filter(parent=curr, company=company))
-            for child in children:
-                if child.id not in seen_ids:
-                    seen_ids.add(child.id)
-                    to_check.append(child)
-
-        managed_departments = list(Department.objects.filter(id__in=seen_ids, company=company).select_related('parent'))
-    elif user.is_superuser:
-        managed_departments = list(Department.objects.filter(company=company).select_related('parent'))
+    # Superadmin arba Įmonės administratorius (is_company_admin) mato visus įmonės skyrius
+    if user.is_superuser:
+        managed_departments = list(Department.objects.filter(company=company).select_related('parent')) if company else list(Department.objects.all().select_related('parent'))
     elif is_admin:
-        # Tik jei vartotojas nėra konkretaus skyriaus vadovas, bet yra bendras įmonės administratorius (pvz. HR)
-        managed_departments = list(Department.objects.filter(company=company).select_related('parent'))
+        managed_departments = list(Department.objects.filter(company=company).select_related('parent')) if company else []
     else:
-        managed_departments = []
+        # Skyriaus vadovas mato tik savo tiesioginius skyrius ir jų pavaldžius poskyrius žemyn
+        direct_depts = list(Department.objects.filter(manager=user, company=company)) if company else []
+        if direct_depts:
+            seen_ids = set()
+            to_check = list(direct_depts)
+            for d in direct_depts:
+                seen_ids.add(d.id)
+
+            while to_check:
+                curr = to_check.pop(0)
+                children = list(Department.objects.filter(parent=curr, company=company))
+                for child in children:
+                    if child.id not in seen_ids:
+                        seen_ids.add(child.id)
+                        to_check.append(child)
+
+            managed_departments = list(Department.objects.filter(id__in=seen_ids, company=company).select_related('parent'))
+        else:
+            managed_departments = []
 
     if not managed_departments:
         from django.contrib import messages
@@ -2312,7 +2544,7 @@ def team_member_detail(request, user_id):
         is_authorized = True
     elif member == request.user:
         is_authorized = True
-    elif user_profile and user_profile.is_company_admin and getattr(user_profile, 'company_link_id', None) == getattr(member_profile, 'company_link_id', None):
+    elif user_profile and user_profile.is_company_admin and user_profile.company_link_id and user_profile.company_link_id == getattr(member_profile, 'company_link_id', None):
         is_authorized = True
     elif member_profile and member_profile.manager_id == request.user.id:
         is_authorized = True
